@@ -1,0 +1,9 @@
+.next
+node_modules
+pnpm-lock.yaml
+public/mockServiceWorker.js
+playwright-report
+test-results
+tests/e2e/__screenshots__
+mockup
+AGENTS.md
