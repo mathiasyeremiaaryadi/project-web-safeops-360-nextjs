@@ -43,6 +43,7 @@ export function UserAccessCard({ user, siteName, vendorName }) {
   return (
     <FormCard title="Role & scope" description={SIGN_OUT_WARNING}>
       <form
+        method="post"
         noValidate
         onSubmit={onSubmit}
         aria-busy={updateAccess.isPending}

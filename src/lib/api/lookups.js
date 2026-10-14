@@ -8,7 +8,7 @@ import { listResponseSchema } from '@/lib/api/lists';
  */
 
 const lookupRowSchema = z.object({
-  id: z.string(),
+  id: z.coerce.string(),
   name: z.string().optional(),
   code: z.string().optional(),
   username: z.string().optional(),

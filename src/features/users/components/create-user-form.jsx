@@ -63,6 +63,7 @@ export function CreateUserForm() {
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_300px] xl:items-start">
       <form
+        method="post"
         noValidate
         onSubmit={onSubmit}
         aria-busy={createUser.isPending}

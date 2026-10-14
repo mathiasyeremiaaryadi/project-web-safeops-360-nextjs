@@ -94,6 +94,7 @@ export function ChangePasswordForm({ embedded = false }) {
       )}
 
       <form
+        method="post"
         noValidate
         onSubmit={onSubmit}
         aria-busy={isPending}

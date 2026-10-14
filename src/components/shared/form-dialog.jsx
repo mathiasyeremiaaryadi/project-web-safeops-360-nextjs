@@ -43,7 +43,13 @@ export function FormDialog({
           <DialogTitle className="text-lg">{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <form noValidate onSubmit={onSubmit} aria-busy={pending} className="flex flex-col gap-4">
+        <form
+          method="post"
+          noValidate
+          onSubmit={onSubmit}
+          aria-busy={pending}
+          className="flex flex-col gap-4"
+        >
           {children}
           <FormAlert message={error} />
           <DialogFooter className="flex-row gap-3 *:flex-1 sm:*:flex-none">

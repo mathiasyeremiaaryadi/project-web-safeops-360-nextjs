@@ -48,7 +48,14 @@ export function LoginForm({ next = null }) {
   const apiError = loginMutation.isError ? getLoginErrorMessage(loginMutation.error) : null;
 
   return (
-    <form noValidate onSubmit={onSubmit} aria-busy={isPending} className="flex flex-col">
+    // method="post": if JavaScript fails to load, credentials never end up in the URL.
+    <form
+      method="post"
+      noValidate
+      onSubmit={onSubmit}
+      aria-busy={isPending}
+      className="flex flex-col"
+    >
       <FormField id="username" label="Username" error={errors.username?.message}>
         <Input
           {...register('username')}

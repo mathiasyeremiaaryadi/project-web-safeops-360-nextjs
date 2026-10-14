@@ -1,14 +1,17 @@
 import { z } from 'zod';
-import { listResponseSchema, masterStatusSchema } from '@/lib/api/lists';
+import { listResponseSchema, masterStatusSchema, withMasterStatus } from '@/lib/api/lists';
 
 /** `/sites` row (BRD 8.3). */
-export const siteSchema = z.object({
-  id: z.string(),
-  code: z.string(),
-  name: z.string(),
-  site_type: z.string().nullish(),
-  status: masterStatusSchema,
-});
+export const siteSchema = z.preprocess(
+  withMasterStatus,
+  z.object({
+    id: z.coerce.string(),
+    code: z.coerce.string().catch(''),
+    name: z.string(),
+    site_type: z.string().nullish(),
+    status: masterStatusSchema,
+  }),
+);
 
 /** @typedef {z.infer<typeof siteSchema>} Site */
 
@@ -24,5 +27,5 @@ export const siteFormSchema = z.object({
 export const toSitePayload = (values) => ({
   code: values.code,
   name: values.name,
-  site_type: values.site_type || null,
+  site_type: values.site_type || undefined,
 });

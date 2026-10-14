@@ -12,6 +12,7 @@ import { ResponsiveList } from '@/components/shared/responsive-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { searchRows } from '@/lib/search';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
@@ -48,6 +49,14 @@ export function VendorsList({ createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
   const query = useVendors({ page: params.page, q: params.q, limit });
   const sites = useOptionLabels('sites');
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (vendor) => [
+        vendor.code,
+        vendor.name,
+        ...vendor.site_ids.map(sites.labelOf),
+      ])
+    : [];
   const changeStatus = useChangeVendorStatus();
   const [editing, setEditing] = useState(/** @type {Vendor | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Vendor | null} */ (null));
@@ -78,6 +87,7 @@ export function VendorsList({ createOpen, onCreateClose }) {
   const columns = [
     {
       id: 'code',
+      meta: { sortValue: (vendor) => vendor.code },
       header: 'Kode',
       cell: ({ row }) => (
         <span className="font-mono text-muted-foreground">{row.original.code}</span>
@@ -85,15 +95,22 @@ export function VendorsList({ createOpen, onCreateClose }) {
     },
     {
       id: 'name',
+      meta: { sortValue: (vendor) => vendor.name },
       header: 'Vendor',
       cell: ({ row }) => <span className="font-semibold">{row.original.name}</span>,
     },
     {
       id: 'sites',
+      meta: { sortValue: (vendor) => vendor.site_ids.map(sites.labelOf).join(', ') },
       header: 'Site',
       cell: ({ row }) => <SiteChips ids={row.original.site_ids} siteName={sites.labelOf} />,
     },
-    { id: 'status', header: 'Status', cell: ({ row }) => badge(row.original) },
+    {
+      id: 'status',
+      meta: { sortValue: (vendor) => vendor.status },
+      header: 'Status',
+      cell: ({ row }) => badge(row.original),
+    },
     {
       id: 'actions',
       header: () => <span className="sr-only">Aksi</span>,
@@ -111,16 +128,16 @@ export function VendorsList({ createOpen, onCreateClose }) {
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={Truck}
           title="Belum ada vendor"
           description="Ubah pencarian, atau tambahkan vendor baru."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(vendor) => vendor.id}
           caption="Daftar vendor"

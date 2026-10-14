@@ -1,14 +1,26 @@
 import { z } from 'zod';
-import { listResponseSchema, masterStatusSchema } from '@/lib/api/lists';
+import {
+  idListSchema,
+  listResponseSchema,
+  masterStatusSchema,
+  withMasterStatus,
+} from '@/lib/api/lists';
 
 /** `/vendors` row (BRD 8.3). The list includes `site_ids`. */
-export const vendorSchema = z.object({
-  id: z.string(),
-  code: z.string(),
-  name: z.string(),
-  site_ids: z.array(z.string()).catch([]),
-  status: masterStatusSchema,
-});
+export const vendorSchema = z.preprocess(
+  (raw) => {
+    const row = /** @type {any} */ (withMasterStatus(raw));
+    // Sites may come as `site_ids: [id]` or `sites: [{ id, ... }]`.
+    return row && typeof row === 'object' ? { ...row, site_ids: row.site_ids ?? row.sites } : row;
+  },
+  z.object({
+    id: z.coerce.string(),
+    code: z.coerce.string().catch(''),
+    name: z.string(),
+    site_ids: idListSchema,
+    status: masterStatusSchema,
+  }),
+);
 
 /** @typedef {z.infer<typeof vendorSchema>} Vendor */
 

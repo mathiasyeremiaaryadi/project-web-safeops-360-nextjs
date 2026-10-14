@@ -12,6 +12,7 @@ import { ResponsiveList } from '@/components/shared/responsive-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { searchRows } from '@/lib/search';
 import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeSiteStatus } from '@/features/sites/api/mutations';
@@ -27,6 +28,10 @@ import { SiteFormDialog } from '@/features/sites/components/site-form-dialog';
 export function SitesList({ createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
   const query = useSites({ page: params.page, q: params.q, limit });
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (site) => [site.code, site.name, site.site_type])
+    : [];
   const changeStatus = useChangeSiteStatus();
   const [editing, setEditing] = useState(/** @type {Site | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Site | null} */ (null));
@@ -58,6 +63,7 @@ export function SitesList({ createOpen, onCreateClose }) {
   const columns = [
     {
       id: 'code',
+      meta: { sortValue: (site) => site.code },
       header: 'Kode',
       cell: ({ row }) => (
         <span className="font-mono text-muted-foreground">{row.original.code}</span>
@@ -65,11 +71,22 @@ export function SitesList({ createOpen, onCreateClose }) {
     },
     {
       id: 'name',
+      meta: { sortValue: (site) => site.name },
       header: 'Nama',
       cell: ({ row }) => <span className="font-semibold">{row.original.name}</span>,
     },
-    { id: 'type', header: 'Tipe', cell: ({ row }) => row.original.site_type || '—' },
-    { id: 'status', header: 'Status', cell: ({ row }) => badge(row.original) },
+    {
+      id: 'type',
+      meta: { sortValue: (site) => site.site_type },
+      header: 'Tipe',
+      cell: ({ row }) => row.original.site_type || '—',
+    },
+    {
+      id: 'status',
+      meta: { sortValue: (site) => site.status },
+      header: 'Status',
+      cell: ({ row }) => badge(row.original),
+    },
     {
       id: 'actions',
       header: () => <span className="sr-only">Aksi</span>,
@@ -87,16 +104,16 @@ export function SitesList({ createOpen, onCreateClose }) {
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={Building2}
           title="Belum ada site"
           description="Ubah pencarian, atau tambahkan site baru."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(site) => site.id}
           caption="Daftar site"

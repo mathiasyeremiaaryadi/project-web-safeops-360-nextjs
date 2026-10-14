@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { listResponseSchema } from '@/lib/api/lists';
+import { idListSchema, listResponseSchema } from '@/lib/api/lists';
 import { ROLES } from '@/lib/constants';
 import { VENDOR_SCOPED_ROLES } from '@/features/users/constants';
 
@@ -16,7 +16,7 @@ export const roleSchema = z.enum([
 ]);
 
 export const userSchema = z.object({
-  id: z.string(),
+  id: z.coerce.string(),
   username: z.string(),
   full_name: z.string().nullish(),
   email: z.string().nullish(),
@@ -27,7 +27,7 @@ export const userSchema = z.object({
   must_change_password: z.boolean().catch(false),
   last_login_at: z.string().nullish(),
   scopes: z
-    .object({ site_ids: z.array(z.string()).catch([]), vendor_ids: z.array(z.string()).catch([]) })
+    .object({ site_ids: idListSchema.catch([]), vendor_ids: idListSchema.catch([]) })
     .catch({ site_ids: [], vendor_ids: [] }),
 });
 

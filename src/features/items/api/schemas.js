@@ -1,13 +1,16 @@
 import { z } from 'zod';
-import { listResponseSchema, masterStatusSchema } from '@/lib/api/lists';
+import { listResponseSchema, masterStatusSchema, withMasterStatus } from '@/lib/api/lists';
 
 /** `/items` row — shared master task (BRD 8.4). */
-export const itemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().nullish(),
-  status: masterStatusSchema,
-});
+export const itemSchema = z.preprocess(
+  withMasterStatus,
+  z.object({
+    id: z.coerce.string(),
+    name: z.string(),
+    description: z.string().nullish(),
+    status: masterStatusSchema,
+  }),
+);
 
 /** @typedef {z.infer<typeof itemSchema>} Item */
 
@@ -21,5 +24,5 @@ export const itemFormSchema = z.object({
 /** @param {z.infer<typeof itemFormSchema>} values */
 export const toItemPayload = (values) => ({
   name: values.name,
-  description: values.description || null,
+  description: values.description || undefined,
 });

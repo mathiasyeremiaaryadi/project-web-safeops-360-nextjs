@@ -162,6 +162,19 @@ status` (BRD: list menyertakan `site_ids`). Item: `id, name, description?, statu
 - **M4.** Mockup memuat jumlah inventory/SOP/pipeline/worker per vendor. Tidak dibuat karena belum
   ada endpoint yang mengembalikan angka tersebut.
 
+## Pipeline (`/pipelines`, `/pipelines/{id}/items`, `/pipeline-items/{id}`)
+
+- **P1.** Pipeline: `id, vendor_id, name, description?, status`, plus `item_count?` untuk kolom
+  "Jumlah task" (tampil "—" jika tidak ada). Vendor hanya dipilih saat membuat pipeline.
+- **P2.** Item pipeline: `id, item_id, sort_order, status`, plus nama task (`item_name` atau
+  `item.name`). Jika tidak ada, nama diambil dari `GET /items`. List boleh berupa array atau
+  `{ data }`.
+- **P3.** Urutan ↑/↓ = menukar `sort_order` dua task (dua `PATCH /pipeline-items/{id}`). Tambah
+  task = `sort_order` terbesar + 1. "Lepas dari pipeline" = `DELETE /pipeline-items/{id}`;
+  "Aktifkan/Nonaktifkan" = `PATCH { status }`. **Perlu konfirmasi** apakah DELETE item pipeline
+  menghapus atau hanya menonaktifkan.
+- **P4.** "Atur penugasan" (worker per shift) di mockup tidak dibuat karena API penugasan belum ada.
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan

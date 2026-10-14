@@ -31,6 +31,7 @@ export function UserProfileCard({ user }) {
   return (
     <FormCard title="Data akun">
       <form
+        method="post"
         noValidate
         onSubmit={onSubmit}
         aria-busy={updateUser.isPending}

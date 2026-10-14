@@ -1,8 +1,8 @@
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { PipelinesList } from '@/features/pipelines';
 
 export const metadata = { title: 'Pipeline & task' };
 
-/** `/pipelines` — built in a later phase. */
-export default function Page() {
-  return <ComingSoon title="Pipeline & task" />;
+/** `/pipelines` */
+export default function PipelinesPage() {
+  return <PipelinesList />;
 }

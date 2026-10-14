@@ -4,11 +4,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { useMasterStatusChange } from '@/hooks/use-master-status-change';
 import { siteKeys } from '@/features/sites/api/keys';
-import { siteSchema } from '@/features/sites/api/schemas';
 
 const LOOKUP_KEY = ['lookups', 'sites'];
 
-/** Create (`POST /sites`) or update (`PATCH /sites/{id}`). */
+/**
+ * Create (`POST /sites`) or update (`PATCH /sites/{id}`). The response body is not read:
+ * the list is refetched instead, so the save does not depend on the response envelope.
+ */
 export function useSaveSite() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -18,7 +20,6 @@ export function useSaveSite() {
         method: id ? 'patch' : 'post',
         path: id ? `v1/sites/${id}` : 'v1/sites',
         json: body,
-        schema: siteSchema,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: siteKeys.lists() });

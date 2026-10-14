@@ -4,11 +4,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { useMasterStatusChange } from '@/hooks/use-master-status-change';
 import { vendorKeys } from '@/features/vendors/api/keys';
-import { vendorSchema } from '@/features/vendors/api/schemas';
 
 const LOOKUP_KEY = ['lookups', 'vendors'];
 
-/** Create (`POST /vendors`) or update (`PATCH /vendors/{id}`). */
+/**
+ * Create (`POST /vendors`) or update (`PATCH /vendors/{id}`). The response body is not read:
+ * the list is refetched instead, so the save does not depend on the response envelope.
+ */
 export function useSaveVendor() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -18,7 +20,6 @@ export function useSaveVendor() {
         method: id ? 'patch' : 'post',
         path: id ? `v1/vendors/${id}` : 'v1/vendors',
         json: body,
-        schema: vendorSchema,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vendorKeys.lists() });

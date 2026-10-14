@@ -12,6 +12,7 @@ import { ResponsiveList } from '@/components/shared/responsive-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { searchRows } from '@/lib/search';
 import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeItemStatus } from '@/features/items/api/mutations';
@@ -27,6 +28,10 @@ import { ItemFormDialog } from '@/features/items/components/item-form-dialog';
 export function ItemsList({ createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
   const query = useItems({ page: params.page, q: params.q, limit });
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (item) => [item.name, item.description])
+    : [];
   const changeStatus = useChangeItemStatus();
   const [editing, setEditing] = useState(/** @type {Item | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Item | null} */ (null));
@@ -57,18 +62,24 @@ export function ItemsList({ createOpen, onCreateClose }) {
   const columns = [
     {
       id: 'name',
+      meta: { sortValue: (item) => item.name },
       header: 'Nama',
       cell: ({ row }) => <span className="font-semibold">{row.original.name}</span>,
     },
     {
       id: 'description',
       header: 'Deskripsi',
-      meta: { hideBelow: 'lg' },
+      meta: { hideBelow: 'lg', sortValue: (item) => item.description },
       cell: ({ row }) => (
         <span className="text-muted-foreground">{row.original.description || '—'}</span>
       ),
     },
-    { id: 'status', header: 'Status', cell: ({ row }) => badge(row.original) },
+    {
+      id: 'status',
+      meta: { sortValue: (item) => item.status },
+      header: 'Status',
+      cell: ({ row }) => badge(row.original),
+    },
     {
       id: 'actions',
       header: () => <span className="sr-only">Aksi</span>,
@@ -86,16 +97,16 @@ export function ItemsList({ createOpen, onCreateClose }) {
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={ListChecks}
           title="Belum ada master task"
           description="Ubah pencarian, atau tambahkan task baru."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(item) => item.id}
           caption="Daftar master task"
