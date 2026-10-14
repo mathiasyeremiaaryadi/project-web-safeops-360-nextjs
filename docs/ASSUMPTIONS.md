@@ -226,6 +226,21 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
   Tandai selesai. Ditolak dan Selesai tidak punya aksi. Tolak wajib `review_reason`.
 - **IR3.** Filter jenis dikirim sebagai `report_type`. **Perlu konfirmasi.**
 
+## Beranda (`/dashboard/report`, `/reports/daily`)
+
+- **DB1.** Bentuk respons tidak tercantum di BRD; dipetakan oleh fungsi murni di
+  `features/dashboard/lib/summary.js`. Jumlah per status boleh berupa map (`{ SUBMITTED: 3 }`)
+  atau list (`[{ status, count }]`), di bawah `pipeline_reports` (revisi di `pipeline_revisions`).
+- **DB2.** KPI: "Task hari ini" = `TOTAL`/`total` jika ada, jika tidak jumlah semua status laporan
+  task; "Selesai" = `COMPLETED`; "Menunggu review" = `SUBMITTED`; "Revisi diminta" = revisi
+  `REQUESTED` ("—" jika tidak dikirim); "Belum dikerjakan" = `PENDING`.
+- **DB3.** `/reports/daily` berupa baris per vendor atau per vendor + pipeline (boleh bersarang di
+  `pipelines`), dijumlahkan per vendor oleh `toVendorProgress`. Persentase = selesai ÷ task.
+  "Belum dikerjakan" diambil dari field-nya, atau task − selesai − menunggu review − revisi.
+- **DB4.** "Laporan inventory terbaru" = 5 terbaru dari status Baru dan Diperiksa (dua request,
+  karena filter `status` hanya satu nilai). Bagian "Catatan safety hari ini" di mockup tidak dibuat
+  (G1). Filter vendor dikosongkan saat site diganti.
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan

@@ -4,16 +4,18 @@ import { useState } from 'react';
 import { parseAsString } from 'nuqs';
 import { ClipboardList } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
+import { FilterBar } from '@/components/shared/filter-bar';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { Pagination } from '@/components/shared/pagination';
 import { ResponsiveList } from '@/components/shared/responsive-list';
 import { useListParams } from '@/hooks/use-list-params';
 import { formatDateTime } from '@/lib/date';
+import { searchRows } from '@/lib/search';
 import { useAuditLogs } from '@/features/audit-logs/api/queries';
 import { ActionBadge } from '@/features/audit-logs/components/action-badge';
+import { ActorName, useActorName } from '@/features/audit-logs/components/actor-name';
 import { AuditLogDetailSheet } from '@/features/audit-logs/components/audit-log-detail-sheet';
 import { AuditLogFilters } from '@/features/audit-logs/components/audit-log-filters';
-import { UNKNOWN_ACTOR } from '@/features/audit-logs/constants';
 
 const FILTERS = {
   user: parseAsString.withDefault(''),
@@ -32,12 +34,26 @@ export function AuditLogsList() {
   const query = useAuditLogs({
     page: params.page,
     limit,
+    q: params.q,
     user: params.user,
     action: params.action,
     entity: params.entity,
     from: params.from,
     to: params.to,
   });
+  const actorName = useActorName();
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (log) => [
+        actorName(log),
+        log.actor_username,
+        log.action,
+        log.entity,
+        log.entity_id,
+        summaryOf(log),
+        log.ip,
+      ])
+    : [];
   const [selected, setSelected] = useState(
     /** @type {import('@/features/audit-logs/api/schemas').AuditLog | null} */ (null),
   );
@@ -46,6 +62,7 @@ export function AuditLogsList() {
     {
       id: 'time',
       header: 'Waktu',
+      meta: { sortValue: (/** @type {any} */ log) => log.created_at },
       cell: ({ row }) => (
         <button
           type="button"
@@ -62,28 +79,33 @@ export function AuditLogsList() {
     {
       id: 'actor',
       header: 'User',
-      cell: ({ row }) => (
-        <span className="font-mono">{row.original.actor_username || UNKNOWN_ACTOR}</span>
-      ),
+      meta: { sortValue: actorName },
+      cell: ({ row }) => <ActorName log={row.original} name={actorName(row.original)} />,
     },
     {
       id: 'action',
       header: 'Aksi',
+      meta: { sortValue: (/** @type {any} */ log) => log.action },
       cell: ({ row }) => <ActionBadge action={row.original.action} />,
     },
     {
       id: 'entity',
       header: 'Entitas',
-      meta: { hideBelow: 'lg' },
+      meta: { hideBelow: 'lg', sortValue: (/** @type {any} */ log) => log.entity },
       cell: ({ row }) => (
         <span className="font-mono text-muted-foreground">{row.original.entity || '—'}</span>
       ),
     },
-    { id: 'summary', header: 'Ringkasan', cell: ({ row }) => summaryOf(row.original) },
+    {
+      id: 'summary',
+      header: 'Ringkasan',
+      meta: { sortValue: summaryOf },
+      cell: ({ row }) => summaryOf(row.original),
+    },
     {
       id: 'ip',
       header: 'IP',
-      meta: { hideBelow: 'xl' },
+      meta: { hideBelow: 'xl', sortValue: (/** @type {any} */ log) => log.ip },
       cell: ({ row }) => (
         <span className="font-mono text-muted-foreground">{row.original.ip || '—'}</span>
       ),
@@ -92,20 +114,26 @@ export function AuditLogsList() {
 
   return (
     <>
+      <FilterBar
+        className="mb-3"
+        search={params.q}
+        onSearchChange={(q) => setFilters({ q })}
+        searchPlaceholder="Cari user, aksi, entitas, ringkasan, atau IP"
+      />
       <AuditLogFilters params={params} onChange={setFilters} />
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title="Belum ada aktivitas"
           description="Tidak ada catatan yang cocok dengan filter."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(log) => log.id}
           caption="Audit log"
@@ -124,8 +152,9 @@ export function AuditLogsList() {
                 </span>
               </span>
               <span className="text-foreground">{summaryOf(log)}</span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {log.actor_username || UNKNOWN_ACTOR} · {log.entity || '—'} · {log.ip || '—'}
+              <span className="text-xs text-muted-foreground">
+                <ActorName log={log} name={actorName(log)} inline /> · {log.entity || '—'} ·{' '}
+                {log.ip || '—'}
               </span>
             </button>
           )}

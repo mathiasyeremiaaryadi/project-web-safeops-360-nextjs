@@ -1,8 +1,8 @@
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { DashboardView } from '@/features/dashboard';
 
 export const metadata = { title: 'Rekap harian' };
 
-/** `/dashboard` — built in a later phase. */
-export default function Page() {
-  return <ComingSoon title="Rekap harian" />;
+/** `/dashboard` */
+export default function DashboardPage() {
+  return <DashboardView />;
 }

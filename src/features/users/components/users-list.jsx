@@ -13,11 +13,18 @@ import { ResponsiveList } from '@/components/shared/responsive-list';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
+import { searchRows } from '@/lib/search';
+import { ROLE_LABELS } from '@/lib/constants';
 import { useUsers } from '@/features/users/api/queries';
 import { RoleBadges, UserStatusBadge } from '@/features/users/components/user-badges';
 import { UserCard, UserIdentity } from '@/features/users/components/user-card';
-import { USER_ROLE_FILTERS, USER_STATUS_FILTERS } from '@/features/users/constants';
+import {
+  USER_ROLE_FILTERS,
+  USER_STATUS_BADGES,
+  USER_STATUS_FILTERS,
+} from '@/features/users/constants';
 import { describeScope } from '@/features/users/lib/describe-scope';
+import { getUserStatus } from '@/features/users/lib/get-user-status';
 
 const FILTERS = { role: parseAsString.withDefault(''), status: parseAsString.withDefault('') };
 
@@ -31,11 +38,27 @@ export function UsersList() {
   /** @param {import('@/features/users/api/schemas').User} user */
   const scopeOf = (user) =>
     describeScope(user, { siteName: sites.labelOf, vendorName: vendors.labelOf });
+  /** @param {import('@/features/users/api/schemas').User} user */
+  const rolesOf = (user) => user.roles.map((role) => ROLE_LABELS[role] ?? role).join(', ');
+  /** @param {import('@/features/users/api/schemas').User} user */
+  const statusOf = (user) => USER_STATUS_BADGES[getUserStatus(user)]?.label ?? '';
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (user) => [
+        user.full_name,
+        user.username,
+        user.email,
+        rolesOf(user),
+        scopeOf(user),
+        statusOf(user),
+      ])
+    : [];
 
   const columns = [
     {
       id: 'user',
       header: 'User',
+      meta: { sortValue: (/** @type {any} */ user) => user.full_name || user.username },
       cell: ({ row }) => (
         <Link
           href={`/users/${row.original.id}`}
@@ -45,18 +68,28 @@ export function UsersList() {
         </Link>
       ),
     },
-    { id: 'roles', header: 'Role', cell: ({ row }) => <RoleBadges roles={row.original.roles} /> },
+    {
+      id: 'roles',
+      header: 'Role',
+      meta: { sortValue: rolesOf },
+      cell: ({ row }) => <RoleBadges roles={row.original.roles} />,
+    },
     {
       id: 'scope',
       header: 'Scope',
-      meta: { hideBelow: 'lg' },
+      meta: { hideBelow: 'lg', sortValue: scopeOf },
       cell: ({ row }) => <span className="text-muted-foreground">{scopeOf(row.original)}</span>,
     },
-    { id: 'status', header: 'Status', cell: ({ row }) => <UserStatusBadge user={row.original} /> },
+    {
+      id: 'status',
+      header: 'Status',
+      meta: { sortValue: statusOf },
+      cell: ({ row }) => <UserStatusBadge user={row.original} />,
+    },
     {
       id: 'last_login',
       header: 'Login terakhir',
-      meta: { hideBelow: 'xl' },
+      meta: { hideBelow: 'xl', sortValue: (/** @type {any} */ user) => user.last_login_at },
       cell: ({ row }) => formatDateTime(row.original.last_login_at),
     },
   ];
@@ -66,7 +99,7 @@ export function UsersList() {
       <FilterBar
         search={params.q}
         onSearchChange={(q) => setFilters({ q })}
-        searchPlaceholder="Cari nama atau username"
+        searchPlaceholder="Cari nama, username, email, role, atau scope"
       >
         <NativeSelect
           aria-label="Filter role"
@@ -94,16 +127,16 @@ export function UsersList() {
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={Users}
           title="Belum ada user"
           description="Ubah pencarian atau filter, atau tambahkan user baru."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(user) => user.id}
           caption="Daftar user"

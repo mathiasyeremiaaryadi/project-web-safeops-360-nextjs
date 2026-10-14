@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/sheet';
 import { formatDateTime } from '@/lib/date';
 import { ActionBadge } from '@/features/audit-logs/components/action-badge';
-import { UNKNOWN_ACTOR } from '@/features/audit-logs/constants';
+import { ActorName, useActorName } from '@/features/audit-logs/components/actor-name';
 
 /**
  * Pretty-printed JSON, rendered as TEXT inside <pre> (never as HTML).
@@ -39,6 +39,7 @@ function Row({ label, children }) {
  * @param {{ log: import('@/features/audit-logs/api/schemas').AuditLog | null, onClose: () => void }} props
  */
 export function AuditLogDetailSheet({ log, onClose }) {
+  const actorName = useActorName();
   return (
     <Sheet
       open={Boolean(log)}
@@ -57,7 +58,9 @@ export function AuditLogDetailSheet({ log, onClose }) {
           <div className="flex flex-col gap-4 px-4 pb-6">
             <dl>
               <Row label="Waktu">{formatDateTime(log.created_at)}</Row>
-              <Row label="Pelaku">{log.actor_username || UNKNOWN_ACTOR}</Row>
+              <Row label="Pelaku">
+                <ActorName log={log} name={actorName(log)} />
+              </Row>
               <Row label="Entitas">{log.entity || '—'}</Row>
               <Row label="Target">{log.entity_id || '—'}</Row>
               <Row label="IP">{log.ip || '—'}</Row>
