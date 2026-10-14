@@ -10,6 +10,11 @@ import {
 } from '@/server/session/session-cookie';
 
 const SECRET = 'unit-test-secret-0123456789abcdefghijklmnop';
+const HTTP = new Request('http://103.150.226.7:3001/api/auth/login');
+const HTTPS = new Request('https://safeops.example/api/auth/login');
+const BEHIND_PROXY = new Request('http://app:3000/api/auth/login', {
+  headers: { 'x-forwarded-proto': 'https' },
+});
 const payload = {
   at: 'go-access-1',
   atExp: Date.now() + 60_000,
@@ -51,19 +56,38 @@ describe('session cookie', () => {
   it('treats an expired refresh token as no session', () => {
     const expired = sealSession({ ...payload, rtExp: Date.now() - 1 }, SECRET);
     const request = new Request('http://localhost/', {
-      headers: { cookie: `${getSessionCookieName()}=${expired}` },
+      headers: { cookie: `safeops_session=${expired}` },
     });
     expect(readSession(request, SECRET)).toBeNull();
   });
 
   it('builds an HttpOnly, SameSite=Lax cookie that lives as long as the refresh token', () => {
     const now = Date.now();
-    const cookie = buildSessionCookie({ ...payload, rtExp: now + 7200_000 }, SECRET, now);
-    expect(cookie).toMatch(new RegExp(`^${getSessionCookieName()}=v1\\.`));
+    const cookie = buildSessionCookie(HTTP, { ...payload, rtExp: now + 7200_000 }, SECRET, now);
+    expect(cookie).toMatch(/^safeops_session=v1\./);
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('SameSite=Lax');
     expect(cookie).toContain('Path=/');
     expect(cookie).toContain('Max-Age=7200');
-    expect(buildClearedSessionCookie()).toContain('Max-Age=0');
+    expect(buildClearedSessionCookie(HTTP)).toContain('Max-Age=0');
+  });
+
+  it('is not Secure on plain HTTP, so browsers keep it (deploy without TLS)', () => {
+    const cookie = buildSessionCookie(HTTP, payload, SECRET);
+    expect(getSessionCookieName(HTTP)).toBe('safeops_session');
+    expect(cookie).not.toContain('Secure');
+  });
+
+  it('is Secure with the __Host- prefix on HTTPS, also behind a TLS proxy', () => {
+    expect(buildSessionCookie(HTTPS, payload, SECRET)).toMatch(/^__Host-safeops_session=.*Secure/);
+    expect(getSessionCookieName(BEHIND_PROXY)).toBe('__Host-safeops_session');
+  });
+
+  it('reads the session under either cookie name', () => {
+    const value = sealSession(payload, SECRET);
+    for (const name of ['safeops_session', '__Host-safeops_session']) {
+      const request = new Request('http://app.test/', { headers: { cookie: `${name}=${value}` } });
+      expect(readSession(request, SECRET)).toEqual(payload);
+    }
   });
 });

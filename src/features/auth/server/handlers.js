@@ -87,7 +87,9 @@ export async function handleLogin(request) {
     }
 
     const user = await meResponse.json();
-    return withCookies(jsonResponse({ user }), [buildSessionCookie(session, SESSION_SECRET)]);
+    return withCookies(jsonResponse({ user }), [
+      buildSessionCookie(request, session, SESSION_SECRET),
+    ]);
   } catch (error) {
     return upstreamErrorResponse(error);
   }
@@ -127,7 +129,7 @@ export async function handleLogout(request) {
       // Go unreachable: the local session is removed anyway.
     }
   }
-  return withCookies(noContentResponse(), [buildClearedSessionCookie()]);
+  return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
 }
 
 /**
@@ -146,7 +148,7 @@ export async function handleLogoutAll(request) {
     if (!upstream) return unauthorizedResponse(cookies);
     if (!upstream.ok) return withCookies(await passthroughResponse(upstream), cookies);
     await upstream.body?.cancel();
-    return withCookies(noContentResponse(), [buildClearedSessionCookie()]);
+    return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
   } catch (error) {
     return upstreamErrorResponse(error);
   }
@@ -176,7 +178,7 @@ export async function handleChangePassword(request) {
     if (!upstream) return unauthorizedResponse(cookies);
     if (upstream.ok) {
       await upstream.body?.cancel();
-      return withCookies(noContentResponse(), [buildClearedSessionCookie()]);
+      return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
     }
     return withCookies(await passthroughResponse(upstream), cookies);
   } catch (error) {

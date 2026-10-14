@@ -30,14 +30,33 @@ export const sessionPayloadSchema = z.object({
 
 /** @typedef {z.infer<typeof sessionPayloadSchema>} SessionPayload */
 
-/** Whether cookies are marked `Secure` (production) — also enables the `__Host-` prefix. */
-export function isSecureCookieEnv() {
-  return process.env.NODE_ENV === 'production';
+/**
+ * Whether the browser reached the app over HTTPS (directly or via a TLS-terminating proxy that
+ * sets `X-Forwarded-Proto`). Browsers drop `Secure` cookies on plain-HTTP sites, so the cookie
+ * is only marked `Secure` (and gets the `__Host-` prefix) on HTTPS.
+ * @param {Request} request
+ */
+export function isSecureRequest(request) {
+  const forwarded = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  if (forwarded) return forwarded === 'https';
+  return new URL(request.url).protocol === 'https:';
 }
 
-/** Name of the session cookie. `__Host-` forces Secure, Path=/ and no Domain in browsers. */
-export function getSessionCookieName() {
-  return isSecureCookieEnv() ? SESSION_COOKIE_NAME.SECURE : SESSION_COOKIE_NAME.DEV;
+/**
+ * Name of the session cookie for this request. `__Host-` forces Secure, Path=/, no Domain.
+ * @param {Request} request
+ */
+export function getSessionCookieName(request) {
+  return isSecureRequest(request) ? SESSION_COOKIE_NAME.SECURE : SESSION_COOKIE_NAME.DEV;
+}
+
+/**
+ * Raw session cookie value, whichever name it was stored under.
+ * @param {Request} request
+ */
+function readSessionCookieValue(request) {
+  const cookies = parseCookieHeader(request.headers.get('cookie'));
+  return cookies.get(SESSION_COOKIE_NAME.SECURE) ?? cookies.get(SESSION_COOKIE_NAME.DEV);
 }
 
 /** @param {string} secret */
@@ -104,39 +123,42 @@ export function unsealSession(value, secret) {
  * @returns {SessionPayload | null}
  */
 export function readSession(request, secret, now = Date.now()) {
-  const cookies = parseCookieHeader(request.headers.get('cookie'));
-  const session = unsealSession(cookies.get(getSessionCookieName()), secret);
+  const session = unsealSession(readSessionCookieValue(request), secret);
   if (!session || session.rtExp <= now) return null;
   return session;
 }
 
 /** Whether the request carries a session cookie at all (valid or not). */
 export function hasSessionCookie(/** @type {Request} */ request) {
-  return parseCookieHeader(request.headers.get('cookie')).has(getSessionCookieName());
+  return readSessionCookieValue(request) !== undefined;
 }
 
 /**
  * `Set-Cookie` value that stores the session until the refresh token expires.
+ * @param {Request} request The incoming request (decides Secure / cookie name).
  * @param {SessionPayload} session
  * @param {string} secret
  * @param {number} [now]
  */
-export function buildSessionCookie(session, secret, now = Date.now()) {
-  return serializeCookie(getSessionCookieName(), sealSession(session, secret), {
+export function buildSessionCookie(request, session, secret, now = Date.now()) {
+  return serializeCookie(getSessionCookieName(request), sealSession(session, secret), {
     path: '/',
     httpOnly: true,
-    secure: isSecureCookieEnv(),
+    secure: isSecureRequest(request),
     sameSite: 'Lax',
     maxAge: Math.max(0, Math.floor((session.rtExp - now) / 1000)),
   });
 }
 
-/** `Set-Cookie` value that deletes the session cookie. */
-export function buildClearedSessionCookie() {
-  return serializeCookie(getSessionCookieName(), '', {
+/**
+ * `Set-Cookie` value that deletes the session cookie.
+ * @param {Request} request
+ */
+export function buildClearedSessionCookie(request) {
+  return serializeCookie(getSessionCookieName(request), '', {
     path: '/',
     httpOnly: true,
-    secure: isSecureCookieEnv(),
+    secure: isSecureRequest(request),
     sameSite: 'Lax',
     maxAge: 0,
   });

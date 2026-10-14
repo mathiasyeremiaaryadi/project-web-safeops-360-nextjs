@@ -37,7 +37,7 @@ const ACCESS_TOKEN_REFRESH_MARGIN_MS = 30_000;
 export async function callWithSession(request, call) {
   const { SESSION_SECRET } = getServerEnv();
   const forwarded = getForwardedHeaders(request);
-  const clearIfPresent = hasSessionCookie(request) ? [buildClearedSessionCookie()] : [];
+  const clearIfPresent = hasSessionCookie(request) ? [buildClearedSessionCookie(request)] : [];
 
   let session = readSession(request, SESSION_SECRET);
   if (!session) return { upstream: null, cookies: clearIfPresent };
@@ -46,7 +46,7 @@ export async function callWithSession(request, call) {
   if (session.atExp - Date.now() < ACCESS_TOKEN_REFRESH_MARGIN_MS) {
     session = await refreshSession(session, forwarded);
     refreshed = true;
-    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie()] };
+    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
   }
 
   let upstream = await call(session.at, forwarded);
@@ -55,18 +55,18 @@ export async function callWithSession(request, call) {
     await upstream.body?.cancel();
     session = await refreshSession(session, forwarded);
     refreshed = true;
-    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie()] };
+    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
     upstream = await call(session.at, forwarded);
   }
 
   if (upstream.status === 401) {
     await upstream.body?.cancel();
-    return { upstream: null, cookies: [buildClearedSessionCookie()] };
+    return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
   }
 
   return {
     upstream,
-    cookies: refreshed ? [buildSessionCookie(session, SESSION_SECRET)] : [],
+    cookies: refreshed ? [buildSessionCookie(request, session, SESSION_SECRET)] : [],
   };
 }
 
