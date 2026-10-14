@@ -29,10 +29,17 @@
   --brand-dark: #0b3c49; /* login brand panel, sidebar */
   --brand-dark-foreground: #ffffff;
   --brand-dark-muted: #a9c3cb; /* secondary text on --brand-dark (contrast ≥ 4.5:1) */
+  --brand-dark-active: #13505f; /* active nav item on --brand-dark */
   --success: #166534;
   --success-bg: #dcfce7;
   --warning: #92400e;
   --warning-bg: #fef3c7;
+  --info: #075985;
+  --info-bg: #e0f2fe;
+  --danger: #991b1b;
+  --danger-bg: #fee2e2;
+  --revision: #9a3412;
+  --revision-bg: #ffedd5;
 }
 
 @theme inline {
@@ -57,10 +64,17 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-dark-foreground: var(--brand-dark-foreground);
   --color-brand-dark-muted: var(--brand-dark-muted);
+  --color-brand-dark-active: var(--brand-dark-active);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-revision: var(--revision);
+  --color-revision-bg: var(--revision-bg);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

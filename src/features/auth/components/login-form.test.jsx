@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse, delay } from 'msw';
-import { server } from '@/mocks/server';
+import { APP_ORIGIN, cookieJar, GO_ORIGIN, server } from '../../../../tests/unit/msw.js';
 import { createRouterMock, renderWithProviders } from '../../../../tests/unit/test-utils';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { useSessionStore } from '@/features/auth/stores/session-store';
@@ -29,7 +29,7 @@ function renderLogin(props = {}) {
 describe('LoginForm', () => {
   beforeEach(() => {
     router.current = createRouterMock();
-    useSessionStore.setState({ accessToken: null, user: null, status: 'unauthenticated' });
+    useSessionStore.setState({ user: null, status: 'unauthenticated' });
     setupAuthClient({ onSessionExpired: () => useSessionStore.getState().clear() });
   });
 
@@ -46,8 +46,9 @@ describe('LoginForm', () => {
 
   it('logs in, lowercases the username and redirects to a safe next path', async () => {
     let sentUsername;
+    // What the BFF forwards to Go.
     server.events.on('request:start', async ({ request }) => {
-      if (request.url.endsWith('/auth/login'))
+      if (request.url === `${GO_ORIGIN}/api/v1/auth/login`)
         sentUsername = (await request.clone().json()).username;
     });
     const { user, username, password, submit } = renderLogin({ next: '/tasks?site=1' });
@@ -58,7 +59,9 @@ describe('LoginForm', () => {
     await waitFor(() => expect(router.current.replace).toHaveBeenCalledWith('/tasks?site=1'));
     expect(sentUsername).toBe('budi.santoso');
     expect(useSessionStore.getState().user?.username).toBe('budi.santoso');
-    expect(useSessionStore.getState().accessToken).toBeTruthy();
+    // The session lives in the (HttpOnly) BFF cookie, not in JS state.
+    expect([...cookieJar.keys()]).toEqual(['safeops_session']);
+    expect(JSON.stringify(useSessionStore.getState())).not.toMatch(/go-(access|refresh)/);
     server.events.removeAllListeners();
   });
 
@@ -89,11 +92,8 @@ describe('LoginForm', () => {
     ],
     ['rate.limited', 'apapun123', 'Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.'],
     ['user.nonaktif', 'apapun123', 'Akun Anda tidak aktif. Hubungi admin.'],
-    [
-      'network.error',
-      'apapun123',
-      'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
-    ],
+    // Go unreachable from the BFF (502) is a server problem, not the user's connection.
+    ['network.error', 'apapun123', 'Terjadi gangguan pada server. Coba beberapa saat lagi.'],
     ['server.error', 'apapun123', 'Terjadi gangguan pada server. Coba beberapa saat lagi.'],
   ])('shows the message for %s, clears and focuses the password', async (name, pwd, message) => {
     const { user, username, password, submit } = renderLogin();
@@ -108,9 +108,20 @@ describe('LoginForm', () => {
     expect(router.current.replace).not.toHaveBeenCalled();
   });
 
+  it('shows the connection message when the browser cannot reach the server', async () => {
+    server.use(http.post(`${APP_ORIGIN}/api/auth/login`, () => HttpResponse.error()));
+    const { user, username, password, submit } = renderLogin();
+    await user.type(username, 'budi.santoso');
+    await user.type(password, 'rahasia123');
+    await user.click(submit);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+    );
+  });
+
   it('disables the button and shows progress while submitting', async () => {
     server.use(
-      http.post('*/api/v1/auth/login', async () => {
+      http.post(`${GO_ORIGIN}/api/v1/auth/login`, async () => {
         await delay(200);
         return HttpResponse.json(
           { error: { code: 'AUTH_INVALID_CREDENTIALS', message: '' } },
@@ -139,17 +150,19 @@ describe('LoginForm', () => {
     expect(password).toHaveAttribute('type', 'password');
   });
 
-  it('never stores tokens in web storage', async () => {
+  it('never exposes Go tokens to the browser (storage, JS cookies, state)', async () => {
     const { user, username, password, submit } = renderLogin();
     await user.type(username, 'budi.santoso');
     await user.type(password, 'rahasia123');
     await user.click(submit);
     await waitFor(() => expect(router.current.replace).toHaveBeenCalled());
 
-    const token = useSessionStore.getState().accessToken;
-    expect(token).toBeTruthy();
-    const storage = JSON.stringify({ ...window.localStorage, ...window.sessionStorage });
-    expect(storage).not.toContain(String(token));
-    expect(document.cookie).not.toContain(String(token));
+    const visible = JSON.stringify({
+      local: { ...window.localStorage },
+      session: { ...window.sessionStorage },
+      cookie: document.cookie,
+      state: useSessionStore.getState(),
+    });
+    expect(visible).not.toMatch(/go-(access|refresh)/);
   });
 });

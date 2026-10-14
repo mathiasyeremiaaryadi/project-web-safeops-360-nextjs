@@ -72,3 +72,31 @@ export function toApiError(error) {
 
   return new ApiError({ status: -1, code: ERROR_CODES.UNKNOWN });
 }
+
+/** Generic UI messages per status (prompt section 7). Features may override specific codes. */
+const STATUS_MESSAGES = Object.freeze({
+  403: 'Anda tidak memiliki akses untuk aksi ini.',
+  404: 'Data tidak ditemukan.',
+  409: 'Data sudah dipakai.',
+  413: 'Ukuran file melebihi batas.',
+  429: 'Terlalu banyak permintaan. Coba lagi sebentar.',
+});
+
+/**
+ * User-facing message for a failed request.
+ * @param {unknown} error
+ * @param {Partial<Record<number, string>>} [overrides] Message per HTTP status.
+ */
+export function getErrorMessage(error, overrides = {}) {
+  if (!(error instanceof ApiError)) return 'Terjadi kesalahan. Coba lagi.';
+  if (error.isNetworkError)
+    return 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+  if (overrides[error.status]) return /** @type {string} */ (overrides[error.status]);
+  if (error.status === 400 && error.message && error.message !== error.code) return error.message;
+  if (STATUS_MESSAGES[/** @type {keyof typeof STATUS_MESSAGES} */ (error.status)]) {
+    return STATUS_MESSAGES[/** @type {keyof typeof STATUS_MESSAGES} */ (error.status)];
+  }
+  if (error.code === ERROR_CODES.INVALID_RESPONSE)
+    return 'Respons server tidak sesuai. Hubungi admin.';
+  return 'Terjadi gangguan pada server. Coba beberapa saat lagi.';
+}

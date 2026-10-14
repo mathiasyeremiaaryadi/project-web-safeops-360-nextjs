@@ -6,13 +6,34 @@ export const ROLES = Object.freeze({
   WORKER: 'WORKER',
 });
 
+/** UI labels for roles. */
+export const ROLE_LABELS = Object.freeze({
+  [ROLES.SUPER_ADMIN]: 'Super Admin',
+  [ROLES.ADMIN]: 'Admin',
+  [ROLES.ADMIN_WORKER]: 'Admin Worker',
+  [ROLES.WORKER]: 'Worker',
+});
+
+/** Roles from most to least privileged — the first match is a user's primary role. */
+export const ROLE_PRIORITY = Object.freeze([
+  ROLES.SUPER_ADMIN,
+  ROLES.ADMIN,
+  ROLES.ADMIN_WORKER,
+  ROLES.WORKER,
+]);
+
 /** Application routes. */
 export const ROUTES = Object.freeze({
   HOME: '/',
   LOGIN: '/login',
   CHANGE_PASSWORD: '/change-password',
   OFFLINE: '/offline',
+  DASHBOARD: '/dashboard',
+  PROFILE: '/profile',
 });
+
+/** Default page size of every list (API default as well). */
+export const DEFAULT_PAGE_SIZE = 20;
 
 /** Error codes used by the backend and by the client-side error normalizer. */
 export const ERROR_CODES = Object.freeze({
@@ -23,6 +44,8 @@ export const ERROR_CODES = Object.freeze({
   AUTH_UNAUTHORIZED: 'AUTH_UNAUTHORIZED',
   RATE_LIMITED: 'RATE_LIMITED',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  /** Assumed code of the 403 returned while `must_change_password` is true (docs/ASSUMPTIONS.md). */
+  PASSWORD_CHANGE_REQUIRED: 'PASSWORD_CHANGE_REQUIRED',
   // Client-side codes
   NETWORK_ERROR: 'NETWORK_ERROR',
   TIMEOUT: 'TIMEOUT',

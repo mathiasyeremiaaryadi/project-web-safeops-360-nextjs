@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
-import { server } from '@/mocks/server';
-import { createMockSession, getMockState } from '@/mocks/handlers/auth';
+import { delay, http, HttpResponse } from 'msw';
+import { cookieJar, GO_ORIGIN, goBackend, loginInJar, server } from '../../../../tests/unit/msw.js';
 import { createRouterMock, renderWithProviders } from '../../../../tests/unit/test-utils';
 import { ChangePasswordForm } from '@/features/auth/components/change-password-form';
 import { useSessionStore } from '@/features/auth/stores/session-store';
@@ -24,11 +23,13 @@ const AGUS = {
   scopes: { site_ids: [], vendor_ids: [] },
 };
 
-/** @param {{ mustChange?: boolean }} [options] */
-function renderForm({ mustChange = true } = {}) {
-  const token = createMockSession('agus.pratama');
+/**
+ * Signs agus.pratama in through the BFF (session cookie in the bridge jar) and renders the form.
+ * @param {{ mustChange?: boolean }} [options]
+ */
+async function renderForm({ mustChange = true } = {}) {
+  await loginInJar('agus.pratama', 'Kp7mw2Rq');
   useSessionStore.setState({
-    accessToken: token,
     user: { ...AGUS, must_change_password: mustChange },
     status: 'authenticated',
   });
@@ -55,8 +56,8 @@ describe('ChangePasswordForm', () => {
     setupAuthClient({ onSessionExpired: () => useSessionStore.getState().clear() });
   });
 
-  it('shows the mandatory-change copy with the username', () => {
-    renderForm();
+  it('shows the mandatory-change copy with the username', async () => {
+    await renderForm();
     expect(
       screen.getByRole('heading', { level: 1, name: 'Buat password baru' }),
     ).toBeInTheDocument();
@@ -64,8 +65,8 @@ describe('ChangePasswordForm', () => {
     expect(screen.getByText(/password Anda masih sementara dari admin/)).toBeInTheDocument();
   });
 
-  it('shows the voluntary-change copy', () => {
-    renderForm({ mustChange: false });
+  it('shows the voluntary-change copy', async () => {
+    await renderForm({ mustChange: false });
     expect(
       screen.getByText('Gunakan password yang belum pernah Anda pakai di aplikasi lain.'),
     ).toBeInTheDocument();
@@ -73,7 +74,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('updates the rule checklist live while typing', async () => {
-    const { user, next, confirm } = renderForm();
+    const { user, next, confirm } = await renderForm();
     for (const label of [
       'Minimal 8 karakter',
       'Mengandung huruf',
@@ -100,7 +101,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('keeps the button disabled until every rule is met', async () => {
-    const { user, current, next, confirm, submit } = renderForm();
+    const { user, current, next, confirm, submit } = await renderForm();
     expect(submit).toBeDisabled();
     await user.type(current, 'Kp7mw2Rq');
     await user.type(next, 'barubaru1');
@@ -115,7 +116,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('shows "Password baru tidak cocok" after leaving a mismatching confirmation', async () => {
-    const { user, current, next, confirm } = renderForm();
+    const { user, current, next, confirm } = await renderForm();
     await user.type(current, 'Kp7mw2Rq');
     await user.type(next, 'barubaru1');
     await user.type(confirm, 'barubaru2');
@@ -125,7 +126,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('rejects a new password equal to the current one', async () => {
-    const { user, current, next, confirm, submit } = renderForm();
+    const { user, current, next, confirm, submit } = await renderForm();
     await user.type(current, 'sama12345');
     await user.type(next, 'sama12345');
     await user.type(confirm, 'sama12345');
@@ -138,7 +139,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('shows "Password saat ini salah." on the first field when the server rejects it', async () => {
-    const { user, current, next, confirm, submit } = renderForm();
+    const { user, current, next, confirm, submit } = await renderForm();
     await user.type(current, 'salah1234');
     await user.type(next, 'barubaru1');
     await user.type(confirm, 'barubaru1');
@@ -151,14 +152,14 @@ describe('ChangePasswordForm', () => {
 
   it('shows a server validation message below the form', async () => {
     server.use(
-      http.put('*/api/v1/auth/password', () =>
+      http.put(`${GO_ORIGIN}/api/v1/auth/password`, () =>
         HttpResponse.json(
           { error: { code: 'VALIDATION_ERROR', message: 'Password terlalu umum.' } },
           { status: 400 },
         ),
       ),
     );
-    const { user, current, next, confirm, submit } = renderForm();
+    const { user, current, next, confirm, submit } = await renderForm();
     await user.type(current, 'Kp7mw2Rq');
     await user.type(next, 'barubaru1');
     await user.type(confirm, 'barubaru1');
@@ -168,7 +169,7 @@ describe('ChangePasswordForm', () => {
   });
 
   it('on success clears the session, redirects to /login and shows a toast', async () => {
-    const { user, current, next, confirm, submit } = renderForm();
+    const { user, current, next, confirm, submit } = await renderForm();
     await user.type(current, 'Kp7mw2Rq');
     await user.type(next, 'barubaru1');
     await user.type(confirm, 'barubaru1');
@@ -176,19 +177,25 @@ describe('ChangePasswordForm', () => {
 
     await waitFor(() => expect(router.current.replace).toHaveBeenCalledWith('/login'));
     expect(useSessionStore.getState()).toMatchObject({
-      accessToken: null,
       user: null,
       status: 'unauthenticated',
     });
     expect(
       await screen.findByText('Password berhasil diganti. Silakan masuk dengan password baru.'),
     ).toBeInTheDocument();
-    // FR-12: every refresh token is revoked server-side.
-    expect(getMockState().hasSession).toBe(false);
+    // FR-12: every Go session is revoked and the BFF cleared the session cookie.
+    expect(goBackend.stats().activeSessions).toBe(0);
+    expect(cookieJar.size).toBe(0);
   });
 
   it('shows "Menyimpan…" and disables the button while saving', async () => {
-    const { user, current, next, confirm, submit } = renderForm();
+    server.use(
+      http.put(`${GO_ORIGIN}/api/v1/auth/password`, async () => {
+        await delay(200);
+        return undefined; // then let the mock Go backend answer
+      }),
+    );
+    const { user, current, next, confirm, submit } = await renderForm();
     await user.type(current, 'Kp7mw2Rq');
     await user.type(next, 'barubaru1');
     await user.type(confirm, 'barubaru1');

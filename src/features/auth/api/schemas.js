@@ -2,19 +2,13 @@ import { z } from 'zod';
 import { ROLES } from '@/lib/constants';
 
 /*
- * Single source of truth for the auth API contract (request & response shapes).
- * Every assumption here is also listed in docs/ASSUMPTIONS.md and must be confirmed
- * with the Go backend team.
+ * Auth contract between the browser and the BFF (`/api/auth/*`), shared by client and server.
+ * The user profile is passed through unchanged from Go `GET /api/v1/auth/me`.
+ * The Go token contract lives server-side in `src/server/go/session-tokens.js`.
+ * Every assumption is listed in docs/ASSUMPTIONS.md and must be confirmed with the Go team.
  */
 
 // ---------- Responses ----------
-
-/** `POST /auth/login` and `POST /auth/refresh` → 200. Refresh token is an HttpOnly cookie. */
-export const tokenResponseSchema = z.object({
-  access_token: z.string().min(1),
-  token_type: z.literal('Bearer'),
-  expires_in: z.number().int().positive(),
-});
 
 export const roleSchema = z.enum([
   ROLES.SUPER_ADMIN,
@@ -28,12 +22,20 @@ export const meResponseSchema = z.object({
   id: z.uuid(),
   username: z.string(),
   full_name: z.string().nullable(),
+  /** Optional profile fields (assumed, docs/ASSUMPTIONS.md A4). */
+  email: z.string().nullish(),
+  last_login_at: z.string().nullish(),
   roles: z.array(roleSchema),
   must_change_password: z.boolean(),
   scopes: z.object({
     site_ids: z.array(z.uuid()),
     vendor_ids: z.array(z.uuid()),
   }),
+});
+
+/** BFF `POST /api/auth/login` → 200. Tokens stay on the server (session cookie). */
+export const loginResponseSchema = z.object({
+  user: meResponseSchema,
 });
 
 // ---------- Requests / forms ----------
@@ -47,10 +49,10 @@ export const loginFormSchema = z.object({
   password: z.string().min(1, 'Password wajib diisi'),
 });
 
-/** Body of `POST /auth/login`. Username is trimmed and lowercased before sending. */
+/** Body of `POST /api/auth/login` (forwarded to Go). Username is trimmed and lowercased. */
 export const loginRequestSchema = z.object({
-  username: z.string().trim().toLowerCase(),
-  password: z.string(),
+  username: z.string().trim().toLowerCase().min(1).max(100),
+  password: z.string().min(1).max(200),
 });
 
 export const PASSWORD_MIN_LENGTH = 8;
@@ -80,10 +82,10 @@ export const changePasswordFormSchema = z
     message: 'Password baru harus berbeda dari password lama',
   });
 
-/** Body of `PUT /auth/password` → 204. */
+/** Body of `PUT /api/auth/password` (forwarded to Go `PUT /api/v1/auth/password`) → 204. */
 export const changePasswordRequestSchema = z.object({
-  current_password: z.string(),
-  new_password: z.string(),
+  current_password: z.string().min(1).max(200),
+  new_password: z.string().min(1).max(200),
 });
 
 /**
@@ -100,7 +102,6 @@ export function evaluatePasswordRules(newPassword, confirmPassword) {
   };
 }
 
-/** @typedef {z.infer<typeof tokenResponseSchema>} TokenResponse */
 /** @typedef {z.infer<typeof meResponseSchema>} SessionUser */
 /** @typedef {z.infer<typeof loginFormSchema>} LoginFormValues */
 /** @typedef {z.infer<typeof changePasswordFormSchema>} ChangePasswordFormValues */

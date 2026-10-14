@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
-import { refreshAccessToken } from '@/lib/api/client';
 import { ROUTES } from '@/lib/constants';
 import { getMe } from '@/features/auth/api/auth-api';
 import { authKeys } from '@/features/auth/api/keys';
@@ -44,9 +43,10 @@ function SessionSkeleton() {
 
 /**
  * Guards the `(protected)` route group.
- * 1. No access token in memory → restore it via `POST /auth/refresh` (cookie), showing a skeleton.
- * 2. Refresh fails → `/login?next=<current path>`.
- * 3. Load `/auth/me`; `must_change_password` forces `/change-password`.
+ * 1. No user in memory → ask the BFF (`GET /api/auth/me`). The BFF reads the encrypted session
+ *    cookie and refreshes the Go access token if needed. A skeleton is shown meanwhile.
+ * 2. No valid session → `/login?next=<current path>`.
+ * 3. `must_change_password` forces `/change-password`.
  * 4. Fail closed: any error means "not signed in".
  * @param {{ children: import('react').ReactNode }} props
  */
@@ -62,41 +62,22 @@ export function AuthGate({ children }) {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
 
-    const {
-      accessToken,
-      user: currentUser,
-      setAccessToken,
-      setUser,
-      setStatus,
-      clear,
-    } = useSessionStore.getState();
-    if (accessToken && currentUser) return;
+    const { user: currentUser, setUser, setStatus, clear } = useSessionStore.getState();
+    if (currentUser) return;
 
-    const redirectToLogin = () => {
-      clear();
-      const { pathname: path, search } = window.location;
-      router.replace(buildLoginUrl(`${path}${search}`));
-    };
-
-    (async () => {
-      setStatus('loading');
-      try {
-        const token = accessToken ?? (await refreshAccessToken());
-        if (!token) {
-          redirectToLogin();
-          return;
-        }
-        setAccessToken(token);
-        const me = await queryClient.fetchQuery({
-          queryKey: authKeys.me(),
-          queryFn: getMe,
-          staleTime: 0,
-        });
-        setUser(me);
-      } catch {
-        redirectToLogin();
-      }
-    })();
+    setStatus('loading');
+    queryClient
+      .fetchQuery({
+        queryKey: authKeys.me(),
+        queryFn: () => getMe({ probe: true }),
+        staleTime: 0,
+      })
+      .then(setUser)
+      .catch(() => {
+        clear();
+        const { pathname: path, search } = window.location;
+        router.replace(buildLoginUrl(`${path}${search}`));
+      });
   }, [queryClient, router]);
 
   const mustChangePassword = status === 'authenticated' && user?.must_change_password === true;

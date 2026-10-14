@@ -3,7 +3,6 @@ import { getServerEnv } from './src/config/env.js';
 
 // Fails `next dev` / `next build` when required environment variables are missing.
 const env = getServerEnv();
-const isDev = env.NODE_ENV === 'development';
 
 /**
  * Static security headers. The Content-Security-Policy header is set per request
@@ -39,12 +38,6 @@ const nextConfig = {
         headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }],
       },
     ];
-  },
-  async rewrites() {
-    // Dev only: forward same-origin API calls to the Go backend.
-    // In production the reverse proxy serves /api/v1 on the same origin.
-    if (!isDev || !env.API_ORIGIN) return [];
-    return [{ source: '/api/v1/:path*', destination: `${env.API_ORIGIN}/api/v1/:path*` }];
   },
 };
 

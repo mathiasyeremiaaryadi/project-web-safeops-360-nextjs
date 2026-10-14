@@ -2,157 +2,160 @@ import ky from 'ky';
 import { ApiError, toApiError } from '@/lib/api/errors';
 import { ERROR_CODES } from '@/lib/constants';
 
-/**
- * @typedef {object} AuthHandlers
- * @property {() => string | null} getAccessToken Returns the in-memory access token.
- * @property {() => Promise<string | null>} refresh Calls `POST /auth/refresh`, stores the new
- *   access token and returns it, or returns `null` when the session cannot be restored.
- * @property {() => void} onSessionExpired Clears the session and sends the user to the login page.
+/*
+ * Browser HTTP client. It talks ONLY to the Next.js BFF on the same origin (`/api/...`).
+ * Authentication is the encrypted HttpOnly session cookie, sent automatically by the browser:
+ * this code never sees, stores or refreshes a token — the BFF does that server-side.
  */
 
-/** @type {AuthHandlers} */
-let authHandlers = {
-  getAccessToken: () => null,
-  refresh: async () => null,
-  onSessionExpired: () => {},
-};
+/** Header required by the BFF on state-changing requests (CSRF defence, see server/bff/security.js). */
+export const CSRF_HEADER = 'X-SafeOps-CSRF';
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** @type {() => void} */
+let onSessionExpired = () => {};
 
 /**
- * Wires the auth feature into the shared HTTP client. Called once at app start-up
- * (see `features/auth/lib/setup-auth-client.js`), which keeps `lib/` free of feature imports.
- * @param {AuthHandlers} handlers
+ * Registers what happens when the BFF reports that the session is gone (401): clear local
+ * state and go to the login page. Called once at start-up by the auth feature
+ * (`features/auth/lib/setup-auth-client.js`), which keeps `lib/` free of feature imports.
+ * @param {() => void} handler
  */
-export function registerAuthHandlers(handlers) {
-  authHandlers = handlers;
+export function registerSessionExpiredHandler(handler) {
+  onSessionExpired = handler;
 }
 
-/** @type {Promise<string | null> | null} */
-let refreshPromise = null;
+/** @type {() => void} */
+let onPasswordChangeRequired = () => {};
 
 /**
- * Refreshes the access token with a single-flight guarantee: concurrent callers share one
- * in-flight `POST /auth/refresh`. Reusing a rotated refresh token is treated by the backend
- * as token theft (PRD FR-10) and revokes every session, so this must never run twice in parallel.
- * @returns {Promise<string | null>} The new access token, or `null` if refresh failed.
+ * Registers what happens when the API answers 403 because the user must change the password
+ * first (`must_change_password`): go to /change-password.
+ * @param {() => void} handler
  */
-export function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = authHandlers
-      .refresh()
-      .catch(() => null)
-      .finally(() => {
-        refreshPromise = null;
-      });
+export function registerPasswordChangeRequiredHandler(handler) {
+  onPasswordChangeRequired = handler;
+}
+
+/**
+ * @param {Response} response A clone given to the `afterResponse` hook.
+ * @returns {Promise<string | null>} The `error.code` of a JSON error body.
+ */
+async function readErrorCode(response) {
+  try {
+    const body = await response.json();
+    return typeof body?.error?.code === 'string' ? body.error.code : null;
+  } catch {
+    return null;
   }
-  return refreshPromise;
-}
-
-/**
- * Decides which token to retry a 401 request with. A 401 can arrive after another request
- * already finished refreshing, so the refresh endpoint is only called when the token that
- * was sent is still the current one.
- * @param {Request} request The request that received 401.
- * @returns {Promise<string | null>} Token to retry with, or `null` to end the session.
- */
-async function resolveTokenAfter401(request) {
-  const sentToken = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || null;
-  const currentToken = authHandlers.getAccessToken();
-
-  // Someone else refreshed meanwhile → just retry with the new token.
-  if (currentToken && currentToken !== sentToken) return currentToken;
-  // The session was cleared after this request was sent (e.g. a refresh already failed).
-  if (sentToken && !currentToken) return null;
-  return refreshAccessToken();
 }
 
 /**
  * Per-request flags passed through ky's `context` option.
  * @typedef {object} RequestContext
- * @property {boolean} [skipAuth] Do not attach the `Authorization` header.
- * @property {boolean} [skipRefresh] Do not try to refresh the token on 401 (login, refresh).
+ * @property {boolean} [skipSessionExpired] A 401 is an expected answer (login, session probe),
+ *   not a reason to redirect.
  */
 
-/** Shared ky instance. All API calls go through `/api/v1` on the same origin. */
+/** Shared ky instance for the BFF. */
 export const httpClient = ky.create({
-  prefix: '/api/v1',
-  credentials: 'include',
+  prefix: '/api',
+  credentials: 'same-origin',
   timeout: 15_000,
   retry: { limit: 1, methods: ['get'] },
   hooks: {
     beforeRequest: [
-      ({ request, options }) => {
-        const context = /** @type {RequestContext} */ (options.context ?? {});
-        if (context.skipAuth) return;
-        const token = authHandlers.getAccessToken();
-        if (token) request.headers.set('Authorization', `Bearer ${token}`);
+      ({ request }) => {
+        if (!SAFE_METHODS.has(request.method.toUpperCase())) request.headers.set(CSRF_HEADER, '1');
       },
     ],
     afterResponse: [
-      async ({ request, options, response, retryCount }) => {
+      ({ options, response }) => {
         if (response.status !== 401) return;
         const context = /** @type {RequestContext} */ (options.context ?? {});
-        if (context.skipRefresh) return;
-
-        if (retryCount === 0) {
-          const token = await resolveTokenAfter401(request);
-          if (token) {
-            const headers = new Headers(request.headers);
-            headers.set('Authorization', `Bearer ${token}`);
-            // Forced retries are allowed for every method (ky skips the method check),
-            // so POST/PUT are repeated exactly once after a successful refresh.
-            return ky.retry({
-              request: new Request(request, { headers }),
-              code: 'TOKEN_REFRESHED',
-            });
-          }
+        if (!context.skipSessionExpired) onSessionExpired();
+      },
+      async ({ response }) => {
+        if (response.status !== 403) return;
+        if ((await readErrorCode(response)) === ERROR_CODES.PASSWORD_CHANGE_REQUIRED) {
+          onPasswordChangeRequired();
         }
-
-        // Refresh failed, or the retried request is still unauthorized.
-        authHandlers.onSessionExpired();
       },
     ],
   },
 });
 
 /**
- * Performs a request and validates the JSON response with a Zod schema.
+ * Performs a request to the BFF and validates the JSON response with a Zod schema.
  *
  * @template {import('zod').ZodType} TSchema
  * @param {object} params
  * @param {'get' | 'post' | 'put' | 'patch' | 'delete'} params.method
- * @param {string} params.path Path relative to `/api/v1`, e.g. `auth/me`.
+ * @param {string} params.path Path relative to `/api`, e.g. `auth/me` or `v1/sites`.
  * @param {unknown} [params.json] JSON request body.
+ * @param {FormData} [params.body] Multipart body (uploads).
+ * @param {Record<string, string | number | boolean | null | undefined>} [params.searchParams]
+ *   Query string; empty values are dropped.
  * @param {TSchema | null} [params.schema] Response schema; `null` for empty (204) responses.
  * @param {RequestContext} [params.context]
  * @returns {Promise<TSchema extends import('zod').ZodType ? import('zod').infer<TSchema> : void>}
  * @throws {ApiError}
  */
-export async function apiRequest({ method, path, json, schema = null, context = {} }) {
+export async function apiRequest({
+  method,
+  path,
+  json,
+  body,
+  searchParams,
+  schema = null,
+  context = {},
+}) {
   let response;
   try {
-    response = await httpClient(path, { method, json, context });
+    response = await httpClient(path, {
+      method,
+      json,
+      body,
+      searchParams: cleanSearchParams(searchParams),
+      context,
+    });
   } catch (error) {
     throw toApiError(error);
   }
 
   if (!schema) return /** @type {any} */ (undefined);
 
-  let body;
+  let payload;
   try {
-    body = await response.json();
+    payload = await response.json();
   } catch {
     throw invalidResponse(path, 'body is not valid JSON');
   }
 
-  const parsed = schema.safeParse(body);
+  const parsed = schema.safeParse(payload);
   if (!parsed.success) {
-    // Log only the path and the failing keys — never the body, which may contain tokens.
+    // Log only the path and the failing keys — never the body.
     throw invalidResponse(
       path,
       parsed.error.issues.map((issue) => issue.path.join('.')).join(', '),
     );
   }
   return parsed.data;
+}
+
+/**
+ * Drops empty values so `?q=&page=` never reaches the API.
+ * @param {Record<string, string | number | boolean | null | undefined> | undefined} params
+ */
+function cleanSearchParams(params) {
+  if (!params) return undefined;
+  /** @type {Record<string, string>} */
+  const clean = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') clean[key] = String(value);
+  }
+  return clean;
 }
 
 /**

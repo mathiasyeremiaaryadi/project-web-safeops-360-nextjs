@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockAuthApi } from './support/mock-api.js';
+import { loginViaForm } from './support/mock-go.js';
+
+/**
+ * Signs in as a user who must change the password (never submitted, so tests stay parallel-safe).
+ * @param {import('@playwright/test').Page} page
+ */
+async function openChangePassword(page) {
+  await page.goto('/login');
+  await loginViaForm(page, 'sari.wulandari', 'Sementara1');
+  await expect(page).toHaveURL(/\/change-password$/);
+}
 
 const WIDTHS = [360, 640, 768, 1024, 1280, 1536];
 const HEIGHT = 900;
@@ -34,7 +44,6 @@ for (const width of WIDTHS) {
     test.use({ viewport: { width, height: HEIGHT } });
 
     test('/login layout', async ({ page }) => {
-      await mockAuthApi(page);
       await page.goto('/login');
       await expect(page.getByRole('heading', { name: 'Masuk ke SafeOps 360' })).toBeVisible();
       await triggerInstallPrompt(page);
@@ -68,10 +77,9 @@ for (const width of WIDTHS) {
     });
 
     test('/change-password layout', async ({ page }) => {
-      await mockAuthApi(page, { sessionFor: 'agus.pratama' });
-      await page.goto('/change-password');
+      await openChangePassword(page);
       await expect(page.getByRole('heading', { name: 'Buat password baru' })).toBeVisible();
-      await page.getByLabel('Password sementara').fill('Kp7mw2Rq');
+      await page.getByLabel('Password sementara').fill('Sementara1');
       await page.getByLabel('Password baru', { exact: true }).fill('rahasiab');
 
       await expectNoHorizontalScroll(page);
@@ -94,7 +102,6 @@ test.describe('accessibility (axe)', () => {
   for (const width of [360, 1280]) {
     test(`/login at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: HEIGHT });
-      await mockAuthApi(page);
       await page.goto('/login');
       await triggerInstallPrompt(page);
       // Include the error state.
@@ -110,8 +117,7 @@ test.describe('accessibility (axe)', () => {
 
     test(`/change-password at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: HEIGHT });
-      await mockAuthApi(page, { sessionFor: 'agus.pratama' });
-      await page.goto('/change-password');
+      await openChangePassword(page);
       await page.getByLabel('Password baru', { exact: true }).fill('abc12345');
 
       const results = await new AxeBuilder({ page }).analyze();

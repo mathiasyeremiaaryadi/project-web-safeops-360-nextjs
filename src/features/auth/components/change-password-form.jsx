@@ -2,12 +2,13 @@
 
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CircleAlert, KeyRound, Loader2 } from 'lucide-react';
+import { CircleAlert, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ExpandableMessage } from '@/components/shared/expandable-message';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { changePasswordFormSchema, evaluatePasswordRules } from '@/features/auth/api/schemas';
+import { ChangePasswordIntro } from '@/features/auth/components/change-password-intro';
 import { PasswordInput } from '@/features/auth/components/password-input';
 import { PasswordRules } from '@/features/auth/components/password-rules';
 import { useChangePassword } from '@/features/auth/hooks/use-change-password';
@@ -18,10 +19,12 @@ const DIFFERENT_PASSWORD_MESSAGE = 'Password baru harus berbeda dari password la
 const FORM_ERROR_ID = 'change-password-error';
 
 /**
- * "Buat password baru" card. Copy adapts to whether the change is mandatory
- * (`must_change_password`) or voluntary.
+ * Change-password form.
+ * - default: the stand-alone "Buat password baru" page (`/change-password`);
+ * - `embedded`: the "Ganti password" card on the profile page.
+ * @param {{ embedded?: boolean }} props
  */
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ embedded = false }) {
   const { user } = useSession();
   const mustChange = user?.must_change_password === true;
   const changePasswordMutation = useChangePassword();
@@ -54,7 +57,7 @@ export function ChangePasswordForm() {
   const onSubmit = handleSubmit((values) => {
     changePasswordMutation.mutate(values, {
       onError: (error) => {
-        // 401: the API client already refreshed/redirected to login.
+        // 401: the BFF could not restore the session; the API client already redirects to login.
         if (error?.status === 401) return;
         const { field, message } = getChangePasswordError(error);
         if (field) {
@@ -68,12 +71,11 @@ export function ChangePasswordForm() {
   });
 
   const isPending = changePasswordMutation.isPending;
+  const submitLabel = embedded ? 'Simpan password' : 'Simpan dan lanjutkan';
   const currentPasswordError =
     errors.current_password?.type === 'server' ? errors.current_password.message : undefined;
   const currentLabel = mustChange ? 'Password sementara' : 'Password saat ini';
-
-  // The checklist already explains length/letter/digit/match, so under "Password baru" only the
-  // rule that the checklist does not show is repeated.
+  // The checklist explains length/letter/digit/match; only the "different" rule is repeated.
   const newPasswordError =
     errors.new_password?.message === DIFFERENT_PASSWORD_MESSAGE
       ? errors.new_password.message
@@ -85,28 +87,18 @@ export function ChangePasswordForm() {
 
   return (
     <div>
-      <span
-        aria-hidden="true"
-        className="inline-flex size-11 items-center justify-center rounded-xl bg-warning-bg text-warning"
-      >
-        <KeyRound className="size-5" />
-      </span>
-
-      <h1 className="mt-5 text-[26px] leading-tight font-bold tracking-tight text-foreground sm:text-2xl">
-        Buat password baru
-      </h1>
-      {mustChange ? (
-        <p className="mt-2 text-base text-muted-foreground sm:text-[15px]">
-          Halo <span className="font-mono text-foreground">{user?.username}</span>, password Anda
-          masih sementara dari admin. Ganti dulu sebelum mulai bekerja.
-        </p>
+      {embedded ? (
+        <h2 className="text-lg font-semibold text-foreground">Ganti password</h2>
       ) : (
-        <p className="mt-2 text-base text-muted-foreground sm:text-[15px]">
-          Gunakan password yang belum pernah Anda pakai di aplikasi lain.
-        </p>
+        <ChangePasswordIntro mustChange={mustChange} username={user?.username} />
       )}
 
-      <form noValidate onSubmit={onSubmit} aria-busy={isPending} className="mt-6 flex flex-col">
+      <form
+        noValidate
+        onSubmit={onSubmit}
+        aria-busy={isPending}
+        className={embedded ? 'mt-4 flex flex-col' : 'mt-6 flex flex-col'}
+      >
         {/* Hidden username helps password managers associate the new password. */}
         <input
           type="text"
@@ -155,6 +147,12 @@ export function ChangePasswordForm() {
           <PasswordRules id="password-rules" rules={rules} />
         </div>
 
+        {embedded ? (
+          <p className="mt-4 rounded-lg bg-warning-bg px-3.5 py-3 text-sm text-warning">
+            Setelah password diganti, semua perangkat lain akan otomatis keluar.
+          </p>
+        ) : null}
+
         <ExpandableMessage show={Boolean(formError)}>
           <div className="pt-4">
             <Alert
@@ -182,7 +180,7 @@ export function ChangePasswordForm() {
               Menyimpan…
             </>
           ) : (
-            'Simpan dan lanjutkan'
+            submitLabel
           )}
         </Button>
       </form>

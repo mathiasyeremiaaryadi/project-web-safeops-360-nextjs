@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 
@@ -6,6 +7,32 @@ const FORBIDDEN_IMPORT_PATHS = [
   { name: 'moment', message: 'moment.js is not allowed.' },
   { name: 'prop-types', message: 'Use JSDoc instead of PropTypes.' },
 ];
+
+const FEATURES = readdirSync(new URL('./src/features', import.meta.url), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name);
+
+/**
+ * A feature may use another feature only through its public `index.js`
+ * (`@/features/<other>`), never through its internals (`@/features/<other>/...`).
+ */
+const featureIsolation = FEATURES.map((feature) => ({
+  files: [`src/features/${feature}/**`],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: FORBIDDEN_IMPORT_PATHS,
+        patterns: [
+          {
+            group: ['@/features/*/**', `!@/features/${feature}/**`],
+            message: 'Import another feature only from its public index: @/features/<name>.',
+          },
+        ],
+      },
+    ],
+  },
+}));
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -26,30 +53,12 @@ const eslintConfig = defineConfig([
       'no-restricted-imports': ['error', { paths: FORBIDDEN_IMPORT_PATHS }],
     },
   },
-  {
-    // Features must not import from other features.
-    files: ['src/features/auth/**'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: FORBIDDEN_IMPORT_PATHS,
-          patterns: [
-            {
-              group: ['@/features/*', '!@/features/auth', '!@/features/auth/**'],
-              message: 'A feature must not import from another feature.',
-            },
-          ],
-        },
-      ],
-    },
-  },
+  ...featureIsolation,
   globalIgnores([
     '.next/**',
     'out/**',
     'build/**',
     'next-env.d.ts',
-    'public/mockServiceWorker.js',
     'playwright-report/**',
     'test-results/**',
     'mockup/**',

@@ -4,6 +4,35 @@ Versi yang terpasang saat proyek dibuat: Next.js 16.4.0 (Turbopack), React 19.3,
 4.3, shadcn 4.21 (style `radix-nova`), Zod 4.6, ky 2.2, TanStack Query 5, Zustand 5,
 Serwist 9.5, MSW 3, Vitest 5, Playwright 1.64.
 
+## D0. Arsitektur BFF (Backend-for-Frontend) — permintaan klien
+
+```
+Browser (React) ──/api/*──▶ Next.js server (BFF) ──/api/v1/*──▶ Go (Gin) ──▶ PostgreSQL
+                 cookie sesi                       Bearer token Go
+```
+
+- Browser **hanya** memanggil Next.js (`/api/...`, origin sama) dan tidak pernah berbicara
+  langsung dengan Go. Go cukup bisa dijangkau dari jaringan internal oleh server Next.js.
+- Access token dan refresh token Go **tidak pernah sampai ke browser**. Keduanya disimpan di
+  **cookie sesi terenkripsi** (AES-256-GCM, kunci dari `SESSION_SECRET`) dengan atribut
+  `HttpOnly; SameSite=Lax; Path=/`, ditambah `Secure` dan prefix `__Host-` di production.
+  JavaScript di browser tidak bisa membaca maupun mendekripsinya.
+- Pilihan **stateless** (cookie terenkripsi, bukan Redis): tidak ada infrastruktur tambahan, dan
+  setiap instance Next.js bisa membaca sesi. Konsekuensinya, sesi tidak bisa dicabut dari sisi
+  Next.js saja; pencabutan dilakukan di Go (refresh token dicabut → sesi berakhir saat refresh
+  berikutnya, paling lama ±15 menit). Jika suatu saat perlu "logout semua perangkat seketika" atau
+  sesi yang terlihat di server, ganti ke session store (Redis) tanpa mengubah kode klien.
+- Endpoint BFF:
+  - `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, `PUT /api/auth/password`
+    → `src/features/auth/server/handlers.js`.
+  - `/api/v1/<path>` → proxy generik ke Go `/api/v1/<path>` (`src/server/bff/proxy-handler.js`).
+    Prinsipnya **default deny**: hanya segmen pertama yang terdaftar di
+    `src/server/bff/proxy-allowlist.js` yang diteruskan. Saat ini daftarnya kosong; tambahkan
+    segmen (mis. `sites`) ketika modul baru dibuat. `auth` tidak pernah diproksikan.
+- Kode server berada di `src/server/` (generik) dan `src/features/auth/server/` (khusus auth).
+  Semua file server diberi `import 'server-only'`, jadi build gagal jika file itu terimpor ke
+  komponen klien.
+
 ## D1. CSP dengan nonce di `src/proxy.js`, semua halaman dirender dinamis
 
 Next.js menyisipkan script inline (payload RSC). Tanpa `'unsafe-inline'`, satu-satunya cara yang
@@ -12,6 +41,9 @@ didukung adalah nonce per request. Next 16 memakai `proxy.js` (pengganti `middle
 - `proxy.js` membuat nonce dan memasang `Content-Security-Policy`. Header statis lain
   (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, HSTS di
   production) dipasang lewat `headers()` di `next.config.mjs`.
+- `proxy.js` juga melakukan **cek optimistis**: halaman terlindungi yang diminta tanpa cookie sesi
+  langsung di-redirect ke `/login?next=…` sebelum HTML dikirim. Cek yang sesungguhnya (dekripsi +
+  Go) tetap terjadi di BFF lewat `<AuthGate>`.
 - Nonce butuh render dinamis, jadi root layout memanggil `await connection()`. Akibatnya
   `cacheComponents` dan `partialPrefetching` (default dari `create-next-app`) **dimatikan**.
   Keduanya juga tidak cocok dengan route handler Serwist (lihat D3).
@@ -19,11 +51,14 @@ didukung adalah nonce per request. Next 16 memakai `proxy.js` (pengganti `middle
   menyisipkan `<style>` saat runtime. Risiko injeksi CSS jauh lebih kecil daripada injeksi script.
 - `upgrade-insecure-requests` tidak dipakai; HSTS sudah menangani HTTPS di production.
 
-## D2. ky 2: `prefix` menggantikan `prefixUrl`
+## D2. Klien browser (ky 2)
 
-ky 2 mengganti nama opsi `prefixUrl` menjadi `prefix`. Klien memakai `prefix: '/api/v1'`.
-Retry setelah refresh memakai `ky.retry({ request })`. Ini _forced retry_, jadi berlaku juga untuk
-POST/PUT dan hanya sekali. Retry otomatis biasa tetap hanya untuk GET.
+- ky 2 mengganti `prefixUrl` menjadi `prefix`. Klien memakai `prefix: '/api'` dan
+  `credentials: 'same-origin'`.
+- Tidak ada header `Authorization` dan tidak ada logika refresh di browser. Respons 401 dari BFF
+  berarti sesi sudah habis: state lokal dibersihkan lalu user diarahkan ke `/login`.
+- Setiap request yang mengubah data (POST/PUT/PATCH/DELETE) membawa header `X-SafeOps-CSRF: 1`.
+- Retry otomatis hanya untuk GET (sekali).
 
 ## D3. Serwist: `@serwist/turbopack`, bukan `@serwist/next`
 
@@ -34,8 +69,7 @@ default. `@serwist/turbopack` (dari tim yang sama) membangun service worker lewa
 - SW dilayani di `/serwist/sw.js` dengan `Service-Worker-Allowed: /` (scope `/`).
 - Precache hanya aset statis (`.next/static/**`: JS, CSS, font, gambar), ikon, dan halaman
   `/offline`. `/api/` selalu `NetworkOnly`. Halaman HTML tidak di-cache karena berisi nonce CSP.
-- SW **dimatikan di development** dan saat mocking aktif. MSW juga memakai service worker dengan
-  scope `/`, jadi keduanya tidak boleh jalan bersamaan.
+- SW **dimatikan di development**.
 - `cacheOnNavigation` dan `reloadOnOnline` dari `SerwistProvider` dimatikan: yang pertama akan
   meng-cache HTML, yang kedua bisa menghapus isian form saat koneksi kembali.
 
@@ -59,36 +93,72 @@ Supaya `next.config.mjs` bisa mengimpor `src/config/env.js` (ESM) dan memvalidas
 
 ## D7. Validasi env
 
-- Development tanpa mock: `API_ORIGIN` wajib, `next dev` gagal jika tidak ada.
-- Production: `NEXT_PUBLIC_API_MOCKING=enabled` membuat build gagal.
-- `API_ORIGIN` bukan `NEXT_PUBLIC_`, jadi tidak pernah masuk ke bundle browser.
+| Variabel                  | Kapan wajib                    | Catatan                                    |
+| ------------------------- | ------------------------------ | ------------------------------------------ |
+| `API_ORIGIN`              | Mock nonaktif (dev/build/prod) | Alamat Go untuk BFF, bisa alamat internal. |
+| `SESSION_SECRET`          | Mock nonaktif                  | Minimal 32 karakter acak. Rahasia.         |
+| `NEXT_PUBLIC_API_MOCKING` | —                              | `enabled` ditolak di build production.     |
+| `GO_REFRESH_COOKIE_NAME`  | Opsional                       | Default `refresh_token`.                   |
 
-## D8. Penanganan 401 yang tahan balapan
+Tidak ada variabel rahasia yang memakai prefix `NEXT_PUBLIC_`. Mengganti `SESSION_SECRET` membuat
+semua user ter-logout (cookie lama tidak bisa didekripsi). Rotasi kunci tanpa logout massal bisa
+ditambahkan nanti (mendukung dua kunci sekaligus).
 
-Selain single-flight, hook `afterResponse` mengecek token yang dipakai request. Jika token di memori
-sudah berbeda (refresh lain sudah selesai), request diulang dengan token baru **tanpa** refresh
-lagi. Jika sesi sudah dibersihkan, request tidak memicu refresh baru. Hasilnya: tidak ada rotasi
-berlebih dan tidak ada refresh berantai saat refresh gagal.
+## D8. Refresh token di BFF: single-flight + masa tenggang
 
-## D9. Belum ada koordinasi refresh antar-tab
+Go merotasi refresh token di setiap refresh dan menganggap pemakaian ulang token lama sebagai
+pencurian (FR-10 → semua sesi dicabut). Di BFF (`src/server/go/session-tokens.js`):
 
-Single-flight berlaku per tab. Dua tab yang reload bersamaan bisa memanggil refresh secara
-paralel dengan cookie yang sama. Opsi: `BroadcastChannel` atau Web Locks API
-(`navigator.locks.request('auth-refresh', …)`), atau grace period di backend. Lihat ASSUMPTIONS A2.
+1. **Refresh proaktif**: jika access token akan habis dalam < 30 detik, BFF me-refresh lebih dulu.
+   Jika Go tetap menjawab 401, BFF me-refresh sekali lalu mengulang request (body di-buffer).
+2. **Single-flight**: request paralel dengan refresh token yang sama berbagi satu panggilan
+   `POST /auth/refresh`.
+3. **Masa tenggang 30 detik**: hasil refresh diingat. Request yang datang belakangan dengan cookie
+   lama (dikirim browser sebelum menerima cookie baru) memakai sesi baru, **tanpa** menyerahkan
+   refresh token lama ke Go.
 
-## D10. Mock API untuk E2E: `page.route`, bukan MSW
+Ketiganya diuji (unit dan E2E), termasuk uji mutasi: menonaktifkan masa tenggang membuat test gagal.
 
-E2E berjalan pada production build (`next build && next start`), dan mocking MSW ditolak di build
-production (D7). Playwright memakai `serviceWorkers: 'block'` karena request dari service worker
-tidak tertangkap oleh `page.route`.
+## D9. BFF lebih dari satu instance
 
-## D11. Halaman login tetap dirender walau user mungkin sudah login
+Single-flight dan masa tenggang berlaku **per proses Node.js**. Jika Next.js dijalankan di
+beberapa instance, gunakan sticky session di load balancer, atau minta tim Go menyediakan masa
+tenggang singkat untuk refresh token yang baru dirotasi (lihat ASSUMPTIONS A2). Dengan BFF,
+koordinasi antar-tab browser tidak lagi diperlukan karena refresh tidak terjadi di browser.
 
-`/login` mencoba memulihkan sesi diam-diam (single-flight refresh). Jika berhasil, user diarahkan
-ke `/`. Form tetap bisa dipakai selama proses ini, supaya tidak ada layar kosong di sinyal lemah.
+## D10. Mock: satu "Go palsu" untuk semua lingkungan
+
+`src/mocks/go-backend.js` meniru API auth Go, termasuk rotasi token dan deteksi pemakaian ulang.
+
+- **Dev** (`NEXT_PUBLIC_API_MOCKING=enabled`): `src/instrumentation.js` menjalankannya sebagai
+  server HTTP di `127.0.0.1:4010`, dan BFF memanggilnya persis seperti memanggil Go. Sesi bertahan
+  saat reload karena sesi ada di cookie.
+- **Vitest**: dibungkus handler MSW. "Jembatan BFF" (`tests/unit/msw.js`) menjalankan kode Route
+  Handler yang **asli**, lengkap dengan cookie jar.
+- **E2E**: `scripts/mock-go-server.mjs` dijalankan oleh Playwright, lalu `next start` (production
+  build) memakainya sebagai `API_ORIGIN`. Rantai browser → BFF → Go diuji utuh.
+- MSW di browser tidak dipakai lagi (`public/mockServiceWorker.js` dihapus).
+
+## D11. Halaman login memeriksa sesi tanpa menghalangi form
+
+`/login` memanggil `GET /api/auth/me` (mode probe). Jika sesi valid, user diarahkan ke `/`. Form
+tetap bisa dipakai selama proses ini, supaya tidak ada layar kosong di sinyal lemah.
 
 ## D12. Pesan error login: `Alert` di atas tombol
 
 Mockup XS menampilkan error sebagai teks merah di bawah field password, dengan sisa percobaan.
 Spesifikasi meminta `Alert` dengan `role="alert"` di atas tombol dan tanpa sisa percobaan. Yang
 diikuti adalah spesifikasi; posisinya tetap tepat di bawah field password.
+
+## D13. Lapisan keamanan BFF
+
+| Ancaman                    | Penanganan                                                                                                                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pencurian token lewat XSS  | Token Go tidak pernah di browser; cookie `HttpOnly`; CSP ketat dengan nonce.                                                                                                                   |
+| CSRF                       | Cookie `SameSite=Lax`; cek `Origin` = host; tolak `Sec-Fetch-Site: cross-site`; header `X-SafeOps-CSRF` wajib.                                                                                 |
+| Cookie dipalsukan/diubah   | AES-256-GCM (terautentikasi): cookie yang diubah ditolak lalu dihapus.                                                                                                                         |
+| Proxy disalahgunakan       | Allowlist (default deny), validasi segmen path (tanpa `..`), `auth/*` diblokir, cookie/Authorization dari browser tidak diteruskan, `Set-Cookie` dan header Go lain dibuang, batas body 10 MB. |
+| Bocornya detail error      | Error tak terduga dipetakan ke pesan generik; log tidak memuat body/token.                                                                                                                     |
+| Rate limit Go per IP rusak | `X-Forwarded-For`, `X-Real-IP` dan `User-Agent` diteruskan ke Go.                                                                                                                              |
+| Cache data sensitif        | Semua respons BFF `Cache-Control: no-store`; SW tidak meng-cache `/api/`.                                                                                                                      |
+| Otorisasi                  | Tetap di Go untuk setiap request (role, scope site/vendor).                                                                                                                                    |

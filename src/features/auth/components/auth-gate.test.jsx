@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { server } from '@/mocks/server';
-import { createMockSession } from '@/mocks/handlers/auth';
+import { GO_ORIGIN, goBackend, loginInJar, server } from '../../../../tests/unit/msw.js';
 import { createRouterMock, renderWithProviders } from '../../../../tests/unit/test-utils';
 import { AuthGate } from '@/features/auth/components/auth-gate';
 import { useSessionStore } from '@/features/auth/stores/session-store';
@@ -27,19 +26,27 @@ describe('AuthGate', () => {
     nav.router = createRouterMock();
     nav.pathname = '/';
     window.history.replaceState(null, '', '/');
-    useSessionStore.setState({ accessToken: null, user: null, status: 'idle' });
+    useSessionStore.setState({ user: null, status: 'idle' });
     setupAuthClient({ onSessionExpired: () => useSessionStore.getState().clear() });
   });
 
-  it('shows a skeleton, restores the session from the refresh cookie and renders children', async () => {
-    createMockSession('budi.santoso'); // a valid refresh "cookie" exists
+  it('shows a skeleton, restores the session from the BFF cookie and renders children', async () => {
+    await loginInJar('budi.santoso', 'rahasia123');
     renderGate();
     expect(screen.getByTestId('session-skeleton')).toBeInTheDocument();
     expect(await screen.findByText('Konten terlindungi')).toBeInTheDocument();
     expect(useSessionStore.getState().user?.username).toBe('budi.santoso');
   });
 
-  it('redirects to /login?next=… when the session cannot be restored', async () => {
+  it('restores the session through a server-side refresh when the access token expired', async () => {
+    await loginInJar('budi.santoso', 'rahasia123');
+    goBackend.expireAccessTokens();
+    renderGate();
+    expect(await screen.findByText('Konten terlindungi')).toBeInTheDocument();
+    expect(goBackend.stats().refreshCalls).toBe(1);
+  });
+
+  it('redirects to /login?next=… when there is no session', async () => {
     nav.pathname = '/change-password';
     window.history.replaceState(null, '', '/change-password');
     renderGate();
@@ -49,9 +56,11 @@ describe('AuthGate', () => {
     expect(screen.queryByText('Konten terlindungi')).not.toBeInTheDocument();
   });
 
-  it('fails closed when /auth/me errors', async () => {
-    createMockSession('budi.santoso');
-    server.use(http.get('*/api/v1/auth/me', () => HttpResponse.json({}, { status: 500 })));
+  it('fails closed when the profile cannot be loaded', async () => {
+    await loginInJar('budi.santoso', 'rahasia123');
+    server.use(
+      http.get(`${GO_ORIGIN}/api/v1/auth/me`, () => HttpResponse.json({}, { status: 500 })),
+    );
     renderGate();
     // 5xx on GET is retried (ky + TanStack Query) before failing closed.
     await waitFor(() => expect(nav.router.replace).toHaveBeenCalledWith('/login'), {
@@ -62,7 +71,7 @@ describe('AuthGate', () => {
   });
 
   it('forces /change-password when must_change_password is true', async () => {
-    createMockSession('agus.pratama');
+    await loginInJar('agus.pratama', 'Kp7mw2Rq');
     renderGate();
     await waitFor(() => expect(nav.router.replace).toHaveBeenCalledWith('/change-password'));
     expect(screen.queryByText('Konten terlindungi')).not.toBeInTheDocument();
@@ -70,7 +79,7 @@ describe('AuthGate', () => {
 
   it('renders /change-password for a user who must change the password', async () => {
     nav.pathname = '/change-password';
-    createMockSession('agus.pratama');
+    await loginInJar('agus.pratama', 'Kp7mw2Rq');
     renderGate();
     expect(await screen.findByText('Konten terlindungi')).toBeInTheDocument();
     expect(nav.router.replace).not.toHaveBeenCalled();

@@ -2,60 +2,57 @@ import { apiRequest } from '@/lib/api/client';
 import {
   changePasswordRequestSchema,
   loginRequestSchema,
+  loginResponseSchema,
   meResponseSchema,
-  tokenResponseSchema,
 } from '@/features/auth/api/schemas';
 
-/** Requests that must not carry the access token nor trigger a refresh on 401. */
-const PUBLIC_AUTH_CONTEXT = { skipAuth: true, skipRefresh: true };
+/*
+ * Calls to the BFF auth endpoints (`/api/auth/*`). The BFF talks to Go and keeps the tokens
+ * server-side in the encrypted session cookie.
+ */
 
 /**
- * `POST /auth/login`. The backend sets the refresh token as an HttpOnly cookie.
+ * `POST /api/auth/login`. Sets the session cookie and returns the user profile.
  * @param {{ username: string, password: string }} credentials
- * @returns {Promise<import('./schemas').TokenResponse>}
+ * @returns {Promise<import('./schemas').SessionUser>}
  */
-export function login(credentials) {
-  return apiRequest({
+export async function login(credentials) {
+  const { user } = await apiRequest({
     method: 'post',
     path: 'auth/login',
     json: loginRequestSchema.parse(credentials),
-    schema: tokenResponseSchema,
-    context: PUBLIC_AUTH_CONTEXT,
+    schema: loginResponseSchema,
+    context: { skipSessionExpired: true },
   });
+  return user;
 }
 
 /**
- * `POST /auth/refresh`. Rotates the refresh cookie and returns a new access token.
- * Do not call directly — use `refreshAccessToken()` from `@/lib/api/client` (single-flight).
- * @returns {Promise<import('./schemas').TokenResponse>}
+ * `GET /api/auth/me`. The BFF refreshes the Go access token when needed.
+ * @param {{ probe?: boolean }} [options] `probe`: a 401 is expected (e.g. on /login) and must
+ *   not trigger the session-expired redirect.
+ * @returns {Promise<import('./schemas').SessionUser>}
  */
-export function refresh() {
+export function getMe({ probe = false } = {}) {
   return apiRequest({
-    method: 'post',
-    path: 'auth/refresh',
-    schema: tokenResponseSchema,
-    context: PUBLIC_AUTH_CONTEXT,
+    method: 'get',
+    path: 'auth/me',
+    schema: meResponseSchema,
+    context: { skipSessionExpired: probe },
   });
 }
 
 /**
- * `POST /auth/logout`. Revokes the current session.
+ * `POST /api/auth/logout`. Revokes the session and clears the cookie.
  * @returns {Promise<void>}
  */
 export function logout() {
-  return apiRequest({ method: 'post', path: 'auth/logout', context: { skipRefresh: true } });
+  return apiRequest({ method: 'post', path: 'auth/logout', context: { skipSessionExpired: true } });
 }
 
 /**
- * `GET /auth/me`.
- * @returns {Promise<import('./schemas').SessionUser>}
- */
-export function getMe() {
-  return apiRequest({ method: 'get', path: 'auth/me', schema: meResponseSchema });
-}
-
-/**
- * `PUT /auth/password` → 204. Revokes every refresh token of the user (PRD FR-12).
+ * `PUT /api/auth/password` → 204. Every session of the user is revoked (PRD FR-12) and the
+ * session cookie is cleared.
  * @param {{ current_password: string, new_password: string }} body
  * @returns {Promise<void>}
  */
@@ -65,4 +62,12 @@ export function changePassword(body) {
     path: 'auth/password',
     json: changePasswordRequestSchema.parse(body),
   });
+}
+
+/**
+ * `POST /api/auth/logout-all`. Revokes every session of the current user.
+ * @returns {Promise<void>}
+ */
+export function logoutAll() {
+  return apiRequest({ method: 'post', path: 'auth/logout-all' });
 }

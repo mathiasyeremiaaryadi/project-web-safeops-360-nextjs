@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
+const MOCK_GO_PORT = Number(process.env.E2E_MOCK_GO_PORT ?? 4110);
 const baseURL = `http://localhost:${PORT}`;
 
+export const MOCK_GO_ORIGIN = `http://127.0.0.1:${MOCK_GO_PORT}`;
+
 /**
- * E2E tests run against a production build. The backend is mocked per test with
- * `page.route` (see tests/e2e/support/mock-api.js), so no Go API is needed.
+ * E2E tests run the full chain on a production build:
+ *   browser → Next.js (`next start`, BFF) → mock Go backend (scripts/mock-go-server.mjs).
  */
 export default defineConfig({
   testDir: './tests/e2e',
@@ -21,15 +24,27 @@ export default defineConfig({
     baseURL,
     locale: 'id-ID',
     trace: 'retain-on-failure',
-    // Service workers would bypass page.route; the SW is tested separately.
+    // The PWA service worker is not under test here; keep runs deterministic.
     serviceWorkers: 'block',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: `pnpm build && pnpm start --port ${PORT}`,
-    url: `${baseURL}/login`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
-    env: { NEXT_PUBLIC_API_MOCKING: 'disabled' },
-  },
+  webServer: [
+    {
+      command: `node scripts/mock-go-server.mjs ${MOCK_GO_PORT}`,
+      url: `${MOCK_GO_ORIGIN}/__mock/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: `pnpm build && pnpm start --port ${PORT}`,
+      url: `${baseURL}/login`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
+      env: {
+        NEXT_PUBLIC_API_MOCKING: 'disabled',
+        API_ORIGIN: MOCK_GO_ORIGIN,
+        SESSION_SECRET: 'e2e-session-secret-not-used-anywhere-else-0123456789',
+      },
+    },
+  ],
 });

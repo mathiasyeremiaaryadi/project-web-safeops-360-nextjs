@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import { SESSION_COOKIE_NAME } from '@/server/session/cookie-names';
+
+/** Pages reachable without a session. Everything else is protected. */
+const PUBLIC_PATHS = new Set(['/login', '/offline']);
 
 /**
  * Builds the Content-Security-Policy for one request.
@@ -25,10 +29,23 @@ function buildCsp(nonce, isDev) {
 }
 
 /**
- * Generates a per-request nonce and sets a strict CSP header.
+ * 1. Optimistic auth check: a protected page requested without any session cookie is redirected
+ *    to /login straight away (no skeleton flash). This only checks the cookie's presence; the
+ *    real check (decrypt + Go) happens in the BFF, called by <AuthGate>.
+ * 2. Generates a per-request nonce and sets a strict CSP header.
  * @param {import('next/server').NextRequest} request
  */
 export function proxy(request) {
+  const { pathname, search } = request.nextUrl;
+  const hasSessionCookie =
+    request.cookies.has(SESSION_COOKIE_NAME.SECURE) || request.cookies.has(SESSION_COOKIE_NAME.DEV);
+  if (!hasSessionCookie && !PUBLIC_PATHS.has(pathname)) {
+    const loginUrl = new URL('/login', request.url);
+    const next = `${pathname}${search}`;
+    if (next !== '/') loginUrl.searchParams.set('next', next);
+    return NextResponse.redirect(loginUrl);
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const csp = buildCsp(nonce, process.env.NODE_ENV === 'development');
 
@@ -45,7 +62,7 @@ export const config = {
   matcher: [
     {
       source:
-        '/((?!api|_next/static|_next/image|serwist|mockServiceWorker.js|favicon.ico|icons|manifest.webmanifest).*)',
+        '/((?!api|_next/static|_next/image|serwist|favicon.ico|icons|manifest.webmanifest).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

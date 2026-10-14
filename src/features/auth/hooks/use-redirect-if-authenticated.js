@@ -2,30 +2,37 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { refreshAccessToken } from '@/lib/api/client';
+import { getMe } from '@/features/auth/api/auth-api';
 import { useSessionStore } from '@/features/auth/stores/session-store';
 import { ROUTES } from '@/lib/constants';
 
 /**
- * On the login page: if the user already has a session (in memory, or restorable from the
- * refresh cookie), go straight to the home page. The login form stays usable meanwhile.
+ * On the login page: if the user already has a valid session cookie, go straight to the home
+ * page. The login form stays usable meanwhile (no blank screen on a slow connection).
  */
 export function useRedirectIfAuthenticated() {
   const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
-    const { status, accessToken } = useSessionStore.getState();
+    const { status, setUser } = useSessionStore.getState();
 
-    if (status === 'authenticated' || accessToken) {
+    if (status === 'authenticated') {
       router.replace(ROUTES.HOME);
       return undefined;
     }
+    // Just logged out / password changed: no need to ask the server.
     if (status === 'unauthenticated') return undefined;
 
-    refreshAccessToken().then((token) => {
-      if (!cancelled && token) router.replace(ROUTES.HOME);
-    });
+    getMe({ probe: true })
+      .then((user) => {
+        if (cancelled) return;
+        setUser(user);
+        router.replace(ROUTES.HOME);
+      })
+      .catch(() => {
+        // No session: stay on the login page.
+      });
     return () => {
       cancelled = true;
     };

@@ -1,1 +1,2 @@
-pnpm exec lint-staged
+# --relative + --max-arg-length: keep each command under the Windows cmd.exe limit (~8191 chars).
+pnpm exec lint-staged --relative --max-arg-length 6000
