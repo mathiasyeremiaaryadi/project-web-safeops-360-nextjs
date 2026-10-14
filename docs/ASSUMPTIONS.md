@@ -198,6 +198,34 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
   `download_url` (boleh di dalam `data`), atau string. URL tidak disimpan: setiap klik "Buka"
   meminta URL baru.
 
+## Review laporan (`/pipeline-reports`)
+
+- **R1.** Postman tidak memuat endpoint laporan dan BRD tidak menyebut nama field alasan/revisi.
+  Pemetaan dipusatkan di `toReviewPayload` (`features/pipeline-reports/lib/review.js`):
+  Setujui = `{ status: "COMPLETED" }`, Minta revisi = `{ revision_status: "REQUESTED", reason }`,
+  Tolak = `{ status: "REJECTED", reason }`. **Perlu konfirmasi.**
+- **R2.** Nama field respons tidak tercantum di BRD. Setiap field dibaca dari beberapa nama yang
+  mungkin (mis. nama task dari `item_name` / `task_name` / `pipeline_item.item.name`; detail boleh
+  di `detail` / `details` / `report_detail` atau di level atas). Daftarnya ada di
+  `features/pipeline-reports/api/schemas.js`.
+- **R3.** Tab "Revisi diminta" mengirim `?revision_status=REQUESTED` (dan memfilter ulang di klien
+  jika backend mengabaikannya). Laporan bisa direview jika `status = SUBMITTED` dan revisi bukan
+  `REQUESTED` (menunggu worker mengirim ulang).
+- **R4.** Filter tanggal `from`/`to` dikirim sebagai `YYYY-MM-DD` (tanggal laporan). **Perlu
+  konfirmasi** apakah backend mengharapkan timestamp.
+- **R5.** Riwayat status hanya tampil jika detail mengembalikan `history` / `status_history`
+  (BRD: belum ada endpoint baca riwayat). Jika tidak ada, bagian ini disembunyikan.
+
+## Laporan inventory (`/inventory-reports`)
+
+- **IR1.** Field respons dibaca dari beberapa nama (`report_type`/`type`, pelapor dari
+  `user_full_name`/`user.full_name`, inventory dari `inventory_item`/`inventory.item`, waktu dari
+  `created_at`). Inventory terkait beserta kondisinya diambil dari `GET /inventories/{id}`.
+- **IR2.** Transisi review disimpan di `NEXT_ACTIONS` (`features/inventory-reports/lib/constants.js`):
+  Baru → Tandai sedang diperiksa / Setujui / Tolak; Diperiksa → Setujui / Tolak; Disetujui →
+  Tandai selesai. Ditolak dan Selesai tidak punya aksi. Tolak wajib `review_reason`.
+- **IR3.** Filter jenis dikirim sebagai `report_type`. **Perlu konfirmasi.**
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan
@@ -205,7 +233,8 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
 - **G2.** Tidak ada endpoint daftar sesi aktif. Halaman profil hanya menyediakan "Keluar" dan
   "Keluar dari semua perangkat".
 - **G3.** Riwayat status laporan task belum bisa dibaca (BRD 3.2), dan evidence foto hanya berupa
-  object key tanpa endpoint signed URL.
+  object key tanpa endpoint signed URL. Foto evidence hanya ditampilkan jika nilainya URL
+  http(s); object key ditampilkan sebagai "Foto belum tersedia".
 - **G4.** Notifikasi dan pencarian global (⌘K) di mockup tidak dibuat karena belum ada API.
 - **TZ.** Site belum punya field zona waktu. Semua tanggal memakai `NEXT_PUBLIC_APP_TIMEZONE`
   (default `Asia/Jakarta`), dan `date` selalu dikirim eksplisit.

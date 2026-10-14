@@ -1,8 +1,8 @@
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { InventoryReportsList } from '@/features/inventory-reports';
 
 export const metadata = { title: 'Laporan inventory' };
 
-/** `/reports/inventory` — built in a later phase. */
-export default function Page() {
-  return <ComingSoon title="Laporan inventory" />;
+/** `/reports/inventory` */
+export default function InventoryReportsPage() {
+  return <InventoryReportsList />;
 }

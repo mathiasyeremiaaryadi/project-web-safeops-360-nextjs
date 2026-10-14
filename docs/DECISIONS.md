@@ -177,3 +177,13 @@ diikuti adalah spesifikasi; posisinya tetap tepat di bawah field password.
   MinIO dan header MinIO yang mengizinkan framing; belum bisa dipastikan, jadi tidak dibuat.
   Tab baru dibuka saat klik (agar tidak diblokir popup blocker), `opener` diputus, lalu diarahkan
   ke signed URL.
+
+## D15. Panel detail 2XL (Review laporan, Laporan inventory)
+
+- Layout list + panel murni CSS (`ListWithPanel`, grid dari `2xl`). Di bawah 1536px panel tidak
+  dirender terlihat dan baris membuka halaman detail.
+- Lebar layar dibaca saat klik (`matchMedia` di `useDetailPanel`), bukan saat render, sehingga
+  tidak ada hydration mismatch dan aturan "tanpa `useMediaQuery` untuk layout" tetap dipenuhi.
+- Laporan yang dipilih disimpan di URL (`?selected=<id>`). Setelah review laporan task di panel,
+  laporan berikutnya otomatis dipilih; di halaman detail (mobile), user kembali ke list. Laporan
+  inventory tetap di detail karena alurnya bertahap (Baru → Diperiksa → Disetujui → Selesai).

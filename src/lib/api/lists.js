@@ -95,14 +95,37 @@ export const idListSchema = z.preprocess(
  * `{...}`, `{ data: {...} }`, `{ <key>: {...} }` or `{ data: { <key>: {...} } }`.
  * @template {z.ZodType} T
  * @param {T} schema Record schema.
- * @param {string} key Wrapper key used by the backend, e.g. `pipeline`, `user`.
+ * @param {string | string[]} key Wrapper key(s) used by the backend, e.g. `pipeline`, `user`.
  */
 export function entityResponseSchema(schema, key) {
+  const keys = Array.isArray(key) ? key : [key];
   return z.preprocess((raw) => {
     if (!isRecord(raw)) return raw;
     const body = /** @type {Record<string, any>} */ (raw);
     if (body.id !== undefined) return body;
     const data = isRecord(body.data) ? body.data : {};
-    return [body[key], data[key], body.data].find(isRecord) ?? body;
+    const wrapped = keys.flatMap((k) => [body[k], data[k]]);
+    return [...wrapped, body.data].find(isRecord) ?? body;
   }, schema);
+}
+
+/**
+ * First value that is set (not `undefined`, `null` or `''`). Used to read a field the backend
+ * may name in several ways, e.g. `firstValue(row.item_name, row.item?.name)`.
+ * @param {...unknown} values
+ */
+export function firstValue(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== '');
+}
+
+/**
+ * Enum kept as upper-case text: an unknown value is shown as-is instead of failing the whole
+ * list. `fallback` is used when the field is missing.
+ * @param {string} [fallback]
+ */
+export function enumTextSchema(fallback = '') {
+  return z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim().toUpperCase() : value),
+    z.string().catch(fallback),
+  );
 }

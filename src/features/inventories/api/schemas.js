@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   entityResponseSchema,
+  enumTextSchema,
   listResponseSchema,
   masterStatusSchema,
   withMasterStatus,
@@ -18,10 +19,7 @@ export const inventorySchema = z.preprocess(
     jenis_item: z.string().nullish(),
     qty: z.coerce.number().catch(0),
     /** Kept as text: an unknown value is shown as-is instead of failing the whole list. */
-    status_condition: z.preprocess(
-      (value) => (typeof value === 'string' ? value.trim().toUpperCase() : value),
-      z.string().catch(''),
-    ),
+    status_condition: enumTextSchema(),
     status: masterStatusSchema,
     /** Signed URL; the detail sends it, the list may too. */
     image_url: z.string().nullish(),
