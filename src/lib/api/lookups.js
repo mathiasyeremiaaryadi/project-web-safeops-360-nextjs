@@ -55,7 +55,9 @@ export async function fetchLookupOptions(kind, { q = '', limit = 20, params = {}
   const result = await apiRequest({
     method: 'get',
     path: lookup.path,
-    searchParams: { q, limit, ...params },
+    // `page` is always sent, like the list pages: without it the backend fails (5xx) on
+    // `GET /sites?limit=20` (docs/ASSUMPTIONS.md L3).
+    searchParams: { page: 1, q, limit, ...params },
     schema: lookupListSchema,
   });
   return result.data.map((row) => ({

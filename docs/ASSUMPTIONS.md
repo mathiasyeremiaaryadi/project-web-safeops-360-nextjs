@@ -123,6 +123,10 @@ Schema hanya memuat field yang dipakai UI.
 - **L1.** List: `{ data: [], page, limit, total }` (BRD 8.5). Jika `page`/`limit`/`total` tidak ada,
   UI tetap berjalan (`total` opsional → navigasi halaman berdasarkan halaman penuh).
 - **L2.** Filter dikirim sebagai query string, dan nilai kosong tidak dikirim.
+- **L3.** Setiap request list dan dropdown selalu mengirim `page` (minimal `page=1`). Dropdown
+  site tanpa `page` (`GET /sites?limit=20`) gagal dengan error server (5xx) di backend — dugaan:
+  offset dihitung dari page 0 menjadi negatif. **Perlu perbaikan di Go:** default `page=1` bila
+  tidak dikirim.
 - **P1.** User dengan `must_change_password` yang memanggil endpoint lain mendapat **403
   `PASSWORD_CHANGE_REQUIRED`**. Frontend lalu mengarahkan ke `/change-password`. **Perlu
   konfirmasi code-nya.**
