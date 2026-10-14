@@ -1,6 +1,4 @@
-/** Query keys of the items feature. */
-export const itemKeys = Object.freeze({
-  all: /** @type {const} */ (['items']),
-  lists: () => /** @type {const} */ ([...itemKeys.all, 'list']),
-  list: (/** @type {Record<string, unknown>} */ params) => [...itemKeys.lists(), params],
-});
+import { createQueryKeys } from '@/lib/api/query-keys';
+
+/** Query keys of the items (master task) feature. */
+export const itemKeys = createQueryKeys('items');

@@ -1,11 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { UserX } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
-import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
+import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { useSession } from '@/features/auth';
 import { useUser } from '@/features/users/api/queries';
@@ -23,20 +21,13 @@ export function UserDetail({ id }) {
   const vendors = useOptionLabels('vendors');
 
   if (query.isPending || sites.isLoading || vendors.isLoading) return <ListSkeleton rows={3} />;
-  if (query.isError && /** @type {any} */ (query.error).status === 404) {
+  if (query.isError && isNotFound(query.error)) {
     return (
-      <EmptyState
+      <NotFoundState
         icon={UserX}
-        title="Data tidak ditemukan"
         description="User ini tidak ada atau di luar akses Anda."
-        action={
-          <Link
-            href="/users"
-            className={buttonVariants({ variant: 'outline', className: 'h-11 bg-card' })}
-          >
-            Kembali ke daftar user
-          </Link>
-        }
+        backHref="/users"
+        backLabel="Kembali ke daftar user"
       />
     );
   }

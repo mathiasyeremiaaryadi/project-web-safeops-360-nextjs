@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ExternalLink, SearchX } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { StickyActionBar } from '@/components/layout/sticky-action-bar';
-import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
+import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { useSession } from '@/features/auth';
@@ -35,22 +34,13 @@ export function TaskReportDetail({ id, variant, onReviewed }) {
   const vendors = useOptionLabels('vendors');
 
   if (query.isPending) return <ListSkeleton rows={3} />;
-  if (query.isError && /** @type {any} */ (query.error).status === 404) {
+  if (query.isError && isNotFound(query.error)) {
     return (
-      <EmptyState
-        icon={SearchX}
+      <NotFoundState
         title="Laporan tidak ditemukan"
         description="Laporan ini tidak ada atau di luar akses Anda."
-        action={
-          variant === 'page' ? (
-            <Link
-              href={LIST_HREF}
-              className={buttonVariants({ variant: 'outline', className: 'h-11 bg-card' })}
-            >
-              Kembali ke daftar laporan
-            </Link>
-          ) : null
-        }
+        backHref={variant === 'page' ? LIST_HREF : undefined}
+        backLabel="Kembali ke daftar laporan"
       />
     );
   }

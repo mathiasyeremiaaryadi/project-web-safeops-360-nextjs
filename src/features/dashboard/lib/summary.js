@@ -50,14 +50,12 @@ export function toStatusCounts(value) {
 /**
  * @typedef {object} DashboardKpis
  * @property {number} total Task reports of the day (all statuses).
- * @property {number} completed
- * @property {number} submitted Waiting for review.
- * @property {number | null} revision Revision requested (`null` = not sent by the API).
- * @property {number | null} notStarted `PENDING` (`null` = not sent).
+ * @property {number} inProgress `IN_PROGRESS`.
+ * @property {number} completed `COMPLETED`.
  */
 
 /**
- * KPI cards from `/dashboard/report`.
+ * KPI cards from `/dashboard/report`: total, in progress, completed.
  * @param {unknown} raw
  * @returns {DashboardKpis}
  */
@@ -66,17 +64,12 @@ export function toDashboardKpis(raw) {
   const tasks = toStatusCounts(
     firstValue(body.pipeline_reports, body.pipeline_report, body.pipeline, body.task_reports),
   );
-  const revisions = toStatusCounts(
-    firstValue(body.pipeline_revisions, body.revision_status, body.revisions),
-  );
   const { TOTAL, ...byStatus } = tasks;
   const sum = Object.values(byStatus).reduce((a, b) => a + b, 0);
   return {
     total: toNumber(firstValue(TOTAL, body.total_tasks, body.total)) ?? sum,
+    inProgress: tasks.IN_PROGRESS ?? 0,
     completed: tasks.COMPLETED ?? 0,
-    submitted: tasks.SUBMITTED ?? 0,
-    revision: firstValue(revisions.REQUESTED, toNumber(body.revision_requested)) ?? null,
-    notStarted: tasks.PENDING ?? null,
   };
 }
 

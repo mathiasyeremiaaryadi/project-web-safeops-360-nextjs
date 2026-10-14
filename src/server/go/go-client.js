@@ -15,13 +15,17 @@ export class GoUnavailableError extends Error {
 /**
  * Headers describing the end user, forwarded so the Go backend can rate-limit per client IP
  * and record the device of each session. The Go backend must only trust them from the BFF.
+ *
+ * Only the LAST `X-Forwarded-For` entry is kept: it is the one added by the nearest proxy, while
+ * earlier entries can be sent by the client itself. This is only trustworthy behind a reverse
+ * proxy that sets the header (docs/SECURITY.md S2); without one, any value can be forged.
  * @param {Request} request Incoming browser request.
  * @returns {Record<string, string>}
  */
 export function getForwardedHeaders(request) {
   /** @type {Record<string, string>} */
   const headers = {};
-  const forwardedFor = request.headers.get('x-forwarded-for');
+  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
   const realIp = request.headers.get('x-real-ip');
   const userAgent = request.headers.get('user-agent');
   const language = request.headers.get('accept-language');

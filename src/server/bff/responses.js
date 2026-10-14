@@ -1,7 +1,15 @@
 import 'server-only';
 
-/** Headers on every BFF response: never cache authenticated data. */
-const NO_STORE = { 'Cache-Control': 'no-store' };
+/**
+ * Headers on every BFF response:
+ * - never cache authenticated data;
+ * - if a response is ever opened as a page (e.g. an HTML error from Go or a gateway), it runs in
+ *   a sandbox with no scripts, styles or framing. `fetch()` callers are not affected.
+ */
+const NO_STORE = {
+  'Cache-Control': 'no-store',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; sandbox",
+};
 
 /**
  * JSON error in the same shape as the Go backend: `{ "error": { "code", "message" } }`.

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { getErrorMessage } from '@/lib/api/errors';
+import { toastApiError } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { useReviewTaskReport } from '@/features/pipeline-reports/api/mutations';
 import { REVIEW_DECISIONS } from '@/features/pipeline-reports/lib/review';
@@ -33,7 +33,7 @@ export function TaskReportReview({ reportId, onReviewed, className }) {
           setPending(null);
           onReviewed();
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
+        onError: toastApiError,
       },
     );
   };

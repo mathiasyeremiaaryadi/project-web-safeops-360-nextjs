@@ -155,10 +155,35 @@ export function buildSessionCookie(request, session, secret, now = Date.now()) {
  * @param {Request} request
  */
 export function buildClearedSessionCookie(request) {
-  return serializeCookie(getSessionCookieName(request), '', {
+  return clearCookie(getSessionCookieName(request), isSecureRequest(request));
+}
+
+/**
+ * `Set-Cookie` values that delete EVERY session cookie the request carries: the one for its
+ * protocol, plus the other name if present (e.g. a `__Host-` cookie sent over plain HTTP, which
+ * this request would otherwise never clear).
+ * @param {Request} request
+ * @returns {string[]}
+ */
+export function buildClearedSessionCookies(request) {
+  const own = getSessionCookieName(request);
+  const present = parseCookieHeader(request.headers.get('cookie'));
+  const others = Object.values(SESSION_COOKIE_NAME).filter(
+    (name) => name !== own && present.has(name),
+  );
+  return [
+    buildClearedSessionCookie(request),
+    // `__Host-` cookies can only be changed with Secure.
+    ...others.map((name) => clearCookie(name, name === SESSION_COOKIE_NAME.SECURE)),
+  ];
+}
+
+/** @param {string} name @param {boolean} secure */
+function clearCookie(name, secure) {
+  return serializeCookie(name, '', {
     path: '/',
     httpOnly: true,
-    secure: isSecureRequest(request),
+    secure,
     sameSite: 'Lax',
     maxAge: 0,
   });

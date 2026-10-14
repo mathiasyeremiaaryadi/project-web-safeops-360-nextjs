@@ -2,7 +2,9 @@ import 'server-only';
 import { goFetch } from '@/server/go/go-client';
 import { errorResponse } from '@/server/bff/responses';
 import { rejectCrossSiteRequest } from '@/server/bff/security';
-import { proxyWithSession } from '@/server/bff/with-session';
+import { proxyWithSession, unauthorizedResponse } from '@/server/bff/with-session';
+import { readBodyWithLimit } from '@/server/http/body';
+import { hasSessionCookie } from '@/server/session/session-cookie';
 
 /**
  * Largest request body the proxy forwards: a 10 MiB SOP PDF plus the multipart envelope and
@@ -49,16 +51,17 @@ export function createProxyHandler({ allow }) {
     const rejected = rejectCrossSiteRequest(request);
     if (rejected) return rejected;
 
+    // Without a session cookie nothing can be proxied: answer before reading any body, so an
+    // anonymous client cannot make the server buffer uploads.
+    if (!hasSessionCookie(request)) return unauthorizedResponse();
+
     const method = request.method.toUpperCase();
     let body = null;
     if (method !== 'GET' && method !== 'HEAD') {
-      const declared = Number(request.headers.get('content-length') ?? 0);
-      if (declared > MAX_BODY_BYTES) {
-        return errorResponse(413, 'PAYLOAD_TOO_LARGE', 'Data terlalu besar.');
-      }
-      // Buffered so the request can be replayed once after a token refresh.
-      body = await request.arrayBuffer();
-      if (body.byteLength > MAX_BODY_BYTES) {
+      try {
+        // Buffered (so the request can be replayed once after a token refresh), with a limit.
+        body = await readBodyWithLimit(request, MAX_BODY_BYTES);
+      } catch {
         return errorResponse(413, 'PAYLOAD_TOO_LARGE', 'Data terlalu besar.');
       }
     }

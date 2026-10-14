@@ -1,18 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { SearchX } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
-import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
+import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
-import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS, MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { useChangePipelineStatus } from '@/features/pipelines/api/mutations';
@@ -30,20 +26,12 @@ export function PipelineDetail({ id }) {
   const [confirming, setConfirming] = useState(false);
 
   if (query.isPending) return <ListSkeleton rows={3} />;
-  if (query.isError && /** @type {any} */ (query.error).status === 404) {
+  if (query.isError && isNotFound(query.error)) {
     return (
-      <EmptyState
-        icon={SearchX}
-        title="Data tidak ditemukan"
+      <NotFoundState
         description="Pipeline ini tidak ada atau di luar akses Anda."
-        action={
-          <Link
-            href="/pipelines"
-            className={buttonVariants({ variant: 'outline', className: 'h-11 bg-card' })}
-          >
-            Kembali ke daftar pipeline
-          </Link>
-        }
+        backHref="/pipelines"
+        backLabel="Kembali ke daftar pipeline"
       />
     );
   }
@@ -105,17 +93,8 @@ export function PipelineDetail({ id }) {
       <StatusChangeDialog
         target={confirming ? pipeline : null}
         entityLabel="pipeline"
-        pending={changeStatus.isPending}
+        mutation={changeStatus}
         onClose={() => setConfirming(false)}
-        onConfirm={() =>
-          changeStatus.mutate(pipeline, {
-            onSuccess: () => {
-              toast.success('Status pipeline berhasil diubah.');
-              setConfirming(false);
-            },
-            onError: (error) => toast.error(getErrorMessage(error)),
-          })
-        }
       />
     </>
   );

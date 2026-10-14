@@ -2,8 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
-import { useOptionLabels } from '@/hooks/use-option-labels';
+import { LookupFilter } from '@/components/shared/lookup-filter';
 import { ACTION_FILTERS, ENTITY_FILTERS } from '@/features/audit-logs/constants';
 
 /**
@@ -13,18 +12,13 @@ import { ACTION_FILTERS, ENTITY_FILTERS } from '@/features/audit-logs/constants'
  * @param {(updates: Record<string, string>) => void} props.onChange
  */
 export function AuditLogFilters({ params, onChange }) {
-  const users = useOptionLabels('users');
-  const selectedUser = params.user
-    ? { value: params.user, label: users.labelOf(params.user) }
-    : null;
-
   return (
     <div className="mb-4 grid grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(220px,1.4fr)_1fr_1fr_auto_auto]">
-      <AsyncCombobox
+      <LookupFilter
         className="col-span-2 lg:col-span-1"
         lookup="users"
-        value={selectedUser}
-        onChange={(option) => onChange({ user: option?.value ?? '' })}
+        value={params.user}
+        onChange={(user) => onChange({ user })}
         placeholder="Semua user"
         ariaLabel="Filter user"
       />

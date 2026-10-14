@@ -3,11 +3,8 @@
 import { useState } from 'react';
 import { parseAsString } from 'nuqs';
 import { ClipboardList } from 'lucide-react';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { QueryList } from '@/components/shared/query-list';
 import { useListParams } from '@/hooks/use-list-params';
 import { formatDateTime } from '@/lib/date';
 import { searchRows } from '@/lib/search';
@@ -122,54 +119,41 @@ export function AuditLogsList() {
       />
       <AuditLogFilters params={params} onChange={setFilters} />
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="Belum ada aktivitas"
-          description="Tidak ada catatan yang cocok dengan filter."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(log) => log.id}
-          caption="Audit log"
-          onRowClick={setSelected}
-          isRowSelected={(log) => log.id === selected?.id}
-          renderCard={(log) => (
-            <button
-              type="button"
-              onClick={() => setSelected(log)}
-              className="flex w-full flex-col gap-1.5 rounded-2xl border bg-card p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <ActionBadge action={log.action} />
-                <span className="text-sm text-muted-foreground">
-                  {formatDateTime(log.created_at)}
-                </span>
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: ClipboardList,
+          title: 'Belum ada aktivitas',
+          description: 'Tidak ada catatan yang cocok dengan filter.',
+        }}
+        noun="aktivitas"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(log) => log.id}
+        caption="Audit log"
+        onRowClick={setSelected}
+        isRowSelected={(log) => log.id === selected?.id}
+        renderCard={(log) => (
+          <button
+            type="button"
+            onClick={() => setSelected(log)}
+            className="flex w-full flex-col gap-1.5 rounded-2xl border bg-card p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex items-center justify-between gap-2">
+              <ActionBadge action={log.action} />
+              <span className="text-sm text-muted-foreground">
+                {formatDateTime(log.created_at)}
               </span>
-              <span className="text-foreground">{summaryOf(log)}</span>
-              <span className="text-xs text-muted-foreground">
-                <ActorName log={log} name={actorName(log)} inline /> · {log.entity || '—'} ·{' '}
-                {log.ip || '—'}
-              </span>
-            </button>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="aktivitas"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+            </span>
+            <span className="text-foreground">{summaryOf(log)}</span>
+            <span className="text-xs text-muted-foreground">
+              <ActorName log={log} name={actorName(log)} inline /> · {log.entity || '—'} ·{' '}
+              {log.ip || '—'}
+            </span>
+          </button>
+        )}
+      />
 
       <AuditLogDetailSheet log={selected} onClose={() => setSelected(null)} />
     </>

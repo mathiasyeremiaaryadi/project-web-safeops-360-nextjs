@@ -4,25 +4,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { MASTER_STATUS } from '@/lib/constants';
 import { useMasterStatusChange } from '@/hooks/use-master-status-change';
+import { useSaveMutation } from '@/hooks/use-resource';
 import { pipelineKeys } from '@/features/pipelines/api/keys';
 
-/** Create (`POST /pipelines`) or update (`PATCH /pipelines/{id}`). */
-export function useSavePipeline() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    /** @param {{ id?: string, body: Record<string, unknown> }} input */
-    mutationFn: ({ id, body }) =>
-      apiRequest({
-        method: id ? 'patch' : 'post',
-        path: id ? `v1/pipelines/${id}` : 'v1/pipelines',
-        json: body,
-      }),
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: pipelineKeys.lists() });
-      if (id) queryClient.invalidateQueries({ queryKey: pipelineKeys.detail(id) });
-    },
-  });
-}
+/** Create (`POST /pipelines`) or update (`PATCH /pipelines/{id}`): `mutate({ id?, body })`. */
+export const useSavePipeline = () => useSaveMutation({ path: 'v1/pipelines', keys: pipelineKeys });
 
 /** Deactivate / reactivate a pipeline. @param {string} [id] */
 export function useChangePipelineStatus(id) {

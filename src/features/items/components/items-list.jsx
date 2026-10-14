@@ -2,18 +2,13 @@
 
 import { useState } from 'react';
 import { ListChecks } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { MasterRowActions } from '@/components/shared/master-row-actions';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
 import { searchRows } from '@/lib/search';
-import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeItemStatus } from '@/features/items/api/mutations';
 import { useItems } from '@/features/items/api/queries';
@@ -35,17 +30,6 @@ export function ItemsList({ createOpen, onCreateClose }) {
   const changeStatus = useChangeItemStatus();
   const [editing, setEditing] = useState(/** @type {Item | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Item | null} */ (null));
-
-  const toggleStatus = () => {
-    if (!toggling) return;
-    changeStatus.mutate(toggling, {
-      onSuccess: () => {
-        toast.success('Status task berhasil diubah.');
-        setToggling(null);
-      },
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
-  };
 
   const actions = (/** @type {Item} */ item) => (
     <MasterRowActions
@@ -95,46 +79,33 @@ export function ItemsList({ createOpen, onCreateClose }) {
         searchPlaceholder="Cari nama task"
       />
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={ListChecks}
-          title="Belum ada master task"
-          description="Ubah pencarian, atau tambahkan task baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(item) => item.id}
-          caption="Daftar master task"
-          cardGridClassName="sm:grid-cols-2"
-          renderCard={(item) => (
-            <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-lg font-semibold text-foreground">{item.name}</p>
-                {badge(item)}
-              </div>
-              {item.description ? (
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              ) : null}
-              {actions(item)}
-            </article>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="task"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: ListChecks,
+          title: 'Belum ada master task',
+          description: 'Ubah pencarian, atau tambahkan task baru.',
+        }}
+        noun="task"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(item) => item.id}
+        caption="Daftar master task"
+        cardGridClassName="sm:grid-cols-2"
+        renderCard={(item) => (
+          <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-lg font-semibold text-foreground">{item.name}</p>
+              {badge(item)}
+            </div>
+            {item.description ? (
+              <p className="text-sm text-muted-foreground">{item.description}</p>
+            ) : null}
+            {actions(item)}
+          </article>
+        )}
+      />
 
       <ItemFormDialog
         open={createOpen || Boolean(editing)}
@@ -147,8 +118,7 @@ export function ItemsList({ createOpen, onCreateClose }) {
       <StatusChangeDialog
         target={toggling}
         entityLabel="task"
-        pending={changeStatus.isPending}
-        onConfirm={toggleStatus}
+        mutation={changeStatus}
         onClose={() => setToggling(null)}
       />
     </>

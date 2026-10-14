@@ -1,20 +1,14 @@
+import 'server-only';
 import { z } from 'zod';
 
 /**
- * Environment validation.
+ * Server-only environment validation (`server-only`: importing this from browser code fails
+ * the build). Public variables live in `config/client-env.js`.
  *
- * - Server-only variables are validated by `getServerEnv()`. It is called from
- *   `next.config.mjs`, so `next dev` / `next build` fail fast on invalid config, and again at
- *   runtime by the BFF (Route Handlers).
- * - Public variables (`NEXT_PUBLIC_*`) are inlined at build time; they must be referenced
- *   literally (`process.env.NEXT_PUBLIC_X`) for Next.js to inline them.
+ * - `getServerEnv()` validates at server start (`src/instrumentation.js`) and on every BFF
+ *   request; the Docker build has no runtime secrets, so it is not called at build time.
  * - Secrets (`SESSION_SECRET`) must never use the `NEXT_PUBLIC_` prefix.
  */
-
-const clientSchema = z.object({
-  /** IANA time zone used to compute "today" and to display dates (sites have no zone field). */
-  NEXT_PUBLIC_APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
-});
 
 const serverSchema = z
   .object({
@@ -74,8 +68,3 @@ export function getServerEnv() {
   }
   return result.data;
 }
-
-/** Public, build-time inlined environment variables (safe for the browser). */
-export const clientEnv = clientSchema.parse({
-  NEXT_PUBLIC_APP_TIMEZONE: process.env.NEXT_PUBLIC_APP_TIMEZONE || undefined,
-});

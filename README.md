@@ -67,21 +67,23 @@ lihat `docs/DECISIONS.md` D9.
 
 ## Skrip
 
-| Perintah        | Kegunaan                                            |
-| --------------- | --------------------------------------------------- |
-| `pnpm dev`      | Dev server                                          |
-| `pnpm build`    | Build production (gagal jika env tidak valid)       |
-| `pnpm start`    | Menjalankan hasil build                             |
-| `pnpm lint`     | ESLint, gagal jika ada warning                      |
-| `pnpm format`   | Prettier (dengan pengurutan class Tailwind)         |
-| `pnpm test`     | Unit test logika murni (Vitest), tanpa jaringan     |
-| `pnpm test:e2e` | E2E Playwright tanpa login (lihat catatan di bawah) |
+| Perintah        | Kegunaan                                                          |
+| --------------- | ----------------------------------------------------------------- |
+| `pnpm dev`      | Dev server                                                        |
+| `pnpm build`    | Build production                                                  |
+| `pnpm start`    | Menjalankan hasil build (server menolak start tanpa `API_ORIGIN`) |
+| `pnpm lint`     | ESLint, gagal jika ada warning                                    |
+| `pnpm format`   | Prettier (dengan pengurutan class Tailwind)                       |
+| `pnpm test`     | Unit test logika murni (Vitest), tanpa jaringan                   |
+| `pnpm test:e2e` | E2E Playwright pada build production (API tiruan di browser)      |
 
 Sebelum E2E pertama kali: `pnpm exec playwright install chromium`.
-Tidak ada mock API. Unit test hanya menguji logika yang tidak butuh jaringan (validasi, permission,
-navigasi, cookie sesi, parsing token), dan E2E hanya menguji perilaku tanpa login (halaman login,
-redirect, CSRF, header keamanan), sehingga test tidak pernah membaca atau mengubah data di backend.
-Screenshot responsif (360–1536px) disimpan di `tests/e2e/__screenshots__/`.
+
+E2E menguji semua halaman dan alur utama Super Admin (beranda, user, vendor, review laporan,
+laporan inventory, inventory, SOP, pipeline, audit log), responsif 360–1536px, dan aksesibilitas
+(axe). Halaman setelah login memakai **API tiruan di browser** (`tests/e2e/support/mock-api.js`),
+sehingga test tidak pernah membaca atau mengubah data di backend Go. Screenshot disimpan di
+`tests/e2e/__screenshots__/`. Pengukuran performa: `docs/PERFORMANCE.md`.
 
 Husky + lint-staged menjalankan ESLint dan Prettier pada file yang di-stage setiap commit.
 
@@ -89,40 +91,26 @@ Husky + lint-staged menjalankan ESLint dan Prettier pada file yang di-stage seti
 
 ```
 src/
-├─ app/                     # Routing & komposisi saja (tanpa logika bisnis)
-│  ├─ (auth)/login/         # /login
-│  ├─ (protected)/          # Dijaga <AuthGate>: / (placeholder), /change-password
-│  ├─ api/auth/*/route.js   # BFF: login, me, logout, password
-│  ├─ api/v1/[...path]/     # BFF: proxy generik ke Go (allowlist)
-│  ├─ offline/              # Fallback offline service worker
-│  ├─ serwist/[path]/       # Build & serve service worker (/serwist/sw.js)
-│  ├─ manifest.js, sw.js, layout.jsx, globals.css (design tokens), not-found.jsx
-├─ features/auth/
-│  ├─ api/                  # Schema Zod, fungsi pemanggil BFF, query keys
-│  ├─ components/, hooks/   # UI & alur login / ganti password / AuthGate
-│  ├─ stores/               # Zustand: profil user di memori (tanpa token)
-│  ├─ lib/                  # Pesan error, validasi ?next=
-│  └─ server/               # Implementasi Route Handler auth (server-only)
-├─ server/                  # Kode server BFF (server-only)
-│  ├─ session/              # Cookie sesi terenkripsi
-│  ├─ go/                   # Klien Go, token & refresh single-flight
-│  ├─ bff/                  # withSession, CSRF, proxy generik + allowlist, helper respons
-│  └─ http/                 # Parser/serializer cookie
-├─ components/ui/           # Primitif shadcn
-├─ components/shared/       # AppLogo, AppTopBar, FormField, PwaInstallPrompt, …
-├─ hooks/                   # Hook lintas fitur (use-pwa-install)
-├─ lib/                     # api/client.js (ky → BFF), errors, query-client, constants
-├─ config/env.js            # Validasi env dengan Zod
-├─ providers/               # QueryClient, Toaster, Serwist
-└─ proxy.js                 # CSP dengan nonce + redirect awal jika belum login
-tests/unit/                 # Setup Vitest & util
-tests/e2e/                  # Playwright (tanpa login)
-scripts/                    # generate-icons.mjs
-docs/                       # ASSUMPTIONS.md (kontrak Go), DECISIONS.md
+├─ app/                  Routing saja (page.jsx merangkai komponen fitur) + Route Handler BFF
+├─ features/<fitur>/     api/ (keys, schemas, queries, mutations), components/, lib/, index.js
+├─ components/ui/        Primitif shadcn
+├─ components/shared/    Komponen lintas fitur (QueryList, FormDialog, LookupFilter, …)
+├─ components/layout/    Shell: sidebar, rail, bottom nav, header
+├─ hooks/                useListQuery/useSaveMutation, useListParams, useOptionLabels, …
+├─ lib/                  Klien API, schema toleran, tanggal, pencarian, hak akses
+├─ server/               BFF (server-only): sesi, klien Go, proxy, CSRF, batas body
+├─ config/               env.js (server-only), client-env.js (publik)
+└─ proxy.js              CSP per request + redirect awal jika belum login
+tests/e2e/               Playwright (+ support/: API tiruan & data uji)
+tests/perf/              Pengukuran performa
+docs/                    ARCHITECTURE, ASSUMPTIONS, DECISIONS, SECURITY, PERFORMANCE
 ```
 
-Aturan: satu feature tidak boleh mengimpor feature lain (dicek ESLint). Kode bersama ditaruh di
-`components/`, `lib/`, atau `server/`. File server memakai `import 'server-only'`.
+**Developer baru: mulai dari [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — alur data,
+anatomi satu fitur, katalog komponen bersama, dan resep menambah halaman.
+
+Aturan: satu feature tidak boleh mengimpor isi feature lain kecuali lewat `index.js`-nya
+(dicek ESLint). File server memakai `import 'server-only'`.
 
 ## Keamanan (ringkas)
 
@@ -138,6 +126,10 @@ Aturan: satu feature tidak boleh mengimpor feature lain (dicek ESLint). Kode ber
 - Parameter `?next=` divalidasi untuk mencegah open redirect.
 - ESLint melarang `console.log`, `sessionStorage`, `dangerouslySetInnerHTML`, axios, moment,
   dan prop-types.
+- Body request dibatasi (proxy 11 MiB, login 16 KiB) dan dibaca streaming; request tanpa sesi
+  ditolak sebelum body dibaca.
+- Hasil uji keamanan lengkap dan hal yang masih perlu dikerjakan di infrastruktur (**HTTPS**,
+  reverse proxy): [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ## PWA
 
@@ -145,6 +137,9 @@ Aturan: satu feature tidak boleh mengimpor feature lain (dicek ESLint). Kode ber
   `public/icons/icon.svg` dengan `node scripts/generate-icons.mjs`. Ganti dengan aset resmi.
 - Service worker hanya aktif di build production. Lihat `docs/DECISIONS.md` (D3).
 
-## Belum dikerjakan (fase berikutnya)
+## Status modul (Super Admin)
 
-Dashboard, manajemen user, audit log, profil & sesi, modul cleaning/safety/scoring.
+Selesai: login & ganti password, beranda (rekap harian), review laporan task, laporan inventory,
+site & vendor & master task, pipeline & task, inventory, SOP, manajemen user, audit log, profil &
+sesi. Catatan safety menunggu dukungan API (filter kategori temuan) — lihat
+`docs/ASSUMPTIONS.md` (G1). Halaman untuk role Admin, Admin Worker, dan Worker belum dibuat.

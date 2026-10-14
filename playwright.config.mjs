@@ -4,9 +4,10 @@ const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
 
 /**
- * E2E tests run on a production build (`next start`). There is no mock backend: the specs only
- * cover behaviour that does not need a signed-in user, so they never read or change data on
- * the Go backend (API_ORIGIN is still required by the BFF).
+ * E2E tests run on a production build (`next start`). Signed-in pages use an in-browser mock of
+ * the API (tests/e2e/support/mock-api.js), so the tests never read or change data on the Go
+ * backend. API_ORIGIN is still required for the BFF to start; it is only reached by the
+ * unauthenticated checks (CSRF, forged cookie), which the BFF answers itself.
  */
 export default defineConfig({
   testDir: './tests/e2e',

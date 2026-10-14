@@ -1,7 +1,7 @@
 import { TZDate } from '@date-fns/tz';
 import { format, formatISO, isValid, parseISO } from 'date-fns';
 import { id as localeId } from 'date-fns/locale/id';
-import { clientEnv } from '@/config/env';
+import { clientEnv } from '@/config/client-env';
 
 /*
  * Dates are computed and displayed in APP_TIMEZONE (default Asia/Jakarta). The backend uses

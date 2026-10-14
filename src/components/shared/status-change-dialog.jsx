@@ -1,19 +1,44 @@
 'use client';
 
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { MASTER_STATUS } from '@/lib/constants';
+import { toastApiError } from '@/lib/notify';
 
 /**
- * Confirmation to deactivate (soft delete) or reactivate a master-data row.
+ * Confirmation to deactivate (soft delete) or reactivate a master-data row, which then runs the
+ * status mutation and reports the result.
+ *
+ * @example
+ * const changeStatus = useChangeSiteStatus();
+ * const [toggling, setToggling] = useState(null);
+ * <StatusChangeDialog target={toggling} entityLabel="site" mutation={changeStatus}
+ *   onClose={() => setToggling(null)} />
+ *
  * @param {object} props
- * @param {{ name: string, status: string } | null} props.target `null` closes the dialog.
+ * @param {{ id: string, status: string, name?: string } | null} props.target Row to change;
+ *   `null` closes the dialog.
+ * @param {string} [props.name] Shown name, when the row has no `name` (e.g. inventory `item`).
  * @param {string} props.entityLabel e.g. "site", "vendor".
- * @param {boolean} props.pending
- * @param {() => void} props.onConfirm
+ * @param {import('@tanstack/react-query').UseMutationResult<unknown, unknown, any>} props.mutation
+ *   A `useMasterStatusChange` mutation.
  * @param {() => void} props.onClose
  */
-export function StatusChangeDialog({ target, entityLabel, pending, onConfirm, onClose }) {
+export function StatusChangeDialog({ target, name, entityLabel, mutation, onClose }) {
   const deactivate = target?.status === MASTER_STATUS.ACTIVE;
+  const shownName = name ?? target?.name;
+
+  const confirm = () => {
+    if (!target) return;
+    mutation.mutate(target, {
+      onSuccess: () => {
+        toast.success(`Status ${entityLabel} berhasil diubah.`);
+        onClose();
+      },
+      onError: toastApiError,
+    });
+  };
+
   return (
     <ConfirmDialog
       open={Boolean(target)}
@@ -23,13 +48,13 @@ export function StatusChangeDialog({ target, entityLabel, pending, onConfirm, on
       title={deactivate ? `Nonaktifkan ${entityLabel}?` : `Aktifkan ${entityLabel}?`}
       description={
         deactivate
-          ? `${target?.name} tidak bisa dipilih untuk data baru. Data lama tetap tersimpan dan bisa diaktifkan lagi.`
-          : `${target?.name} bisa dipakai lagi.`
+          ? `${shownName} tidak bisa dipilih untuk data baru. Data lama tetap tersimpan dan bisa diaktifkan lagi.`
+          : `${shownName} bisa dipakai lagi.`
       }
       confirmLabel={deactivate ? 'Nonaktifkan' : 'Aktifkan'}
       tone={deactivate ? 'destructive' : 'default'}
-      pending={pending}
-      onConfirm={onConfirm}
+      pending={mutation.isPending}
+      onConfirm={confirm}
     />
   );
 }

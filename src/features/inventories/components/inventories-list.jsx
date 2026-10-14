@@ -7,12 +7,9 @@ import { parseAsString } from 'nuqs';
 import { Package, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { LookupFilter } from '@/components/shared/lookup-filter';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
@@ -71,7 +68,6 @@ export function InventoriesList() {
   const { user } = useSession();
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const query = useInventories({ ...params, limit });
-  const sites = useOptionLabels('sites');
   const vendors = useOptionLabels('vendors');
   const [creating, setCreating] = useState(false);
   // Server `?q=` + the same search here, in case the backend ignores `q`.
@@ -115,69 +111,50 @@ export function InventoriesList() {
         searchPlaceholder="Cari item, jenis, atau vendor"
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
-        <AsyncCombobox
+        <LookupFilter
           lookup="sites"
-          value={
-            params.site_id ? { value: params.site_id, label: sites.labelOf(params.site_id) } : null
-          }
-          onChange={(option) => setFilters({ site_id: option?.value ?? '' })}
+          value={params.site_id}
+          onChange={(site_id) => setFilters({ site_id })}
           placeholder="Semua site"
           ariaLabel="Filter site"
         />
-        <AsyncCombobox
+        <LookupFilter
           lookup="vendors"
-          value={
-            params.vendor_id
-              ? { value: params.vendor_id, label: vendors.labelOf(params.vendor_id) }
-              : null
-          }
-          onChange={(option) => setFilters({ vendor_id: option?.value ?? '' })}
+          value={params.vendor_id}
+          onChange={(vendor_id) => setFilters({ vendor_id })}
           placeholder="Semua vendor"
           ariaLabel="Filter vendor"
         />
       </div>
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title="Belum ada inventory"
-          description="Ubah filter, atau tambahkan inventory baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(r) => r.id}
-          caption="Daftar inventory"
-          cardGridClassName="sm:grid-cols-2"
-          onRowClick={(r) => router.push(`/inventories/${r.id}`)}
-          renderCard={(r) => (
-            <Link
-              href={`/inventories/${r.id}`}
-              className="flex items-center gap-3 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <InventoryItemCell inventory={r} />
-              <span className="ml-auto flex shrink-0 flex-col items-end gap-1.5">
-                <ConditionBadge value={r.status_condition} />
-                <span className="text-sm text-muted-foreground tabular-nums">{r.qty} unit</span>
-              </span>
-            </Link>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="inventory"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: Package,
+          title: 'Belum ada inventory',
+          description: 'Ubah filter, atau tambahkan inventory baru.',
+        }}
+        noun="inventory"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(r) => r.id}
+        caption="Daftar inventory"
+        cardGridClassName="sm:grid-cols-2"
+        onRowClick={(r) => router.push(`/inventories/${r.id}`)}
+        renderCard={(r) => (
+          <Link
+            href={`/inventories/${r.id}`}
+            className="flex items-center gap-3 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <InventoryItemCell inventory={r} />
+            <span className="ml-auto flex shrink-0 flex-col items-end gap-1.5">
+              <ConditionBadge value={r.status_condition} />
+              <span className="text-sm text-muted-foreground tabular-nums">{r.qty} unit</span>
+            </span>
+          </Link>
+        )}
+      />
 
       <InventoryFormDialog open={creating} inventory={null} onClose={() => setCreating(false)} />
     </>

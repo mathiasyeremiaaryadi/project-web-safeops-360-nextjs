@@ -1,21 +1,9 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/api/client';
+import { useListQuery } from '@/hooks/use-resource';
 import { policyKeys } from '@/features/policies/api/keys';
 import { policyListSchema } from '@/features/policies/api/schemas';
 
-/** `GET /policies?page=&limit=&q=&vendor_id=&status=` @param {Record<string, string | number>} params */
-export function usePolicies(params) {
-  return useQuery({
-    queryKey: policyKeys.list(params),
-    queryFn: () =>
-      apiRequest({
-        method: 'get',
-        path: 'v1/policies',
-        searchParams: params,
-        schema: policyListSchema,
-      }),
-    placeholderData: keepPreviousData,
-  });
-}
+/** `GET /policies?page=&limit=&q=&vendor_id=` @param {Record<string, string | number>} params */
+export const usePolicies = (params) =>
+  useListQuery({ keys: policyKeys, path: 'v1/policies', params, schema: policyListSchema });

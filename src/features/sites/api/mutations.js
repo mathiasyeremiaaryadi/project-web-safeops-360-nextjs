@@ -1,34 +1,14 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/api/client';
 import { useMasterStatusChange } from '@/hooks/use-master-status-change';
+import { useSaveMutation } from '@/hooks/use-resource';
+import { lookupKey } from '@/lib/api/query-keys';
 import { siteKeys } from '@/features/sites/api/keys';
 
-const LOOKUP_KEY = ['lookups', 'sites'];
+/** Create (`POST /sites`) or update (`PATCH /sites/{id}`) a site: `mutate({ id?, body })`. */
+export const useSaveSite = () =>
+  useSaveMutation({ path: 'v1/sites', keys: siteKeys, alsoInvalidate: [lookupKey('sites')] });
 
-/**
- * Create (`POST /sites`) or update (`PATCH /sites/{id}`). The response body is not read:
- * the list is refetched instead, so the save does not depend on the response envelope.
- */
-export function useSaveSite() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    /** @param {{ id?: string, body: Record<string, unknown> }} input */
-    mutationFn: ({ id, body }) =>
-      apiRequest({
-        method: id ? 'patch' : 'post',
-        path: id ? `v1/sites/${id}` : 'v1/sites',
-        json: body,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: LOOKUP_KEY });
-    },
-  });
-}
-
-/** Deactivate / reactivate a site. */
-export function useChangeSiteStatus() {
-  return useMasterStatusChange({ path: 'sites', invalidate: [siteKeys.lists(), LOOKUP_KEY] });
-}
+/** Deactivate (`DELETE`) / reactivate (`PATCH { status: ACTIVE }`) a site. */
+export const useChangeSiteStatus = () =>
+  useMasterStatusChange({ path: 'sites', invalidate: [siteKeys.lists(), lookupKey('sites')] });

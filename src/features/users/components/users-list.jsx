@@ -5,11 +5,8 @@ import { useRouter } from 'next/navigation';
 import { parseAsString } from 'nuqs';
 import { Users } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { QueryList } from '@/components/shared/query-list';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
@@ -125,36 +122,23 @@ export function UsersList() {
         </NativeSelect>
       </FilterBar>
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="Belum ada user"
-          description="Ubah pencarian atau filter, atau tambahkan user baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(user) => user.id}
-          caption="Daftar user"
-          cardGridClassName="sm:grid-cols-2"
-          onRowClick={(user) => router.push(`/users/${user.id}`)}
-          renderCard={(user) => <UserCard user={user} scopeText={scopeOf(user)} />}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="user"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: Users,
+          title: 'Belum ada user',
+          description: 'Ubah pencarian atau filter, atau tambahkan user baru.',
+        }}
+        noun="user"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(user) => user.id}
+        caption="Daftar user"
+        cardGridClassName="sm:grid-cols-2"
+        onRowClick={(user) => router.push(`/users/${user.id}`)}
+        renderCard={(user) => <UserCard user={user} scopeText={scopeOf(user)} />}
+      />
     </>
   );
 }

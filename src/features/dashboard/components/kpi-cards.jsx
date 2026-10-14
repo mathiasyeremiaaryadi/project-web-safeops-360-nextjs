@@ -7,34 +7,35 @@ import { cn } from '@/lib/utils';
 /**
  * @param {object} props
  * @param {string} props.label
- * @param {number | null} props.value `null` = not sent by the API.
- * @param {string} [props.hint]
+ * @param {number} props.value
  * @param {string} [props.valueClassName]
  */
-function KpiCard({ label, value, hint, valueClassName }) {
+function KpiCard({ label, value, valueClassName }) {
   return (
-    <div className="flex flex-col gap-1 rounded-2xl border bg-card p-4 sm:p-5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn('text-3xl font-bold text-foreground tabular-nums', valueClassName)}>
-        {value ?? '—'}
+    <div className="flex min-w-0 flex-col gap-1 rounded-2xl border bg-card p-3 sm:p-5">
+      <span className="text-xs text-muted-foreground sm:text-sm">{label}</span>
+      <span
+        className={cn(
+          'text-2xl font-bold text-foreground tabular-nums sm:text-3xl',
+          valueClassName,
+        )}
+      >
+        {value}
       </span>
-      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
     </div>
   );
 }
 
 /**
- * Task hari ini · Selesai · Menunggu review · Revisi diminta. 2×2 below 768px, 4 columns from 768px.
- * @param {object} props
- * @param {import('@tanstack/react-query').UseQueryResult<import('@/features/dashboard/lib/summary').DashboardKpis>} props.query
- * @param {number | null} props.vendorCount Vendors in "Progres per vendor" (hint under the total).
+ * Total task · Dikerjakan · Selesai, in three columns.
+ * @param {{ query: import('@tanstack/react-query').UseQueryResult<import('@/features/dashboard/lib/summary').DashboardKpis> }} props
  */
-export function KpiCards({ query, vendorCount }) {
+export function KpiCards({ query }) {
   if (query.isPending) {
     return (
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28 rounded-2xl" />
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-24 rounded-2xl sm:h-28" />
         ))}
       </div>
     );
@@ -43,20 +44,10 @@ export function KpiCards({ query, vendorCount }) {
 
   const kpis = query.data;
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <KpiCard
-        label="Task hari ini"
-        value={kpis.total}
-        hint={vendorCount ? `${vendorCount} vendor` : undefined}
-      />
+    <div className="grid grid-cols-3 gap-3">
+      <KpiCard label="Total task" value={kpis.total} />
+      <KpiCard label="Dikerjakan" value={kpis.inProgress} valueClassName="text-info" />
       <KpiCard label="Selesai" value={kpis.completed} valueClassName="text-success" />
-      <KpiCard label="Menunggu review" value={kpis.submitted} valueClassName="text-warning" />
-      <KpiCard
-        label="Revisi diminta"
-        value={kpis.revision}
-        valueClassName="text-revision"
-        hint={kpis.notStarted === null ? undefined : `Belum dikerjakan: ${kpis.notStarted}`}
-      />
     </div>
   );
 }

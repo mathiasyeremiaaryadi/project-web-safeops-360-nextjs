@@ -231,9 +231,9 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
 - **DB1.** Bentuk respons tidak tercantum di BRD; dipetakan oleh fungsi murni di
   `features/dashboard/lib/summary.js`. Jumlah per status boleh berupa map (`{ SUBMITTED: 3 }`)
   atau list (`[{ status, count }]`), di bawah `pipeline_reports` (revisi di `pipeline_revisions`).
-- **DB2.** KPI: "Task hari ini" = `TOTAL`/`total` jika ada, jika tidak jumlah semua status laporan
-  task; "Selesai" = `COMPLETED`; "Menunggu review" = `SUBMITTED`; "Revisi diminta" = revisi
-  `REQUESTED` ("—" jika tidak dikirim); "Belum dikerjakan" = `PENDING`.
+- **DB2.** Panel angka (permintaan user, 14 Okt 2026): **Total task** = `TOTAL`/`total` jika
+  ada, jika tidak jumlah semua status laporan task; **Dikerjakan** = `IN_PROGRESS`;
+  **Selesai** = `COMPLETED`.
 - **DB3.** `/reports/daily` berupa baris per vendor atau per vendor + pipeline (boleh bersarang di
   `pipelines`), dijumlahkan per vendor oleh `toVendorProgress`. Persentase = selesai ÷ task.
   "Belum dikerjakan" diambil dari field-nya, atau task − selesai − menunggu review − revisi.

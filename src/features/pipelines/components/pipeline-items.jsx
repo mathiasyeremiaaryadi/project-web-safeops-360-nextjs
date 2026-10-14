@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { useOptionLabels } from '@/hooks/use-option-labels';
-import { getErrorMessage } from '@/lib/api/errors';
+import { toastApiError } from '@/lib/notify';
 import { searchRows } from '@/lib/search';
 import { MASTER_STATUS } from '@/lib/constants';
 import {
@@ -23,9 +23,6 @@ import { PipelineItemRow } from '@/features/pipelines/components/pipeline-item-r
 import { nextSortOrder, sortItems, swapWithNeighbour } from '@/features/pipelines/lib/order';
 
 /** @typedef {import('@/features/pipelines/api/schemas').PipelineItem} PipelineItem */
-
-/** @param {unknown} error */
-const showError = (error) => toast.error(getErrorMessage(error));
 
 /**
  * Ordered tasks of a pipeline: add (appended last), move ↑/↓, activate/deactivate, detach.
@@ -56,14 +53,14 @@ export function PipelineItems({ pipelineId, canEdit }) {
     if (!option) return;
     addItem.mutate(
       { item_id: option.value, sort_order: nextSortOrder(items) },
-      { onSuccess: () => toast.success('Task ditambahkan.'), onError: showError },
+      { onSuccess: () => toast.success('Task ditambahkan.'), onError: toastApiError },
     );
   };
 
   /** @param {number} index @param {-1 | 1} direction */
   const move = (index, direction) => {
     const patches = swapWithNeighbour(items, index, direction);
-    if (patches.length) reorder.mutate(patches, { onError: showError });
+    if (patches.length) reorder.mutate(patches, { onError: toastApiError });
   };
 
   return (
@@ -128,7 +125,7 @@ export function PipelineItems({ pipelineId, canEdit }) {
                 canMoveUp={canReorder && index > 0 && !reorder.isPending}
                 canMoveDown={canReorder && index < items.length - 1 && !reorder.isPending}
                 onMove={(direction) => move(index, direction)}
-                onToggle={() => toggle.mutate(item, { onError: showError })}
+                onToggle={() => toggle.mutate(item, { onError: toastApiError })}
                 onRemove={() => setRemoving(item)}
               />
             );
@@ -157,7 +154,7 @@ export function PipelineItems({ pipelineId, canEdit }) {
               toast.success('Task dilepas dari pipeline.');
               setRemoving(null);
             },
-            onError: showError,
+            onError: toastApiError,
           });
         }}
       />

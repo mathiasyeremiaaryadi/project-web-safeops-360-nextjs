@@ -1,5 +1,4 @@
-/** Query keys of the audit-logs feature. */
-export const auditLogKeys = Object.freeze({
-  all: /** @type {const} */ (['audit-logs']),
-  list: (/** @type {Record<string, unknown>} */ params) => [...auditLogKeys.all, 'list', params],
-});
+import { createQueryKeys } from '@/lib/api/query-keys';
+
+/** Query keys of the audit log feature. */
+export const auditLogKeys = createQueryKeys('audit-logs');

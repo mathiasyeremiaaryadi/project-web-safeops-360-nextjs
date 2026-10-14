@@ -2,19 +2,14 @@
 
 import { useState } from 'react';
 import { Truck } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { MasterRowActions } from '@/components/shared/master-row-actions';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
-import { searchRows } from '@/lib/search';
 import { useOptionLabels } from '@/hooks/use-option-labels';
-import { getErrorMessage } from '@/lib/api/errors';
+import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeVendorStatus } from '@/features/vendors/api/mutations';
 import { useVendors } from '@/features/vendors/api/queries';
@@ -60,17 +55,6 @@ export function VendorsList({ createOpen, onCreateClose }) {
   const changeStatus = useChangeVendorStatus();
   const [editing, setEditing] = useState(/** @type {Vendor | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Vendor | null} */ (null));
-
-  const toggleStatus = () => {
-    if (!toggling) return;
-    changeStatus.mutate(toggling, {
-      onSuccess: () => {
-        toast.success('Status vendor berhasil diubah.');
-        setToggling(null);
-      },
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
-  };
 
   const actions = (/** @type {Vendor} */ vendor) => (
     <MasterRowActions
@@ -126,45 +110,32 @@ export function VendorsList({ createOpen, onCreateClose }) {
         searchPlaceholder="Cari kode atau nama vendor"
       />
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={Truck}
-          title="Belum ada vendor"
-          description="Ubah pencarian, atau tambahkan vendor baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(vendor) => vendor.id}
-          caption="Daftar vendor"
-          cardGridClassName="sm:grid-cols-2"
-          renderCard={(vendor) => (
-            <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-sm text-muted-foreground">{vendor.code}</span>
-                {badge(vendor)}
-              </div>
-              <p className="text-lg font-semibold text-foreground">{vendor.name}</p>
-              <SiteChips ids={vendor.site_ids} siteName={sites.labelOf} />
-              {actions(vendor)}
-            </article>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="vendor"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: Truck,
+          title: 'Belum ada vendor',
+          description: 'Ubah pencarian, atau tambahkan vendor baru.',
+        }}
+        noun="vendor"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(vendor) => vendor.id}
+        caption="Daftar vendor"
+        cardGridClassName="sm:grid-cols-2"
+        renderCard={(vendor) => (
+          <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-sm text-muted-foreground">{vendor.code}</span>
+              {badge(vendor)}
+            </div>
+            <p className="text-lg font-semibold text-foreground">{vendor.name}</p>
+            <SiteChips ids={vendor.site_ids} siteName={sites.labelOf} />
+            {actions(vendor)}
+          </article>
+        )}
+      />
 
       <VendorFormDialog
         open={createOpen || Boolean(editing)}
@@ -178,8 +149,7 @@ export function VendorsList({ createOpen, onCreateClose }) {
       <StatusChangeDialog
         target={toggling}
         entityLabel="vendor"
-        pending={changeStatus.isPending}
-        onConfirm={toggleStatus}
+        mutation={changeStatus}
         onClose={() => setToggling(null)}
       />
     </>

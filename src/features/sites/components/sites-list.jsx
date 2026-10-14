@@ -2,18 +2,13 @@
 
 import { useState } from 'react';
 import { Building2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { MasterRowActions } from '@/components/shared/master-row-actions';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
 import { searchRows } from '@/lib/search';
-import { getErrorMessage } from '@/lib/api/errors';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeSiteStatus } from '@/features/sites/api/mutations';
 import { useSites } from '@/features/sites/api/queries';
@@ -35,17 +30,6 @@ export function SitesList({ createOpen, onCreateClose }) {
   const changeStatus = useChangeSiteStatus();
   const [editing, setEditing] = useState(/** @type {Site | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Site | null} */ (null));
-
-  const toggleStatus = () => {
-    if (!toggling) return;
-    changeStatus.mutate(toggling, {
-      onSuccess: () => {
-        toast.success('Status site berhasil diubah.');
-        setToggling(null);
-      },
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
-  };
 
   /** @param {Site} site */
   const actions = (site) => (
@@ -102,47 +86,32 @@ export function SitesList({ createOpen, onCreateClose }) {
         searchPlaceholder="Cari kode atau nama site"
       />
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={Building2}
-          title="Belum ada site"
-          description="Ubah pencarian, atau tambahkan site baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(site) => site.id}
-          caption="Daftar site"
-          cardGridClassName="sm:grid-cols-2"
-          renderCard={(site) => (
-            <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-sm text-muted-foreground">{site.code}</span>
-                {badge(site)}
-              </div>
-              <p className="text-lg font-semibold text-foreground">{site.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {site.site_type || 'Tipe belum diisi'}
-              </p>
-              {actions(site)}
-            </article>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="site"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: Building2,
+          title: 'Belum ada site',
+          description: 'Ubah pencarian, atau tambahkan site baru.',
+        }}
+        noun="site"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(site) => site.id}
+        caption="Daftar site"
+        cardGridClassName="sm:grid-cols-2"
+        renderCard={(site) => (
+          <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-sm text-muted-foreground">{site.code}</span>
+              {badge(site)}
+            </div>
+            <p className="text-lg font-semibold text-foreground">{site.name}</p>
+            <p className="text-sm text-muted-foreground">{site.site_type || 'Tipe belum diisi'}</p>
+            {actions(site)}
+          </article>
+        )}
+      />
 
       <SiteFormDialog
         open={createOpen || Boolean(editing)}
@@ -155,8 +124,7 @@ export function SitesList({ createOpen, onCreateClose }) {
       <StatusChangeDialog
         target={toggling}
         entityLabel="site"
-        pending={changeStatus.isPending}
-        onConfirm={toggleStatus}
+        mutation={changeStatus}
         onClose={() => setToggling(null)}
       />
     </>

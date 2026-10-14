@@ -3,7 +3,7 @@ import { getServerEnv } from '@/config/env';
 import { GoUnavailableError, getForwardedHeaders } from '@/server/go/go-client';
 import { InvalidTokenResponseError, refreshSession } from '@/server/go/session-tokens';
 import {
-  buildClearedSessionCookie,
+  buildClearedSessionCookies,
   buildSessionCookie,
   hasSessionCookie,
   readSession,
@@ -37,7 +37,7 @@ const ACCESS_TOKEN_REFRESH_MARGIN_MS = 30_000;
 export async function callWithSession(request, call) {
   const { SESSION_SECRET } = getServerEnv();
   const forwarded = getForwardedHeaders(request);
-  const clearIfPresent = hasSessionCookie(request) ? [buildClearedSessionCookie(request)] : [];
+  const clearIfPresent = hasSessionCookie(request) ? buildClearedSessionCookies(request) : [];
 
   let session = readSession(request, SESSION_SECRET);
   if (!session) return { upstream: null, cookies: clearIfPresent };
@@ -46,7 +46,7 @@ export async function callWithSession(request, call) {
   if (session.atExp - Date.now() < ACCESS_TOKEN_REFRESH_MARGIN_MS) {
     session = await refreshSession(session, forwarded);
     refreshed = true;
-    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
+    if (!session) return { upstream: null, cookies: buildClearedSessionCookies(request) };
   }
 
   let upstream = await call(session.at, forwarded);
@@ -55,13 +55,13 @@ export async function callWithSession(request, call) {
     await upstream.body?.cancel();
     session = await refreshSession(session, forwarded);
     refreshed = true;
-    if (!session) return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
+    if (!session) return { upstream: null, cookies: buildClearedSessionCookies(request) };
     upstream = await call(session.at, forwarded);
   }
 
   if (upstream.status === 401) {
     await upstream.body?.cancel();
-    return { upstream: null, cookies: [buildClearedSessionCookie(request)] };
+    return { upstream: null, cookies: buildClearedSessionCookies(request) };
   }
 
   return {

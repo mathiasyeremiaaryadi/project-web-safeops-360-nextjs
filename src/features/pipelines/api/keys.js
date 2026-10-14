@@ -1,8 +1,7 @@
-/** Query keys of the pipelines feature. */
+import { createQueryKeys } from '@/lib/api/query-keys';
+
+/** Query keys of the pipelines feature, plus the ordered tasks of one pipeline. */
 export const pipelineKeys = Object.freeze({
-  all: /** @type {const} */ (['pipelines']),
-  lists: () => /** @type {const} */ ([...pipelineKeys.all, 'list']),
-  list: (/** @type {Record<string, unknown>} */ params) => [...pipelineKeys.lists(), params],
-  detail: (/** @type {string} */ id) => [...pipelineKeys.all, 'detail', id],
-  items: (/** @type {string} */ id) => [...pipelineKeys.all, 'items', id],
+  ...createQueryKeys('pipelines'),
+  items: (/** @type {string} */ id) => ['pipelines', 'items', id],
 });

@@ -4,9 +4,8 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
+import { ComboboxField } from '@/components/shared/combobox-field';
 import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
@@ -47,7 +46,7 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
 
   const onSubmit = form.handleSubmit((values) => {
     save.mutate(
-      { id: inventory?.id, fields: toInventoryFields(values) },
+      { id: inventory?.id, body: toInventoryFields(values) },
       {
         onSuccess: () => {
           toast.success('Inventory berhasil disimpan.');
@@ -67,29 +66,14 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
       error={save.isError ? getErrorMessage(save.error) : null}
       submitLabel="Simpan inventory"
     >
-      <Controller
+      <ComboboxField
         control={form.control}
         name="vendor"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="inventory-vendor">Vendor</Label>
-            <AsyncCombobox
-              id="inventory-vendor"
-              lookup="vendors"
-              params={{ status: 'ACTIVE' }}
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="Pilih vendor"
-              invalid={Boolean(fieldState.error)}
-              describedBy={fieldState.error ? 'inventory-vendor-error' : undefined}
-            />
-            {fieldState.error ? (
-              <p id="inventory-vendor-error" className="text-sm text-destructive">
-                {fieldState.error.message}
-              </p>
-            ) : null}
-          </div>
-        )}
+        id="inventory-vendor"
+        label="Vendor"
+        lookup="vendors"
+        params={{ status: 'ACTIVE' }}
+        placeholder="Pilih vendor"
       />
       <FormField id="inventory-item" label="Nama item" error={errors.item?.message}>
         <Input

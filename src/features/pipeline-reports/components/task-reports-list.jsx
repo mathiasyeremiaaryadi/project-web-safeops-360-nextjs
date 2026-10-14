@@ -4,12 +4,9 @@ import Link from 'next/link';
 import { parseAsString } from 'nuqs';
 import { ClipboardCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
-import { EmptyState } from '@/components/shared/empty-state';
 import { ListWithPanel } from '@/components/shared/list-with-panel';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
+import { QueryList } from '@/components/shared/query-list';
 import { ReportFilters } from '@/components/shared/report-filters';
-import { ResponsiveList } from '@/components/shared/responsive-list';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { neighbourId, useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
@@ -129,49 +126,34 @@ export function TaskReportsList() {
           ) : null
         }
       >
-        {query.isPending ? <ListSkeleton /> : null}
-        {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-        {query.isSuccess && rows.length === 0 ? (
-          <EmptyState
-            icon={ClipboardCheck}
-            title="Tidak ada laporan"
-            description="Belum ada laporan untuk status dan filter ini."
-          />
-        ) : null}
-        {query.isSuccess && rows.length > 0 ? (
-          <ResponsiveList
-            data={rows}
-            columns={columns}
-            getRowId={(r) => r.id}
-            caption="Daftar laporan task"
-            onRowClick={(r) => panel.open(r.id)}
-            isRowSelected={(r) => r.id === panel.selectedId}
-            renderCard={(r) => (
-              <Link
-                href={hrefOf(r.id)}
-                className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="font-semibold text-foreground">
-                  {r.task_name ?? 'Laporan task'}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {[r.pipeline_name, workerOf(r), shiftLabel(r.shift)].filter(Boolean).join(' · ')}
-                </span>
-                <ReportBadges report={r} />
-              </Link>
-            )}
-            footer={
-              <Pagination
-                page={query.data.page}
-                limit={query.data.limit}
-                total={query.data.total}
-                count={query.data.data.length}
-                noun="laporan"
-                onPageChange={setPage}
-              />
-            }
-          />
-        ) : null}
+        <QueryList
+          query={query}
+          rows={rows}
+          empty={{
+            icon: ClipboardCheck,
+            title: 'Tidak ada laporan',
+            description: 'Belum ada laporan untuk status dan filter ini.',
+          }}
+          noun="laporan"
+          onPageChange={setPage}
+          columns={columns}
+          getRowId={(r) => r.id}
+          caption="Daftar laporan task"
+          onRowClick={(r) => panel.open(r.id)}
+          isRowSelected={(r) => r.id === panel.selectedId}
+          renderCard={(r) => (
+            <Link
+              href={hrefOf(r.id)}
+              className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="font-semibold text-foreground">{r.task_name ?? 'Laporan task'}</span>
+              <span className="text-sm text-muted-foreground">
+                {[r.pipeline_name, workerOf(r), shiftLabel(r.shift)].filter(Boolean).join(' · ')}
+              </span>
+              <ReportBadges report={r} />
+            </Link>
+          )}
+        />
       </ListWithPanel>
     </>
   );

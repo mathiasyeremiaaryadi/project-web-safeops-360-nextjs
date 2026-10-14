@@ -1,9 +1,10 @@
 import 'server-only';
+import { readJsonWithLimit } from '@/server/http/body';
 import { getServerEnv } from '@/config/env';
 import { getForwardedHeaders, goFetch } from '@/server/go/go-client';
 import { sessionFromTokenResponse } from '@/server/go/session-tokens';
 import {
-  buildClearedSessionCookie,
+  buildClearedSessionCookies,
   buildSessionCookie,
   readSession,
 } from '@/server/session/session-cookie';
@@ -28,8 +29,11 @@ import { changePasswordRequestSchema, loginRequestSchema } from '@/features/auth
  * the browser only receives the encrypted, HttpOnly session cookie.
  */
 
+/** Login and password forms are tiny; anything larger is rejected before parsing. */
+const MAX_AUTH_BODY_BYTES = 16 * 1024;
+
 /**
- * Parses a JSON body with a schema.
+ * Parses a JSON body (at most 16 KiB) with a schema.
  * @template {import('zod').ZodType} T
  * @param {Request} request
  * @param {T} schema
@@ -38,8 +42,11 @@ import { changePasswordRequestSchema, loginRequestSchema } from '@/features/auth
 async function parseJsonBody(request, schema) {
   let body;
   try {
-    body = await request.json();
+    body = await readJsonWithLimit(request, MAX_AUTH_BODY_BYTES);
   } catch {
+    return { error: errorResponse(413, 'PAYLOAD_TOO_LARGE', 'Data terlalu besar.') };
+  }
+  if (body === undefined) {
     return { error: errorResponse(400, 'VALIDATION_ERROR', 'Format data tidak valid.') };
   }
   const parsed = schema.safeParse(body);
@@ -129,7 +136,7 @@ export async function handleLogout(request) {
       // Go unreachable: the local session is removed anyway.
     }
   }
-  return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
+  return withCookies(noContentResponse(), buildClearedSessionCookies(request));
 }
 
 /**
@@ -148,7 +155,7 @@ export async function handleLogoutAll(request) {
     if (!upstream) return unauthorizedResponse(cookies);
     if (!upstream.ok) return withCookies(await passthroughResponse(upstream), cookies);
     await upstream.body?.cancel();
-    return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
+    return withCookies(noContentResponse(), buildClearedSessionCookies(request));
   } catch (error) {
     return upstreamErrorResponse(error);
   }
@@ -178,7 +185,7 @@ export async function handleChangePassword(request) {
     if (!upstream) return unauthorizedResponse(cookies);
     if (upstream.ok) {
       await upstream.body?.cancel();
-      return withCookies(noContentResponse(), [buildClearedSessionCookie(request)]);
+      return withCookies(noContentResponse(), buildClearedSessionCookies(request));
     }
     return withCookies(await passthroughResponse(upstream), cookies);
   } catch (error) {

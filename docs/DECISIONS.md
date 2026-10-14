@@ -187,3 +187,25 @@ diikuti adalah spesifikasi; posisinya tetap tepat di bawah field password.
 - Laporan yang dipilih disimpan di URL (`?selected=<id>`). Setelah review laporan task di panel,
   laporan berikutnya otomatis dipilih; di halaman detail (mobile), user kembali ke list. Laporan
   inventory tetap di detail karena alurnya bertahap (Baru → Diperiksa → Disetujui → Selesai).
+
+## D16. Fase 8 — penyederhanaan kode
+
+Tujuan: developer baru bisa membaca satu fitur dan langsung paham polanya. Perilaku tidak berubah
+(dibuktikan dengan E2E sebelum dan sesudah, lihat `tests/e2e/`).
+
+- Pola request yang berulang di 11 fitur dipusatkan: `createQueryKeys`, `useListQuery`,
+  `useDetailQuery`, `useSaveMutation` (JSON atau multipart). File `api/` sebuah fitur kini
+  beberapa baris saja.
+- Empat kondisi list + paginasi → `<QueryList>`; dialog nonaktif/aktif menjalankan mutation dan
+  toast sendiri (`<StatusChangeDialog mutation>`); filter id → `<LookupFilter>`; field pilih
+  vendor/site di form → `<ComboboxField>`; 404 → `<NotFoundState>`; toast error → `toastApiError`.
+- File tak terpakai dihapus (`coming-soon`, `ui/card`, `ui/dropdown-menu`, `ui/table`). ESLint
+  sekarang menolak import/variabel yang tidak dipakai.
+- Hasil: ±550 baris lebih sedikit. Panduan: `docs/ARCHITECTURE.md`.
+
+## D17. Fase 8 — pengerasan keamanan
+
+Rincian dan bukti uji di `docs/SECURITY.md`. Ringkas: body request dibatasi secara streaming dan
+dicek setelah sesi; respons BFF diberi CSP `sandbox`; cookie sesi dengan nama lain ikut dihapus;
+`X-Forwarded-For` hanya entri terakhir; source map service worker dimatikan; env server ditandai
+`server-only`. Yang masih terbuka ada di infrastruktur: **HTTPS** dan reverse proxy.

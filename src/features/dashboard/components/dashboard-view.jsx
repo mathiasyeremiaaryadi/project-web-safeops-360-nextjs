@@ -55,7 +55,7 @@ export function DashboardView() {
       </ReportFilters>
 
       <div className="flex flex-col gap-5">
-        <KpiCards query={kpis} vendorCount={progress.data?.length ?? null} />
+        <KpiCards query={kpis} />
         <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
           <div className="lg:col-span-2">
             <VendorProgress query={progress} />

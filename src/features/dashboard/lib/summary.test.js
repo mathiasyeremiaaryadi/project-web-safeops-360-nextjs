@@ -25,7 +25,7 @@ describe('toStatusCounts', () => {
 });
 
 describe('toDashboardKpis', () => {
-  it('sums the statuses when no total is sent', () => {
+  it('returns total (sum of statuses), in progress and completed', () => {
     expect(
       toDashboardKpis({
         data: {
@@ -33,17 +33,18 @@ describe('toDashboardKpis', () => {
           pipeline_revisions: { REQUESTED: 4 },
         },
       }),
-    ).toEqual({ total: 48, completed: 29, submitted: 9, revision: 4, notStarted: 6 });
+    ).toEqual({ total: 48, inProgress: 4, completed: 29 });
   });
 
-  it('prefers an explicit total and leaves unknown counts empty', () => {
-    expect(toDashboardKpis({ pipeline_reports: { TOTAL: 50, COMPLETED: 10 } })).toEqual({
-      total: 50,
-      completed: 10,
-      submitted: 0,
-      revision: null,
-      notStarted: null,
-    });
+  it('prefers an explicit total and reads a list of counts', () => {
+    expect(
+      toDashboardKpis({
+        pipeline_reports: [
+          { status: 'TOTAL', count: 50 },
+          { status: 'COMPLETED', count: 10 },
+        ],
+      }),
+    ).toEqual({ total: 50, inProgress: 0, completed: 10 });
   });
 });
 

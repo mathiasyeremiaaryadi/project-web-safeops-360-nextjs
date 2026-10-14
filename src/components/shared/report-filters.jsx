@@ -1,8 +1,7 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
-import { useOptionLabels } from '@/hooks/use-option-labels';
+import { LookupFilter } from '@/components/shared/lookup-filter';
 
 /**
  * Site + vendor filters of the report lists, plus an optional date range (`from`/`to` as
@@ -14,9 +13,6 @@ import { useOptionLabels } from '@/hooks/use-option-labels';
  * @param {import('react').ReactNode} [props.children] Extra filter controls, shown first.
  */
 export function ReportFilters({ params, onChange, dateRange = false, children }) {
-  const sites = useOptionLabels('sites');
-  const vendors = useOptionLabels('vendors');
-
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {children}
@@ -38,24 +34,18 @@ export function ReportFilters({ params, onChange, dateRange = false, children })
           />
         </>
       ) : null}
-      <AsyncCombobox
+      <LookupFilter
         lookup="sites"
-        value={
-          params.site_id ? { value: params.site_id, label: sites.labelOf(params.site_id) } : null
-        }
-        onChange={(option) => onChange({ site_id: option?.value ?? '' })}
+        value={params.site_id}
+        onChange={(site_id) => onChange({ site_id })}
         placeholder="Semua site"
         ariaLabel="Filter site"
       />
-      <AsyncCombobox
+      <LookupFilter
         lookup="vendors"
         params={params.site_id ? { site_id: params.site_id } : undefined}
-        value={
-          params.vendor_id
-            ? { value: params.vendor_id, label: vendors.labelOf(params.vendor_id) }
-            : null
-        }
-        onChange={(option) => onChange({ vendor_id: option?.value ?? '' })}
+        value={params.vendor_id}
+        onChange={(vendor_id) => onChange({ vendor_id })}
         placeholder="Semua vendor"
         ariaLabel="Filter vendor"
       />

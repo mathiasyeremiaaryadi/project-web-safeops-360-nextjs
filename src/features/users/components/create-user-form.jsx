@@ -67,7 +67,7 @@ export function CreateUserForm() {
         noValidate
         onSubmit={onSubmit}
         aria-busy={createUser.isPending}
-        className="flex flex-col gap-4"
+        className="flex min-w-0 flex-col gap-4"
       >
         <FormCard title="Data akun">
           <ProfileFields form={form} withUsername />

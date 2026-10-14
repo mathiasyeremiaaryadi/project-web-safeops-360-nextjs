@@ -40,6 +40,11 @@ const eslintConfig = defineConfig([
     rules: {
       // Never log tokens, passwords or auth responses. Only warn/error are allowed.
       'no-console': ['error', { allow: ['warn', 'error'] }],
+      // Leftover imports/variables after a refactor; `_name` marks an intentionally unused one.
+      'no-unused-vars': [
+        'error',
+        { ignoreRestSiblings: true, varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
+      ],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
       'no-restricted-globals': [

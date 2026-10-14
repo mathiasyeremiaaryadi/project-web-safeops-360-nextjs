@@ -4,8 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
+import { ComboboxField } from '@/components/shared/combobox-field';
 import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
@@ -43,7 +42,7 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
 
   const onSubmit = form.handleSubmit((values) => {
     save.mutate(
-      { id: policy?.id, fields: toPolicyFields(values, isNew) },
+      { id: policy?.id, body: toPolicyFields(values, isNew) },
       {
         onSuccess: () => {
           toast.success('SOP berhasil disimpan.');
@@ -63,30 +62,15 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
       error={save.isError ? getErrorMessage(save.error) : null}
       submitLabel={isNew ? 'Upload SOP' : 'Simpan SOP'}
     >
-      <Controller
+      <ComboboxField
         control={form.control}
         name="vendor"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="policy-vendor">Vendor</Label>
-            <AsyncCombobox
-              id="policy-vendor"
-              lookup="vendors"
-              params={{ status: 'ACTIVE' }}
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="Pilih vendor"
-              disabled={!isNew}
-              invalid={Boolean(fieldState.error)}
-              describedBy={fieldState.error ? 'policy-vendor-error' : undefined}
-            />
-            {fieldState.error ? (
-              <p id="policy-vendor-error" className="text-sm text-destructive">
-                {fieldState.error.message}
-              </p>
-            ) : null}
-          </div>
-        )}
+        id="policy-vendor"
+        label="Vendor"
+        lookup="vendors"
+        params={{ status: 'ACTIVE' }}
+        placeholder="Pilih vendor"
+        disabled={!isNew}
       />
       <FormField id="policy-name" label="Nama SOP" error={errors.name?.message}>
         <Input

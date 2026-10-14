@@ -3,23 +3,19 @@
 import { useState } from 'react';
 import { parseAsString } from 'nuqs';
 import { FileText, Upload } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
-import { EmptyState } from '@/components/shared/empty-state';
 import { formatFileSize } from '@/components/shared/file-field';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { LookupFilter } from '@/components/shared/lookup-filter';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
-import { getErrorMessage } from '@/lib/api/errors';
 import { formatDate } from '@/lib/date';
+import { toastApiError } from '@/lib/notify';
 import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
@@ -61,7 +57,7 @@ export function PoliciesList() {
       policy={policy}
       canEdit={canEdit}
       opening={openFile.isPending && openFile.variables === policy.id}
-      onOpen={() => openFile.mutate(policy.id, { onError: (e) => toast.error(getErrorMessage(e)) })}
+      onOpen={() => openFile.mutate(policy.id, { onError: toastApiError })}
       onEdit={() => setEditing(policy)}
       onToggleStatus={() => setToggling(policy)}
     />
@@ -129,59 +125,42 @@ export function PoliciesList() {
         onSearchChange={(q) => setFilters({ q })}
         searchPlaceholder="Cari nama SOP atau vendor"
       />
-      <AsyncCombobox
+      <LookupFilter
         className="mb-4 sm:max-w-80"
         lookup="vendors"
-        value={
-          params.vendor_id
-            ? { value: params.vendor_id, label: vendors.labelOf(params.vendor_id) }
-            : null
-        }
-        onChange={(option) => setFilters({ vendor_id: option?.value ?? '' })}
+        value={params.vendor_id}
+        onChange={(vendor_id) => setFilters({ vendor_id })}
         placeholder="Semua vendor"
         ariaLabel="Filter vendor"
       />
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="Belum ada SOP"
-          description="Ubah filter, atau upload SOP baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(p) => p.id}
-          caption="Daftar SOP"
-          cardGridClassName="sm:grid-cols-2"
-          renderCard={(p) => (
-            <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-foreground">{p.name}</p>
-                {badge(p)}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {[vendors.labelOf(p.vendor_id), ...fileParts(p)].join(' · ')}
-              </p>
-              {actions(p)}
-            </article>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="SOP"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: FileText,
+          title: 'Belum ada SOP',
+          description: 'Ubah filter, atau upload SOP baru.',
+        }}
+        noun="SOP"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(p) => p.id}
+        caption="Daftar SOP"
+        cardGridClassName="sm:grid-cols-2"
+        renderCard={(p) => (
+          <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-foreground">{p.name}</p>
+              {badge(p)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {[vendors.labelOf(p.vendor_id), ...fileParts(p)].join(' · ')}
+            </p>
+            {actions(p)}
+          </article>
+        )}
+      />
 
       <PolicyFormDialog
         open={creating || Boolean(editing)}
@@ -195,18 +174,8 @@ export function PoliciesList() {
       <StatusChangeDialog
         target={toggling}
         entityLabel="SOP"
-        pending={changeStatus.isPending}
+        mutation={changeStatus}
         onClose={() => setToggling(null)}
-        onConfirm={() =>
-          toggling &&
-          changeStatus.mutate(toggling, {
-            onSuccess: () => {
-              toast.success('Status SOP berhasil diubah.');
-              setToggling(null);
-            },
-            onError: (error) => toast.error(getErrorMessage(error)),
-          })
-        }
       />
     </>
   );

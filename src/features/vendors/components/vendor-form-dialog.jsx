@@ -1,11 +1,10 @@
 'use client';
 
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
+import { ComboboxField } from '@/components/shared/combobox-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { getErrorMessage } from '@/lib/api/errors';
@@ -88,22 +87,14 @@ export function VendorFormDialog({ open, vendor, siteName, onClose }) {
           autoComplete="off"
         />
       </FormField>
-      <Controller
+      <ComboboxField
         control={form.control}
         name="sites"
-        render={({ field }) => (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="vendor-sites">Site yang dilayani (opsional)</Label>
-            <AsyncCombobox
-              id="vendor-sites"
-              lookup="sites"
-              multiple
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="Pilih site"
-            />
-          </div>
-        )}
+        id="vendor-sites"
+        label="Site yang dilayani (opsional)"
+        lookup="sites"
+        placeholder="Pilih site"
+        multiple
       />
     </FormDialog>
   );

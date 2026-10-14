@@ -8,12 +8,9 @@ import { Plus, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { PageHeader } from '@/components/layout/page-header';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
-import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
-import { ResponsiveList } from '@/components/shared/responsive-list';
+import { LookupFilter } from '@/components/shared/lookup-filter';
+import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
@@ -50,9 +47,6 @@ export function PipelinesList() {
       ])
     : [];
   const [creating, setCreating] = useState(false);
-  const selectedVendor = params.vendor_id
-    ? { value: params.vendor_id, label: vendors.labelOf(params.vendor_id) }
-    : null;
 
   const columns = [
     {
@@ -114,10 +108,10 @@ export function PipelinesList() {
         searchPlaceholder="Cari nama pipeline atau vendor"
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,320px)_200px]">
-        <AsyncCombobox
+        <LookupFilter
           lookup="vendors"
-          value={selectedVendor}
-          onChange={(option) => setFilters({ vendor_id: option?.value ?? '' })}
+          value={params.vendor_id}
+          onChange={(vendor_id) => setFilters({ vendor_id })}
           placeholder="Semua vendor"
           ariaLabel="Filter vendor"
         />
@@ -135,49 +129,36 @@ export function PipelinesList() {
         </NativeSelect>
       </div>
 
-      {query.isPending ? <ListSkeleton /> : null}
-      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && rows.length === 0 ? (
-        <EmptyState
-          icon={Workflow}
-          title="Belum ada pipeline"
-          description="Ubah filter, atau buat pipeline baru."
-        />
-      ) : null}
-      {query.isSuccess && rows.length > 0 ? (
-        <ResponsiveList
-          data={rows}
-          columns={columns}
-          getRowId={(pipeline) => pipeline.id}
-          caption="Daftar pipeline"
-          cardGridClassName="sm:grid-cols-2"
-          onRowClick={(pipeline) => router.push(`/pipelines/${pipeline.id}`)}
-          renderCard={(pipeline) => (
-            <Link
-              href={`/pipelines/${pipeline.id}`}
-              className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex items-start justify-between gap-2">
-                <span className="font-semibold text-foreground">{pipeline.name}</span>
-                <StatusBadge status={MASTER_STATUS_BADGES[pipeline.status]} />
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {vendors.labelOf(pipeline.vendor_id)} · {taskCount(pipeline.item_count)}
-              </span>
-            </Link>
-          )}
-          footer={
-            <Pagination
-              page={query.data.page}
-              limit={query.data.limit}
-              total={query.data.total}
-              count={query.data.data.length}
-              noun="pipeline"
-              onPageChange={setPage}
-            />
-          }
-        />
-      ) : null}
+      <QueryList
+        query={query}
+        rows={rows}
+        empty={{
+          icon: Workflow,
+          title: 'Belum ada pipeline',
+          description: 'Ubah filter, atau buat pipeline baru.',
+        }}
+        noun="pipeline"
+        onPageChange={setPage}
+        columns={columns}
+        getRowId={(pipeline) => pipeline.id}
+        caption="Daftar pipeline"
+        cardGridClassName="sm:grid-cols-2"
+        onRowClick={(pipeline) => router.push(`/pipelines/${pipeline.id}`)}
+        renderCard={(pipeline) => (
+          <Link
+            href={`/pipelines/${pipeline.id}`}
+            className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex items-start justify-between gap-2">
+              <span className="font-semibold text-foreground">{pipeline.name}</span>
+              <StatusBadge status={MASTER_STATUS_BADGES[pipeline.status]} />
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {vendors.labelOf(pipeline.vendor_id)} · {taskCount(pipeline.item_count)}
+            </span>
+          </Link>
+        )}
+      />
 
       <PipelineFormDialog open={creating} pipeline={null} onClose={() => setCreating(false)} />
     </>

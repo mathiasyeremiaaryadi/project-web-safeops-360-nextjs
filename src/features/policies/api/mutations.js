@@ -1,27 +1,18 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
-import { toFormData, UPLOAD_TIMEOUT_MS } from '@/lib/api/form-data';
 import { useMasterStatusChange } from '@/hooks/use-master-status-change';
+import { useSaveMutation } from '@/hooks/use-resource';
 import { policyKeys } from '@/features/policies/api/keys';
 import { policyFileSchema } from '@/features/policies/api/schemas';
 
-/** Upload (`POST /policies`) or edit (`PATCH /policies/{id}`, file optional), multipart. */
-export function useSavePolicy() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    /** @param {{ id?: string, fields: Record<string, string | Blob | undefined> }} input */
-    mutationFn: ({ id, fields }) =>
-      apiRequest({
-        method: id ? 'patch' : 'post',
-        path: id ? `v1/policies/${id}` : 'v1/policies',
-        body: toFormData(fields),
-        timeout: UPLOAD_TIMEOUT_MS,
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: policyKeys.lists() }),
-  });
-}
+/**
+ * Upload (`POST /policies`) or edit (`PATCH /policies/{id}`, file optional), multipart:
+ * `mutate({ id?, body })`.
+ */
+export const useSavePolicy = () =>
+  useSaveMutation({ path: 'v1/policies', keys: policyKeys, multipart: true });
 
 /** Deactivate / reactivate. */
 export function useChangePolicyStatus() {

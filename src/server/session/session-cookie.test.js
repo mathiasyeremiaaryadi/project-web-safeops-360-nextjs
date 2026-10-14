@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildClearedSessionCookie,
+  buildClearedSessionCookies,
   buildSessionCookie,
   getSessionCookieName,
   readSession,
@@ -89,5 +90,22 @@ describe('session cookie', () => {
       const request = new Request('http://app.test/', { headers: { cookie: `${name}=${value}` } });
       expect(readSession(request, SECRET)).toEqual(payload);
     }
+  });
+});
+
+describe('buildClearedSessionCookies', () => {
+  it('clears only the protocol cookie when no other session cookie is sent', () => {
+    expect(buildClearedSessionCookies(HTTP)).toEqual([buildClearedSessionCookie(HTTP)]);
+  });
+
+  it('also clears a __Host- cookie sent over plain HTTP (with Secure, as browsers require)', () => {
+    const request = new Request('http://localhost:3100/api/auth/me', {
+      headers: { cookie: '__Host-safeops_session=v1.forged' },
+    });
+    const cookies = buildClearedSessionCookies(request);
+    expect(cookies).toHaveLength(2);
+    expect(cookies[0]).toMatch(/^safeops_session=;.*Max-Age=0/);
+    expect(cookies[1]).toMatch(/^__Host-safeops_session=;.*Max-Age=0/);
+    expect(cookies[1]).toContain('Secure');
   });
 });

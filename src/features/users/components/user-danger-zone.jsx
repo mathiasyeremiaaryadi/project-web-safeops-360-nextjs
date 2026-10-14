@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { FormCard } from '@/components/shared/form-layout';
-import { getErrorMessage } from '@/lib/api/errors';
+import { toastApiError } from '@/lib/notify';
 import {
   useResetUserPassword,
   useRevokeUserSessions,
@@ -37,9 +37,6 @@ const ACTIONS = Object.freeze({
   },
 });
 
-/** @param {unknown} error */
-const showError = (error) => toast.error(getErrorMessage(error));
-
 /**
  * Reset password, revoke sessions, activate/deactivate. A Super Admin cannot deactivate themself.
  * @param {{ user: import('@/features/users/api/schemas').User, isSelf: boolean }} props
@@ -60,7 +57,7 @@ export function UserDangerZone({ user, isSelf }) {
           if (temp) setPassword(temp);
           else toast.success('Password berhasil direset.');
         },
-        onError: showError,
+        onError: toastApiError,
       });
     }
     if (action === 'REVOKE') {
@@ -69,7 +66,7 @@ export function UserDangerZone({ user, isSelf }) {
           close();
           toast.success('Semua sesi user dicabut.');
         },
-        onError: showError,
+        onError: toastApiError,
       });
     }
     if (action === 'DEACTIVATE' || action === 'ACTIVATE') {
@@ -80,7 +77,7 @@ export function UserDangerZone({ user, isSelf }) {
             close();
             toast.success(action === 'ACTIVATE' ? 'User diaktifkan.' : 'User dinonaktifkan.');
           },
-          onError: showError,
+          onError: toastApiError,
         },
       );
     }

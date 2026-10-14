@@ -1,12 +1,11 @@
 'use client';
 
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AsyncCombobox } from '@/components/shared/async-combobox';
+import { ComboboxField } from '@/components/shared/combobox-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { getErrorMessage } from '@/lib/api/errors';
@@ -62,30 +61,15 @@ export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose })
       error={savePipeline.isError ? getErrorMessage(savePipeline.error) : null}
       submitLabel="Simpan pipeline"
     >
-      <Controller
+      <ComboboxField
         control={form.control}
         name="vendor"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="pipeline-vendor">Vendor</Label>
-            <AsyncCombobox
-              id="pipeline-vendor"
-              lookup="vendors"
-              params={{ status: 'ACTIVE' }}
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="Pilih vendor"
-              disabled={Boolean(pipeline)}
-              invalid={Boolean(fieldState.error)}
-              describedBy={fieldState.error ? 'pipeline-vendor-error' : undefined}
-            />
-            {fieldState.error ? (
-              <p id="pipeline-vendor-error" className="text-sm text-destructive">
-                {fieldState.error.message}
-              </p>
-            ) : null}
-          </div>
-        )}
+        id="pipeline-vendor"
+        label="Vendor"
+        lookup="vendors"
+        params={{ status: 'ACTIVE' }}
+        placeholder="Pilih vendor"
+        disabled={Boolean(pipeline)}
       />
       <FormField id="pipeline-name" label="Nama pipeline" error={errors.name?.message}>
         <Input

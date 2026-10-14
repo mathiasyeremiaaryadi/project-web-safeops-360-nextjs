@@ -1,7 +1,6 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/api/client';
+import { useDetailQuery, useListQuery } from '@/hooks/use-resource';
 import { userKeys } from '@/features/users/api/keys';
 import { userDetailSchema, userListSchema } from '@/features/users/api/schemas';
 
@@ -9,19 +8,9 @@ import { userDetailSchema, userListSchema } from '@/features/users/api/schemas';
  * `GET /users?page=&limit=&q=&role=&status=`
  * @param {{ page: number, limit: number, q: string, role: string, status: string }} params
  */
-export function useUsers(params) {
-  return useQuery({
-    queryKey: userKeys.list(params),
-    queryFn: () =>
-      apiRequest({ method: 'get', path: 'v1/users', searchParams: params, schema: userListSchema }),
-    placeholderData: keepPreviousData,
-  });
-}
+export const useUsers = (params) =>
+  useListQuery({ keys: userKeys, path: 'v1/users', params, schema: userListSchema });
 
 /** `GET /users/{id}` @param {string} id */
-export function useUser(id) {
-  return useQuery({
-    queryKey: userKeys.detail(id),
-    queryFn: () => apiRequest({ method: 'get', path: `v1/users/${id}`, schema: userDetailSchema }),
-  });
-}
+export const useUser = (id) =>
+  useDetailQuery({ keys: userKeys, path: 'v1/users', id, schema: userDetailSchema });

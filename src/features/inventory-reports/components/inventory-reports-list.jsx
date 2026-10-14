@@ -5,12 +5,9 @@ import { parseAsString } from 'nuqs';
 import { PackageX } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { PageHeader } from '@/components/layout/page-header';
-import { EmptyState } from '@/components/shared/empty-state';
 import { ListWithPanel } from '@/components/shared/list-with-panel';
-import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { Pagination } from '@/components/shared/pagination';
+import { QueryList } from '@/components/shared/query-list';
 import { ReportFilters } from '@/components/shared/report-filters';
-import { ResponsiveList } from '@/components/shared/responsive-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { useDetailPanel } from '@/hooks/use-detail-panel';
@@ -141,52 +138,39 @@ export function InventoryReportsList() {
           ) : null
         }
       >
-        {query.isPending ? <ListSkeleton /> : null}
-        {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-        {query.isSuccess && rows.length === 0 ? (
-          <EmptyState
-            icon={PackageX}
-            title="Tidak ada laporan"
-            description="Belum ada laporan untuk status dan filter ini."
-          />
-        ) : null}
-        {query.isSuccess && rows.length > 0 ? (
-          <ResponsiveList
-            data={rows}
-            columns={columns}
-            getRowId={(r) => r.id}
-            caption="Daftar laporan inventory"
-            onRowClick={(r) => panel.open(r.id)}
-            isRowSelected={(r) => r.id === panel.selectedId}
-            renderCard={(r) => (
-              <Link
-                href={hrefOf(r.id)}
-                className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="flex items-start justify-between gap-2">
-                  <span className="font-semibold text-foreground">{subjectOf(r)}</span>
-                  {statusBadge(r)}
-                </span>
-                {r.description ? (
-                  <span className="line-clamp-2 text-sm text-foreground">{r.description}</span>
-                ) : null}
-                <span className="text-sm text-muted-foreground">
-                  {typeOf(r)} · {reporterOf(r)} · {formatDateTime(r.reported_at)}
-                </span>
-              </Link>
-            )}
-            footer={
-              <Pagination
-                page={query.data.page}
-                limit={query.data.limit}
-                total={query.data.total}
-                count={rows.length}
-                noun="laporan"
-                onPageChange={setPage}
-              />
-            }
-          />
-        ) : null}
+        <QueryList
+          query={query}
+          rows={rows}
+          empty={{
+            icon: PackageX,
+            title: 'Tidak ada laporan',
+            description: 'Belum ada laporan untuk status dan filter ini.',
+          }}
+          noun="laporan"
+          onPageChange={setPage}
+          columns={columns}
+          getRowId={(r) => r.id}
+          caption="Daftar laporan inventory"
+          onRowClick={(r) => panel.open(r.id)}
+          isRowSelected={(r) => r.id === panel.selectedId}
+          renderCard={(r) => (
+            <Link
+              href={hrefOf(r.id)}
+              className="flex flex-col gap-1.5 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex items-start justify-between gap-2">
+                <span className="font-semibold text-foreground">{subjectOf(r)}</span>
+                {statusBadge(r)}
+              </span>
+              {r.description ? (
+                <span className="line-clamp-2 text-sm text-foreground">{r.description}</span>
+              ) : null}
+              <span className="text-sm text-muted-foreground">
+                {typeOf(r)} · {reporterOf(r)} · {formatDateTime(r.reported_at)}
+              </span>
+            </Link>
+          )}
+        />
       </ListWithPanel>
     </>
   );
