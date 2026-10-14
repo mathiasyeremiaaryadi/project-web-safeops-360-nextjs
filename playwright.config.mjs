@@ -1,14 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
-const MOCK_GO_PORT = Number(process.env.E2E_MOCK_GO_PORT ?? 4110);
 const baseURL = `http://localhost:${PORT}`;
 
-export const MOCK_GO_ORIGIN = `http://127.0.0.1:${MOCK_GO_PORT}`;
-
 /**
- * E2E tests run the full chain on a production build:
- *   browser → Next.js (`next start`, BFF) → mock Go backend (scripts/mock-go-server.mjs).
+ * E2E tests run on a production build (`next start`). There is no mock backend: the specs only
+ * cover behaviour that does not need a signed-in user, so they never read or change data on
+ * the Go backend (API_ORIGIN is still required by the BFF).
  */
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,23 +26,14 @@ export default defineConfig({
     serviceWorkers: 'block',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: [
-    {
-      command: `node scripts/mock-go-server.mjs ${MOCK_GO_PORT}`,
-      url: `${MOCK_GO_ORIGIN}/__mock/health`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+  webServer: {
+    command: `pnpm build && pnpm start --port ${PORT}`,
+    url: `${baseURL}/login`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 240_000,
+    env: {
+      API_ORIGIN: process.env.API_ORIGIN ?? 'http://103.150.226.7:8082',
+      SESSION_SECRET: 'e2e-session-secret-not-used-anywhere-else-0123456789',
     },
-    {
-      command: `pnpm build && pnpm start --port ${PORT}`,
-      url: `${baseURL}/login`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 240_000,
-      env: {
-        NEXT_PUBLIC_API_MOCKING: 'disabled',
-        API_ORIGIN: MOCK_GO_ORIGIN,
-        SESSION_SECRET: 'e2e-session-secret-not-used-anywhere-else-0123456789',
-      },
-    },
-  ],
+  },
 });

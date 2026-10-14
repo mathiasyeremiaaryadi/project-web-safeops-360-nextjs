@@ -17,21 +17,61 @@ export const roleSchema = z.enum([
   ROLES.WORKER,
 ]);
 
-/** `GET /auth/me` → 200. */
-export const meResponseSchema = z.object({
-  id: z.uuid(),
-  username: z.string(),
-  full_name: z.string().nullable(),
-  /** Optional profile fields (assumed, docs/ASSUMPTIONS.md A4). */
-  email: z.string().nullish(),
-  last_login_at: z.string().nullish(),
-  roles: z.array(roleSchema),
-  must_change_password: z.boolean(),
-  scopes: z.object({
-    site_ids: z.array(z.uuid()),
-    vendor_ids: z.array(z.uuid()),
+const ROLE_CODES = Object.values(ROLES);
+
+/**
+ * Normalises the roles sent by Go: `["SUPER_ADMIN"]`, `[{ "code": "SUPER_ADMIN" }]`,
+ * `[{ "name": "super_admin" }]` or a single `"role"` string. Unknown roles are dropped.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function toRoleCodes(value) {
+  const list = Array.isArray(value) ? value : [value];
+  return list
+    .map((role) =>
+      typeof role === 'string' ? role : (role?.code ?? role?.name ?? role?.role ?? ''),
+    )
+    .map((role) => String(role).trim().toUpperCase())
+    .filter((role) => ROLE_CODES.includes(role));
+}
+
+/** Scope ids from `scopes.site_ids`, top-level `site_ids` or `sites: [{ id }]`. */
+const idList = z.preprocess(
+  (value) =>
+    Array.isArray(value) ? value.map((item) => (typeof item === 'object' ? item?.id : item)) : [],
+  z.array(z.coerce.string()),
+);
+
+/**
+ * `GET /auth/me` → 200, as returned by the real Go backend. Tolerant on purpose: the exact shape
+ * is not documented (docs/ASSUMPTIONS.md A4), so wrappers (`data`/`user`), role objects and
+ * missing optional fields are normalised here instead of failing the login.
+ */
+export const meResponseSchema = z.preprocess(
+  (raw) => {
+    const body = /** @type {any} */ (raw);
+    const user = body?.data?.user ?? body?.data ?? body?.user ?? body;
+    if (!user || typeof user !== 'object') return user;
+    return {
+      ...user,
+      roles: toRoleCodes(user.roles ?? user.role),
+      scopes: {
+        site_ids: user.scopes?.site_ids ?? user.site_ids ?? user.sites ?? [],
+        vendor_ids: user.scopes?.vendor_ids ?? user.vendor_ids ?? user.vendors ?? [],
+      },
+    };
+  },
+  z.object({
+    id: z.coerce.string(),
+    username: z.string(),
+    full_name: z.string().nullish(),
+    email: z.string().nullish(),
+    last_login_at: z.string().nullish(),
+    roles: z.array(roleSchema),
+    must_change_password: z.boolean().catch(false),
+    scopes: z.object({ site_ids: idList, vendor_ids: idList }),
   }),
-});
+);
 
 /** BFF `POST /api/auth/login` → 200. Tokens stay on the server (session cookie). */
 export const loginResponseSchema = z.object({

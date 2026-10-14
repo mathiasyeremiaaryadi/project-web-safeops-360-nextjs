@@ -20,7 +20,6 @@ export default defineConfig({
       jsdom: { url: `${TEST_APP_ORIGIN}/` },
     },
     env: {
-      NEXT_PUBLIC_API_MOCKING: 'disabled',
       API_ORIGIN: TEST_GO_ORIGIN,
       SESSION_SECRET: 'vitest-session-secret-0123456789abcdefghijklmnop',
     },

@@ -9,14 +9,55 @@ import { goFetch } from '@/server/go/go-client';
  * See docs/ASSUMPTIONS.md (A1, A2) for the contract.
  */
 
-/** Go `POST /auth/login` and `POST /auth/refresh` → 200. */
+/**
+ * Go `POST /auth/login` and `POST /auth/refresh` → 200. Only `access_token` is required: the real
+ * backend does not send `token_type`/`expires_in` exactly as first assumed (docs/ASSUMPTIONS.md A1),
+ * so the access-token lifetime falls back to `expires_at`, then the JWT `exp` claim, then 15 min.
+ */
 export const goTokenResponseSchema = z.object({
   access_token: z.string().min(1),
-  token_type: z.literal('Bearer'),
-  expires_in: z.number().int().positive(),
+  token_type: z.string().optional(),
+  expires_in: z.coerce.number().positive().optional().catch(undefined),
+  expires_at: z.union([z.string(), z.number()]).optional().catch(undefined),
   /** Optional: if Go returns the refresh token in the body instead of a cookie. */
   refresh_token: z.string().min(1).optional(),
 });
+
+/** PRD: access tokens live ±15 minutes. */
+const DEFAULT_ACCESS_TTL_SECONDS = 15 * 60;
+
+/**
+ * Reads the `exp` claim of a JWT WITHOUT verifying it (only to schedule a refresh; Go verifies).
+ * @param {string} token
+ * @returns {number | null} Epoch ms.
+ */
+function jwtExpiry(token) {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    );
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Access-token expiry (epoch ms) from whatever the response provides.
+ * @param {z.infer<typeof goTokenResponseSchema>} data
+ * @param {number} now
+ */
+function accessTokenExpiry(data, now) {
+  if (data.expires_in) return now + data.expires_in * 1000;
+  if (data.expires_at !== undefined) {
+    const at =
+      typeof data.expires_at === 'number' ? data.expires_at * 1000 : Date.parse(data.expires_at);
+    if (Number.isFinite(at) && at > now) return at;
+  }
+  const fromJwt = jwtExpiry(data.access_token);
+  if (fromJwt && fromJwt > now) return fromJwt;
+  return now + DEFAULT_ACCESS_TTL_SECONDS * 1000;
+}
 
 /** Default refresh token lifetime when Go does not send Max-Age/Expires (PRD: ±7 days). */
 const DEFAULT_REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -65,7 +106,7 @@ export async function sessionFromTokenResponse(response, now = Date.now()) {
 
   return {
     at: parsed.data.access_token,
-    atExp: now + parsed.data.expires_in * 1000,
+    atExp: accessTokenExpiry(parsed.data, now),
     rt: refreshToken,
     rtExp: now + refreshTtl * 1000,
   };

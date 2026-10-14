@@ -32,12 +32,11 @@ cp .env.example .env.local
 
 ## Menjalankan
 
-### Dengan mock Go (tanpa backend)
-
 Di `.env.local`:
 
 ```
-NEXT_PUBLIC_API_MOCKING=enabled
+API_ORIGIN=http://103.150.226.7:8082
+SESSION_SECRET=<hasil openssl rand -base64 48>
 ```
 
 Lalu:
@@ -46,36 +45,8 @@ Lalu:
 pnpm dev
 ```
 
-`pnpm dev` otomatis menjalankan **mock Go** di `http://127.0.0.1:4010`, dan BFF memanggilnya
-persis seperti memanggil Go sungguhan. `API_ORIGIN` diabaikan dan `SESSION_SECRET` boleh kosong
-di mode ini. Akun mock:
-
-| Username         | Password     | Perilaku                     |
-| ---------------- | ------------ | ---------------------------- |
-| `budi.santoso`   | `rahasia123` | Login normal                 |
-| `agus.pratama`   | `Kp7mw2Rq`   | `must_change_password: true` |
-| `sari.wulandari` | `Sementara1` | `must_change_password: true` |
-| `dewi.lestari`   | apa saja     | Selalu 423 (akun terkunci)   |
-| `rate.limited`   | apa saja     | Selalu 429                   |
-| `user.nonaktif`  | apa saja     | Selalu 403 (akun nonaktif)   |
-| `network.error`  | apa saja     | Go tidak bisa dihubungi      |
-| `server.error`   | apa saja     | 500                          |
-
-Sesi bertahan saat reload. Data mock (mis. password yang diganti) kembali ke awal saat
-`pnpm dev` di-restart.
-
-### Dengan backend Go
-
-Di `.env.local`:
-
-```
-NEXT_PUBLIC_API_MOCKING=disabled
-API_ORIGIN=http://localhost:8080
-SESSION_SECRET=<hasil openssl rand -base64 48>
-```
-
-Lalu `pnpm dev`. Dev server dan build menolak start jika `API_ORIGIN` atau `SESSION_SECRET`
-tidak ada.
+Aplikasi selalu memakai backend Go sungguhan; tidak ada mode mock. Dev server dan build menolak
+start jika `API_ORIGIN` atau `SESSION_SECRET` tidak ada.
 
 ### Production
 
@@ -88,23 +59,25 @@ pnpm start
 ```
 
 Set `API_ORIGIN` (alamat Go, boleh alamat internal) dan `SESSION_SECRET` di environment server.
-`NEXT_PUBLIC_API_MOCKING=enabled` membuat build gagal. Jika Next.js berjalan di beberapa instance,
+Jika Next.js berjalan di beberapa instance,
 lihat `docs/DECISIONS.md` D9.
 
 ## Skrip
 
-| Perintah        | Kegunaan                                               |
-| --------------- | ------------------------------------------------------ |
-| `pnpm dev`      | Dev server (+ mock Go jika mocking aktif)              |
-| `pnpm build`    | Build production (gagal jika env tidak valid)          |
-| `pnpm start`    | Menjalankan hasil build                                |
-| `pnpm lint`     | ESLint, gagal jika ada warning                         |
-| `pnpm format`   | Prettier (dengan pengurutan class Tailwind)            |
-| `pnpm test`     | Unit, komponen & BFF (Vitest + Testing Library + MSW)  |
-| `pnpm test:e2e` | E2E Playwright: browser → `next start` (BFF) → mock Go |
-| `pnpm mock:go`  | Menjalankan mock Go sendiri (port 4010)                |
+| Perintah        | Kegunaan                                            |
+| --------------- | --------------------------------------------------- |
+| `pnpm dev`      | Dev server                                          |
+| `pnpm build`    | Build production (gagal jika env tidak valid)       |
+| `pnpm start`    | Menjalankan hasil build                             |
+| `pnpm lint`     | ESLint, gagal jika ada warning                      |
+| `pnpm format`   | Prettier (dengan pengurutan class Tailwind)         |
+| `pnpm test`     | Unit test logika murni (Vitest), tanpa jaringan     |
+| `pnpm test:e2e` | E2E Playwright tanpa login (lihat catatan di bawah) |
 
 Sebelum E2E pertama kali: `pnpm exec playwright install chromium`.
+Tidak ada mock API. Unit test hanya menguji logika yang tidak butuh jaringan (validasi, permission,
+navigasi, cookie sesi, parsing token), dan E2E hanya menguji perilaku tanpa login (halaman login,
+redirect, CSRF, header keamanan), sehingga test tidak pernah membaca atau mengubah data di backend.
 Screenshot responsif (360–1536px) disimpan di `tests/e2e/__screenshots__/`.
 
 Husky + lint-staged menjalankan ESLint dan Prettier pada file yang di-stage setiap commit.
@@ -138,12 +111,10 @@ src/
 ├─ lib/                     # api/client.js (ky → BFF), errors, query-client, constants
 ├─ config/env.js            # Validasi env dengan Zod
 ├─ providers/               # QueryClient, Toaster, Serwist
-├─ mocks/                   # Mock Go (go-backend.js) + server HTTP + handler MSW
-├─ instrumentation.js       # Menjalankan mock Go saat `pnpm dev` dengan mocking aktif
 └─ proxy.js                 # CSP dengan nonce + redirect awal jika belum login
-tests/unit/                 # Setup Vitest, jembatan BFF (msw.js), util
-tests/e2e/                  # Playwright (+ support/mock-go.js)
-scripts/                    # mock-go-server.mjs, generate-icons.mjs
+tests/unit/                 # Setup Vitest & util
+tests/e2e/                  # Playwright (tanpa login)
+scripts/                    # generate-icons.mjs
 docs/                       # ASSUMPTIONS.md (kontrak Go), DECISIONS.md
 ```
 

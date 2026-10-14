@@ -1,8 +1,8 @@
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { MasterView } from '@/features/master';
 
 export const metadata = { title: 'Site & vendor' };
 
-/** `/master` — built in a later phase. */
-export default function Page() {
-  return <ComingSoon title="Site & vendor" />;
+/** `/master?tab=sites|vendors|items` */
+export default function MasterPage() {
+  return <MasterView />;
 }

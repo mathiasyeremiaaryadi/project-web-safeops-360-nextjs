@@ -5,7 +5,6 @@ browser (lihat `docs/DECISIONS.md` D0). Semua asumsi di bawah ini tercermin di:
 
 - `src/server/go/session-tokens.js`: respons token Go dan cookie refresh.
 - `src/features/auth/api/schemas.js`: profil user dan body request.
-- `src/mocks/go-backend.js`: mock Go yang dipakai dev, Vitest, dan E2E.
 
 Jika ada yang berbeda, ubah file-file itu lalu jalankan ulang test.
 
@@ -31,7 +30,12 @@ internal); tidak perlu diekspos ke internet, dan tidak perlu CORS.
 
 - Request: `{ "username": string, "password": string }`. Username sudah di-`trim()` dan
   di-`toLowerCase()`.
-- Response 200: `{ "access_token": string, "token_type": "Bearer", "expires_in": number }`
+- Response 200: minimal `{ "access_token": string }`. Respons asli backend **tidak** memuat
+  `token_type: "Bearer"`/`expires_in` seperti asumsi awal (terlihat di log BFF), jadi BFF kini
+  menerima `token_type` apa pun dan menghitung masa berlaku access token dari `expires_in`, lalu
+  `expires_at`, lalu klaim `exp` JWT, dan terakhir default 15 menit. **Perlu konfirmasi bentuk
+  persisnya.** Sebelumnya tertulis:
+  `{ "access_token": string, "token_type": "Bearer", "expires_in": number }`
   (`expires_in` dalam **detik**, ±900) + refresh token (lihat A0.2).
 - Error (diteruskan apa adanya oleh BFF ke browser):
   - 401 `AUTH_INVALID_CREDENTIALS` untuk username tidak ada **dan** password salah.
@@ -146,6 +150,17 @@ must_change_password, last_login_at, scopes { site_ids[], vendor_ids[] }`. Statu
 after, created_at` (BRD 9.2). Jika `summary` tidak ada, UI menampilkan "{action} {entity}".
 - **AL2.** Filter `user` = **id user**; `from`/`to` = RFC3339 (Postman), dihitung dari tanggal di
   `APP_TIMEZONE`.
+
+## Site, vendor, master task (`/sites`, `/vendors`, `/items`)
+
+- **M1.** Baris site: `id, code, name, site_type?, status`. Vendor: `id, code, name, site_ids[],
+status` (BRD: list menyertakan `site_ids`). Item: `id, name, description?, status`.
+- **M2.** `POST`/`PATCH` mengembalikan objek yang disimpan. "Aktifkan" memakai
+  `PATCH { status: "ACTIVE" }`, sedangkan "Nonaktifkan" memakai `DELETE` (soft deactivate).
+- **M3.** Kode duplikat → **409**, ditampilkan "Kode sudah dipakai." di field Kode. **Perlu
+  konfirmasi** apakah backend memakai 409 atau 400.
+- **M4.** Mockup memuat jumlah inventory/SOP/pipeline/worker per vendor. Tidak dibuat karena belum
+  ada endpoint yang mengembalikan angka tersebut.
 
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 

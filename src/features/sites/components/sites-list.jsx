@@ -1,0 +1,147 @@
+'use client';
+
+import { useState } from 'react';
+import { Building2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/empty-state';
+import { FilterBar } from '@/components/shared/filter-bar';
+import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
+import { MasterRowActions } from '@/components/shared/master-row-actions';
+import { Pagination } from '@/components/shared/pagination';
+import { ResponsiveList } from '@/components/shared/responsive-list';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
+import { useListParams } from '@/hooks/use-list-params';
+import { getErrorMessage } from '@/lib/api/errors';
+import { MASTER_STATUS_BADGES } from '@/lib/constants';
+import { useChangeSiteStatus } from '@/features/sites/api/mutations';
+import { useSites } from '@/features/sites/api/queries';
+import { SiteFormDialog } from '@/features/sites/components/site-form-dialog';
+
+/** @typedef {import('@/features/sites/api/schemas').Site} Site */
+
+/**
+ * "Site" tab of /master.
+ * @param {{ createOpen: boolean, onCreateClose: () => void }} props The page's "Tambah site" button.
+ */
+export function SitesList({ createOpen, onCreateClose }) {
+  const { params, limit, setFilters, setPage } = useListParams();
+  const query = useSites({ page: params.page, q: params.q, limit });
+  const changeStatus = useChangeSiteStatus();
+  const [editing, setEditing] = useState(/** @type {Site | null} */ (null));
+  const [toggling, setToggling] = useState(/** @type {Site | null} */ (null));
+
+  const toggleStatus = () => {
+    if (!toggling) return;
+    changeStatus.mutate(toggling, {
+      onSuccess: () => {
+        toast.success('Status site berhasil diubah.');
+        setToggling(null);
+      },
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  };
+
+  /** @param {Site} site */
+  const actions = (site) => (
+    <MasterRowActions
+      status={site.status}
+      name={site.name}
+      onEdit={() => setEditing(site)}
+      onToggleStatus={() => setToggling(site)}
+    />
+  );
+  const badge = (/** @type {Site} */ site) => (
+    <StatusBadge status={MASTER_STATUS_BADGES[site.status]} />
+  );
+
+  const columns = [
+    {
+      id: 'code',
+      header: 'Kode',
+      cell: ({ row }) => (
+        <span className="font-mono text-muted-foreground">{row.original.code}</span>
+      ),
+    },
+    {
+      id: 'name',
+      header: 'Nama',
+      cell: ({ row }) => <span className="font-semibold">{row.original.name}</span>,
+    },
+    { id: 'type', header: 'Tipe', cell: ({ row }) => row.original.site_type || '—' },
+    { id: 'status', header: 'Status', cell: ({ row }) => badge(row.original) },
+    {
+      id: 'actions',
+      header: () => <span className="sr-only">Aksi</span>,
+      cell: ({ row }) => actions(row.original),
+    },
+  ];
+
+  return (
+    <>
+      <FilterBar
+        search={params.q}
+        onSearchChange={(q) => setFilters({ q })}
+        searchPlaceholder="Cari kode atau nama site"
+      />
+
+      {query.isPending ? <ListSkeleton /> : null}
+      {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
+      {query.isSuccess && query.data.data.length === 0 ? (
+        <EmptyState
+          icon={Building2}
+          title="Belum ada site"
+          description="Ubah pencarian, atau tambahkan site baru."
+        />
+      ) : null}
+      {query.isSuccess && query.data.data.length > 0 ? (
+        <ResponsiveList
+          data={query.data.data}
+          columns={columns}
+          getRowId={(site) => site.id}
+          caption="Daftar site"
+          cardGridClassName="sm:grid-cols-2"
+          renderCard={(site) => (
+            <article className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-sm text-muted-foreground">{site.code}</span>
+                {badge(site)}
+              </div>
+              <p className="text-lg font-semibold text-foreground">{site.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {site.site_type || 'Tipe belum diisi'}
+              </p>
+              {actions(site)}
+            </article>
+          )}
+          footer={
+            <Pagination
+              page={query.data.page}
+              limit={query.data.limit}
+              total={query.data.total}
+              count={query.data.data.length}
+              noun="site"
+              onPageChange={setPage}
+            />
+          }
+        />
+      ) : null}
+
+      <SiteFormDialog
+        open={createOpen || Boolean(editing)}
+        site={editing}
+        onClose={() => {
+          setEditing(null);
+          onCreateClose();
+        }}
+      />
+      <StatusChangeDialog
+        target={toggling}
+        entityLabel="site"
+        pending={changeStatus.isPending}
+        onConfirm={toggleStatus}
+        onClose={() => setToggling(null)}
+      />
+    </>
+  );
+}

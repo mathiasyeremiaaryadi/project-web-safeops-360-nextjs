@@ -75,16 +75,40 @@ describe('evaluatePasswordRules', () => {
   });
 });
 
-describe('meResponseSchema', () => {
-  it('rejects unknown roles', () => {
-    const result = meResponseSchema.safeParse({
-      id: '6f1c2a0e-6c3b-4b8e-9a51-1d2f3e4a5b61',
-      username: 'x',
-      full_name: null,
-      roles: ['ROOT'],
+describe('meResponseSchema (tolerant to the Go response)', () => {
+  const base = { id: 42, username: 'superadmin', full_name: 'Hendra' };
+
+  it('accepts the documented shape', () => {
+    const me = meResponseSchema.parse({
+      ...base,
+      roles: ['SUPER_ADMIN'],
       must_change_password: false,
-      scopes: { site_ids: [], vendor_ids: [] },
+      scopes: { site_ids: ['s1'], vendor_ids: [] },
     });
-    expect(result.success).toBe(false);
+    expect(me).toMatchObject({ id: '42', roles: ['SUPER_ADMIN'], scopes: { site_ids: ['s1'] } });
+  });
+
+  it('unwraps { data } / { user } and normalises role objects', () => {
+    expect(meResponseSchema.parse({ data: { ...base, roles: [{ code: 'admin' }] } }).roles).toEqual(
+      ['ADMIN'],
+    );
+    expect(meResponseSchema.parse({ user: { ...base, role: 'WORKER' } }).roles).toEqual(['WORKER']);
+  });
+
+  it('defaults missing optional fields and drops unknown roles', () => {
+    const me = meResponseSchema.parse({
+      ...base,
+      roles: ['ROOT', 'WORKER'],
+      sites: [{ id: 's1' }],
+    });
+    expect(me).toMatchObject({
+      roles: ['WORKER'],
+      must_change_password: false,
+      scopes: { site_ids: ['s1'], vendor_ids: [] },
+    });
+  });
+
+  it('still rejects a body without username', () => {
+    expect(meResponseSchema.safeParse({ id: 1 }).success).toBe(false);
   });
 });

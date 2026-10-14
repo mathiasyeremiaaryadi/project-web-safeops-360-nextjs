@@ -61,3 +61,11 @@ export const BRAND_COLORS = Object.freeze({
   THEME: '#0B3C49', // --brand-dark
   BACKGROUND: '#F6F9FA', // --background
 });
+
+/** Master-data status (sites, vendors, items, pipelines, inventories, SOP). */
+export const MASTER_STATUS = Object.freeze({ ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' });
+
+export const MASTER_STATUS_BADGES = Object.freeze({
+  [MASTER_STATUS.ACTIVE]: { label: 'Aktif', variant: 'success' },
+  [MASTER_STATUS.INACTIVE]: { label: 'Nonaktif', variant: 'neutral' },
+});

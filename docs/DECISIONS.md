@@ -2,7 +2,7 @@
 
 Versi yang terpasang saat proyek dibuat: Next.js 16.4.0 (Turbopack), React 19.3, Tailwind CSS
 4.3, shadcn 4.21 (style `radix-nova`), Zod 4.6, ky 2.2, TanStack Query 5, Zustand 5,
-Serwist 9.5, MSW 3, Vitest 5, Playwright 1.64.
+Serwist 9.5, Vitest 5, Playwright 1.64.
 
 ## D0. Arsitektur BFF (Backend-for-Frontend) — permintaan klien
 
@@ -93,12 +93,11 @@ Supaya `next.config.mjs` bisa mengimpor `src/config/env.js` (ESM) dan memvalidas
 
 ## D7. Validasi env
 
-| Variabel                  | Kapan wajib                    | Catatan                                    |
-| ------------------------- | ------------------------------ | ------------------------------------------ |
-| `API_ORIGIN`              | Mock nonaktif (dev/build/prod) | Alamat Go untuk BFF, bisa alamat internal. |
-| `SESSION_SECRET`          | Mock nonaktif                  | Minimal 32 karakter acak. Rahasia.         |
-| `NEXT_PUBLIC_API_MOCKING` | —                              | `enabled` ditolak di build production.     |
-| `GO_REFRESH_COOKIE_NAME`  | Opsional                       | Default `refresh_token`.                   |
+| Variabel                 | Kapan wajib | Catatan                                    |
+| ------------------------ | ----------- | ------------------------------------------ |
+| `API_ORIGIN`             | Selalu      | Alamat Go untuk BFF, bisa alamat internal. |
+| `SESSION_SECRET`         | Selalu      | Minimal 32 karakter acak. Rahasia.         |
+| `GO_REFRESH_COOKIE_NAME` | Opsional    | Default `refresh_token`.                   |
 
 Tidak ada variabel rahasia yang memakai prefix `NEXT_PUBLIC_`. Mengganti `SESSION_SECRET` membuat
 semua user ter-logout (cookie lama tidak bisa didekripsi). Rotasi kunci tanpa logout massal bisa
@@ -126,18 +125,20 @@ beberapa instance, gunakan sticky session di load balancer, atau minta tim Go me
 tenggang singkat untuk refresh token yang baru dirotasi (lihat ASSUMPTIONS A2). Dengan BFF,
 koordinasi antar-tab browser tidak lagi diperlukan karena refresh tidak terjadi di browser.
 
-## D10. Mock: satu "Go palsu" untuk semua lingkungan
+## D10. Tanpa mock API (keputusan user)
 
-`src/mocks/go-backend.js` meniru API auth Go, termasuk rotasi token dan deteksi pemakaian ulang.
+Backend Go sudah tersedia di `http://103.150.226.7:8082`, jadi semua mock (mode dev, mock Go,
+MSW) **dihapus**, termasuk dari test. Konsekuensinya:
 
-- **Dev** (`NEXT_PUBLIC_API_MOCKING=enabled`): `src/instrumentation.js` menjalankannya sebagai
-  server HTTP di `127.0.0.1:4010`, dan BFF memanggilnya persis seperti memanggil Go. Sesi bertahan
-  saat reload karena sesi ada di cookie.
-- **Vitest**: dibungkus handler MSW. "Jembatan BFF" (`tests/unit/msw.js`) menjalankan kode Route
-  Handler yang **asli**, lengkap dengan cookie jar.
-- **E2E**: `scripts/mock-go-server.mjs` dijalankan oleh Playwright, lalu `next start` (production
-  build) memakainya sebagai `API_ORIGIN`. Rantai browser → BFF → Go diuji utuh.
-- MSW di browser tidak dipakai lagi (`public/mockServiceWorker.js` dihapus).
+- Unit test hanya menguji logika murni: validasi form, permission, navigasi, tanggal, FileField,
+  enkripsi cookie sesi, dan parsing respons token Go.
+- E2E hanya menguji perilaku tanpa login: layout dan aksesibilitas halaman login, redirect tanpa
+  sesi, cookie palsu, CSRF, dan header keamanan. Permintaan ini dijawab oleh BFF sendiri dan
+  tidak pernah mengubah data di Go.
+- Yang **tidak lagi teruji otomatis**: alur login → ganti password, refresh token single-flight
+  dan masa tenggang (FR-10), proxy BFF, serta form user/vendor end-to-end. Semua itu perlu dicek
+  manual ke backend, atau diuji lagi dengan akun test khusus di environment staging bila nanti
+  tersedia.
 
 ## D11. Halaman login memeriksa sesi tanpa menghalangi form
 
