@@ -158,8 +158,22 @@ diikuti adalah spesifikasi; posisinya tetap tepat di bawah field password.
 | Pencurian token lewat XSS  | Token Go tidak pernah di browser; cookie `HttpOnly`; CSP ketat dengan nonce.                                                                                                                   |
 | CSRF                       | Cookie `SameSite=Lax`; cek `Origin` = host; tolak `Sec-Fetch-Site: cross-site`; header `X-SafeOps-CSRF` wajib.                                                                                 |
 | Cookie dipalsukan/diubah   | AES-256-GCM (terautentikasi): cookie yang diubah ditolak lalu dihapus.                                                                                                                         |
-| Proxy disalahgunakan       | Allowlist (default deny), validasi segmen path (tanpa `..`), `auth/*` diblokir, cookie/Authorization dari browser tidak diteruskan, `Set-Cookie` dan header Go lain dibuang, batas body 10 MB. |
+| Proxy disalahgunakan       | Allowlist (default deny), validasi segmen path (tanpa `..`), `auth/*` diblokir, cookie/Authorization dari browser tidak diteruskan, `Set-Cookie` dan header Go lain dibuang, batas body 11 MB. |
 | Bocornya detail error      | Error tak terduga dipetakan ke pesan generik; log tidak memuat body/token.                                                                                                                     |
 | Rate limit Go per IP rusak | `X-Forwarded-For`, `X-Real-IP` dan `User-Agent` diteruskan ke Go.                                                                                                                              |
 | Cache data sensitif        | Semua respons BFF `Cache-Control: no-store`; SW tidak meng-cache `/api/`.                                                                                                                      |
 | Otorisasi                  | Tetap di Go untuk setiap request (role, scope site/vendor).                                                                                                                                    |
+
+## D14. Upload dan file dari object storage
+
+- Upload (inventory, SOP) lewat proxy BFF yang sama, sebagai multipart. Batas body proxy 11 MiB
+  (PDF 10 MiB + amplop multipart); batas per file divalidasi di browser (`FileField`) dan di Go.
+  Timeout upload 60 detik (browser → BFF dan BFF → Go); request lain tetap 15 detik.
+- Foto inventory adalah signed URL dari MinIO (origin lain). CSP `img-src` mengizinkan
+  `FILES_ORIGIN` jika di-set, atau host `API_ORIGIN` di port mana pun (`http://host:*`) sebagai
+  default. Foto memakai `<img>` biasa (bukan `next/image`) karena URL bertanda tangan berubah
+  setiap request.
+- SOP: tombol **"Buka"** saja, tanpa pratinjau `<iframe>`. Pratinjau perlu `frame-src` ke origin
+  MinIO dan header MinIO yang mengizinkan framing; belum bisa dipastikan, jadi tidak dibuat.
+  Tab baru dibuka saat klik (agar tidak diblokir popup blocker), `opener` diputus, lalu diarahkan
+  ke signed URL.

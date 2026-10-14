@@ -1,8 +1,8 @@
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { PoliciesList } from '@/features/policies';
 
 export const metadata = { title: 'SOP' };
 
-/** `/policies` — built in a later phase. */
-export default function Page() {
-  return <ComingSoon title="SOP" />;
+/** `/policies` */
+export default function PoliciesPage() {
+  return <PoliciesList />;
 }

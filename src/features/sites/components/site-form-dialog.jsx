@@ -27,6 +27,8 @@ export function SiteFormDialog({ open, site, onClose }) {
 
   const close = () => {
     saveSite.reset();
+    // Back to the record's current values, so a reopened form never shows unsaved input.
+    form.reset();
     onClose();
   };
 

@@ -99,6 +99,7 @@ export const httpClient = ky.create({
  *   Query string; empty values are dropped.
  * @param {TSchema | null} [params.schema] Response schema; `null` for empty (204) responses.
  * @param {RequestContext} [params.context]
+ * @param {number} [params.timeout] Overrides the default 15 s timeout (uploads).
  * @returns {Promise<TSchema extends import('zod').ZodType ? import('zod').infer<TSchema> : void>}
  * @throws {ApiError}
  */
@@ -110,6 +111,7 @@ export async function apiRequest({
   searchParams,
   schema = null,
   context = {},
+  timeout,
 }) {
   let response;
   try {
@@ -119,6 +121,7 @@ export async function apiRequest({
       body,
       searchParams: cleanSearchParams(searchParams),
       context,
+      ...(timeout ? { timeout } : {}),
     });
   } catch (error) {
     throw toApiError(error);

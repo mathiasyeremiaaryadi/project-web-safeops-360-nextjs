@@ -5,6 +5,21 @@ import { SESSION_COOKIE_NAME } from '@/server/session/cookie-names';
 const PUBLIC_PATHS = new Set(['/login', '/offline']);
 
 /**
+ * Origin(s) allowed to serve images: inventory photos and report evidence are signed URLs from
+ * object storage (MinIO), not from this origin. `FILES_ORIGIN` sets it explicitly (space-separated
+ * for several); otherwise any port on the Go backend's host is allowed (docs/DECISIONS.md D14).
+ */
+function filesImageSource() {
+  if (process.env.FILES_ORIGIN) return process.env.FILES_ORIGIN.trim();
+  try {
+    const { protocol, hostname } = new URL(process.env.API_ORIGIN ?? '');
+    return `${protocol}//${hostname}:*`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Builds the Content-Security-Policy for one request.
  * @param {string} nonce
  * @param {boolean} isDev
@@ -16,7 +31,7 @@ function buildCsp(nonce, isDev) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     // Inline styles are needed by Radix (style attributes) and sonner (runtime <style>).
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data:",
+    `img-src 'self' blob: data: ${filesImageSource()}`.trim(),
     "font-src 'self'",
     "connect-src 'self'",
     "worker-src 'self'",

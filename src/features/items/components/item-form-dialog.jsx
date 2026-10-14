@@ -28,6 +28,8 @@ export function ItemFormDialog({ open, item, onClose }) {
 
   const close = () => {
     saveItem.reset();
+    // Back to the record's current values, so a reopened form never shows unsaved input.
+    form.reset();
     onClose();
   };
 

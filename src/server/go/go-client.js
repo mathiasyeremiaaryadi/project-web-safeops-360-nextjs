@@ -1,7 +1,7 @@
 import 'server-only';
 import { getServerEnv } from '@/config/env';
 
-/** Timeout for every call from the BFF to the Go backend. */
+/** Default timeout of a call from the BFF to the Go backend. */
 const GO_TIMEOUT_MS = 15_000;
 
 /** Thrown when the Go backend cannot be reached (network error, DNS, timeout). */
@@ -40,6 +40,7 @@ export function getForwardedHeaders(request) {
  * @property {unknown} [json] JSON body.
  * @property {BodyInit | null} [body] Raw body (proxy).
  * @property {Record<string, string>} [headers]
+ * @property {number} [timeoutMs] Overrides the default timeout (uploads).
  */
 
 /**
@@ -74,7 +75,7 @@ export async function goFetch(path, options = {}) {
       body,
       redirect: 'manual',
       cache: 'no-store',
-      signal: AbortSignal.timeout(GO_TIMEOUT_MS),
+      signal: AbortSignal.timeout(options.timeoutMs ?? GO_TIMEOUT_MS),
     });
   } catch {
     // Do not include the error: it may contain request details.

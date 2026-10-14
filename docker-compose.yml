@@ -13,6 +13,8 @@ services:
       API_ORIGIN: ${API_ORIGIN:-http://103.150.226.7:8082}
       # Opsional. Kosong = kunci acak per start container (semua user logout setiap deploy).
       SESSION_SECRET: ${SESSION_SECRET:-}
+      # Origin of signed image URLs (MinIO) for the CSP; default: any port on API_ORIGIN's host.
+      FILES_ORIGIN: ${FILES_ORIGIN:-}
     ports: ['3001:3000']
 
 # Dinamai pasti supaya health check Jenkins bisa join ke network ini.

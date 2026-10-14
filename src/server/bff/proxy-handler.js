@@ -4,8 +4,14 @@ import { errorResponse } from '@/server/bff/responses';
 import { rejectCrossSiteRequest } from '@/server/bff/security';
 import { proxyWithSession } from '@/server/bff/with-session';
 
-/** Largest request body the proxy forwards (uploads should get dedicated handlers). */
-const MAX_BODY_BYTES = 10 * 1024 * 1024;
+/**
+ * Largest request body the proxy forwards: a 10 MiB SOP PDF plus the multipart envelope and
+ * form fields. Go enforces the exact per-file limits.
+ */
+const MAX_BODY_BYTES = 11 * 1024 * 1024;
+
+/** Uploads (multipart) get more time: Go also stores the file in object storage. */
+const UPLOAD_TIMEOUT_MS = 60_000;
 
 /** Request headers from the browser that may be forwarded to Go. */
 const FORWARDED_REQUEST_HEADERS = ['content-type', 'accept', 'if-none-match', 'if-modified-since'];
@@ -73,6 +79,9 @@ export function createProxyHandler({ allow }) {
         accessToken,
         body: body && body.byteLength > 0 ? body : null,
         headers: { ...headers, ...forwarded },
+        timeoutMs: headers['content-type']?.startsWith('multipart/')
+          ? UPLOAD_TIMEOUT_MS
+          : undefined,
       }),
     );
   };

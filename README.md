@@ -45,8 +45,11 @@ Lalu:
 pnpm dev
 ```
 
-Aplikasi selalu memakai backend Go sungguhan; tidak ada mode mock. Dev server dan build menolak
-start jika `API_ORIGIN` atau `SESSION_SECRET` tidak ada.
+Aplikasi selalu memakai backend Go sungguhan; tidak ada mode mock. Server menolak start jika
+`API_ORIGIN` tidak ada. `SESSION_SECRET` opsional (tanpa itu, semua user keluar setiap restart).
+
+Opsional: `FILES_ORIGIN` = origin signed URL file (MinIO), misalnya `http://103.150.226.7:9000`,
+agar foto inventory lolos CSP. Default: host `API_ORIGIN` di port mana pun.
 
 ### Production
 

@@ -175,6 +175,29 @@ status` (BRD: list menyertakan `site_ids`). Item: `id, name, description?, statu
   menghapus atau hanya menonaktifkan.
 - **P4.** "Atur penugasan" (worker per shift) di mockup tidak dibuat karena API penugasan belum ada.
 
+## Inventory (`/inventories`)
+
+- **INV1.** Nilai `status_condition`: `GOOD` Baik · `DAMAGED` Rusak · `MAINTENANCE` Perawatan ·
+  `LOST` Hilang (BRD hanya menyebut "condition enum"). Nilai lain tetap ditampilkan apa adanya.
+  **Perlu konfirmasi.**
+- **INV2.** Field multipart foto bernama `image` (BRD tidak menyebut nama field). **Perlu
+  konfirmasi.** Field lain: `vendor_id, item, jenis_item, qty, status_condition`.
+- **INV3.** Respons: `id, vendor_id, item, jenis_item, qty, status_condition, status/is_active,
+image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; detail boleh
+  dibungkus `inventory`/`data`. Thumbnail di list hanya muncul jika list juga mengirim `image_url`.
+- **INV4.** Aktifkan kembali = `PATCH` multipart `status=ACTIVE` (PATCH inventory dan SOP memakai
+  multipart, bukan JSON).
+
+## SOP (`/policies`)
+
+- **SOP1.** Field multipart PDF bernama `file`. **Perlu konfirmasi.** Vendor hanya dikirim saat
+  upload; edit hanya mengirim `name` dan file (jika diganti).
+- **SOP2.** Respons: `id, vendor_id, name, status, file_size|size?, updated_at|created_at?`.
+  Kolom "File" menampilkan ukuran/tanggal jika tersedia.
+- **SOP3.** `GET /policies/{id}/file` mengembalikan URL di `url`, `signed_url`, `file_url` atau
+  `download_url` (boleh di dalam `data`), atau string. URL tidak disimpan: setiap klik "Buka"
+  meminta URL baru.
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan
