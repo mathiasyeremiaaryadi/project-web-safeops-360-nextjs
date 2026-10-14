@@ -24,13 +24,13 @@ pipeline {
       }
     }
     stage('Deploy') {
-      when { anyOf { branch 'main'; branch 'ci/docker-jenkins' } }
+      when { anyOf { branch 'main'; branch 'ci/docker-jenkinsfile' } }
       steps {
         sh 'IMAGE_TAG=$GIT_COMMIT docker compose up -d --no-build --remove-orphans'
       }
     }
     stage('Health check') {
-      when { anyOf { branch 'main'; branch 'ci/docker-jenkins' } }
+      when { anyOf { branch 'main'; branch 'ci/docker-jenkinsfile' } }
       steps {
         // Jenkins tidak join ke safeops-network, jadi curl dijalankan dari container sementara di network itu.
         sh '''

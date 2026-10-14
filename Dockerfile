@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Next.js 16 butuh Node >= 20.9; README menetapkan Node >= 22
 ARG NODE_VERSION=22
 
@@ -13,8 +12,8 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # public/ dibutuhkan postinstall msw (workerDirectory)
 COPY public ./public
-RUN --mount=type=cache,id=pnpm-store,target=/root/.cache/pnpm \
-    pnpm config set store-dir /root/.cache/pnpm && pnpm install --frozen-lockfile
+# Tanpa RUN --mount: Docker CLI di container Jenkins tidak punya buildx (legacy builder)
+RUN pnpm install --frozen-lockfile
 
 FROM base AS source
 COPY --from=deps /app/node_modules ./node_modules
