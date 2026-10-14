@@ -1,0 +1,16 @@
+.git
+.env*
+!.env.example
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+mockup
+docs
+*.md
+Jenkinsfile
+docker-compose.yml
+Dockerfile
+.dockerignore

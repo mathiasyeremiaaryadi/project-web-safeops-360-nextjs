@@ -1,0 +1,17 @@
+name: safeops-360-web
+
+services:
+  app:
+    image: safeops-360-web:${IMAGE_TAG:-latest}
+    container_name: safeops-360-web
+    restart: unless-stopped
+    stop_grace_period: 30s
+    networks: [safeops]
+    # Frontend memanggil /api/v1 di origin yang sama. Reverse proxy di depan container ini
+    # harus meneruskan /api/v1 ke backend Go dan sisanya ke port ini.
+    ports: ['3001:3000']
+
+# Dinamai pasti supaya health check Jenkins bisa join ke network ini.
+networks:
+  safeops:
+    name: safeops-network
