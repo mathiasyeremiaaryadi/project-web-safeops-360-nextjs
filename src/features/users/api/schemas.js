@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idListSchema, listResponseSchema } from '@/lib/api/lists';
+import { entityResponseSchema, idListSchema, listResponseSchema } from '@/lib/api/lists';
 import { ROLES } from '@/lib/constants';
 import { VENDOR_SCOPED_ROLES } from '@/features/users/constants';
 
@@ -34,6 +34,9 @@ export const userSchema = z.object({
 /** @typedef {z.infer<typeof userSchema>} User */
 
 export const userListSchema = listResponseSchema(userSchema);
+
+/** `GET /users/{id}` (bare or wrapped in `user` / `data`). */
+export const userDetailSchema = entityResponseSchema(userSchema, 'user');
 
 /** `POST /users` → 201 `{ user, temporary_password? }` (Postman test script reads `user.id`). */
 export const createUserResponseSchema = z.object({

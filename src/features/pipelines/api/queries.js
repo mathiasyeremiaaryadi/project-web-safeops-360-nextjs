@@ -6,7 +6,7 @@ import { pipelineKeys } from '@/features/pipelines/api/keys';
 import {
   pipelineItemListSchema,
   pipelineListSchema,
-  pipelineSchema,
+  pipelineDetailSchema,
 } from '@/features/pipelines/api/schemas';
 
 /**
@@ -32,7 +32,7 @@ export function usePipeline(id) {
   return useQuery({
     queryKey: pipelineKeys.detail(id),
     queryFn: () =>
-      apiRequest({ method: 'get', path: `v1/pipelines/${id}`, schema: pipelineSchema }),
+      apiRequest({ method: 'get', path: `v1/pipelines/${id}`, schema: pipelineDetailSchema }),
   });
 }
 

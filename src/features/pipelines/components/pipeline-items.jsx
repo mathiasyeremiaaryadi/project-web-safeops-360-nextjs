@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, ListChecks } from 'lucide-react';
+import { ListChecks, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AsyncCombobox } from '@/components/shared/async-combobox';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { getErrorMessage } from '@/lib/api/errors';
-import { MASTER_STATUS, MASTER_STATUS_BADGES } from '@/lib/constants';
+import { searchRows } from '@/lib/search';
+import { MASTER_STATUS } from '@/lib/constants';
 import {
   useAddPipelineItem,
   useRemovePipelineItem,
@@ -19,6 +19,7 @@ import {
   useTogglePipelineItem,
 } from '@/features/pipelines/api/mutations';
 import { usePipelineItems } from '@/features/pipelines/api/queries';
+import { PipelineItemRow } from '@/features/pipelines/components/pipeline-item-row';
 import { nextSortOrder, sortItems, swapWithNeighbour } from '@/features/pipelines/lib/order';
 
 /** @typedef {import('@/features/pipelines/api/schemas').PipelineItem} PipelineItem */
@@ -38,6 +39,7 @@ export function PipelineItems({ pipelineId, canEdit }) {
   const toggle = useTogglePipelineItem(pipelineId);
   const remove = useRemovePipelineItem(pipelineId);
   const [removing, setRemoving] = useState(/** @type {PipelineItem | null} */ (null));
+  const [taskQuery, setTaskQuery] = useState('');
 
   if (query.isPending) return <ListSkeleton rows={3} />;
   if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
@@ -45,6 +47,9 @@ export function PipelineItems({ pipelineId, canEdit }) {
   const items = sortItems(query.data.data);
   /** @param {PipelineItem} item */
   const nameOf = (item) => item.item_name ?? item.item?.name ?? itemNames.labelOf(item.item_id);
+  const visibleItems = searchRows(items, taskQuery, (item) => [nameOf(item)]);
+  // Reordering a filtered list would be ambiguous: ↑/↓ only while not searching.
+  const canReorder = !taskQuery.trim();
 
   /** @param {import('@/lib/api/lookups').Option | null} option */
   const add = (option) => {
@@ -81,6 +86,23 @@ export function PipelineItems({ pipelineId, canEdit }) {
         ) : null}
       </div>
 
+      {items.length > 0 ? (
+        <div className="relative mb-2">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            value={taskQuery}
+            onChange={(event) => setTaskQuery(event.target.value)}
+            placeholder="Cari task di pipeline ini"
+            aria-label="Cari task di pipeline ini"
+            className="pl-11"
+          />
+        </div>
+      ) : null}
+
       {items.length === 0 ? (
         <EmptyState
           icon={ListChecks}
@@ -88,64 +110,27 @@ export function PipelineItems({ pipelineId, canEdit }) {
           description="Tambahkan task dari master task."
         />
       ) : (
-        <ol className="flex flex-col divide-y">
-          {items.map((item, index) => {
-            const active = item.status === MASTER_STATUS.ACTIVE;
+        <ol className="flex flex-col divide-y" aria-label="Urutan task">
+          {visibleItems.length === 0 ? (
+            <li className="py-6 text-center text-sm text-muted-foreground">
+              Task tidak ditemukan.
+            </li>
+          ) : null}
+          {visibleItems.map((item) => {
+            const index = items.indexOf(item);
             return (
-              <li key={item.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
-                  >
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 font-medium text-foreground">{nameOf(item)}</span>
-                  <StatusBadge status={MASTER_STATUS_BADGES[item.status]} />
-                </div>
-                {canEdit ? (
-                  <div className="flex flex-wrap gap-2 pl-11 sm:pl-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 bg-card"
-                      aria-label={`Naikkan ${nameOf(item)}`}
-                      disabled={index === 0 || reorder.isPending}
-                      onClick={() => move(index, -1)}
-                    >
-                      <ArrowUp aria-hidden="true" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 bg-card"
-                      aria-label={`Turunkan ${nameOf(item)}`}
-                      disabled={index === items.length - 1 || reorder.isPending}
-                      onClick={() => move(index, 1)}
-                    >
-                      <ArrowDown aria-hidden="true" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 bg-card"
-                      onClick={() => toggle.mutate(item, { onError: showError })}
-                    >
-                      {active ? 'Nonaktifkan' : 'Aktifkan'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 bg-card text-danger hover:text-danger"
-                      onClick={() => setRemoving(item)}
-                    >
-                      Lepas dari pipeline
-                    </Button>
-                  </div>
-                ) : null}
-              </li>
+              <PipelineItemRow
+                key={item.id}
+                item={item}
+                name={nameOf(item)}
+                position={index + 1}
+                canEdit={canEdit}
+                canMoveUp={canReorder && index > 0 && !reorder.isPending}
+                canMoveDown={canReorder && index < items.length - 1 && !reorder.isPending}
+                onMove={(direction) => move(index, direction)}
+                onToggle={() => toggle.mutate(item, { onError: showError })}
+                onRemove={() => setRemoving(item)}
+              />
             );
           })}
         </ol>

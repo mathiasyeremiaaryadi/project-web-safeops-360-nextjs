@@ -6,7 +6,6 @@ import { userKeys } from '@/features/users/api/keys';
 import {
   createUserResponseSchema,
   resetPasswordResponseSchema,
-  userSchema,
 } from '@/features/users/api/schemas';
 
 /**
@@ -40,8 +39,7 @@ export function useUpdateUser(id) {
   const queryClient = useQueryClient();
   return useMutation({
     /** @param {Record<string, unknown>} body */
-    mutationFn: (body) =>
-      apiRequest({ method: 'patch', path: `v1/users/${id}`, json: body, schema: userSchema }),
+    mutationFn: (body) => apiRequest({ method: 'patch', path: `v1/users/${id}`, json: body }),
     onSuccess: () => invalidateUsers(queryClient, id),
   });
 }
@@ -51,8 +49,7 @@ export function useUpdateUserAccess(id) {
   const queryClient = useQueryClient();
   return useMutation({
     /** @param {{ roles: string[], site_ids: string[], vendor_ids: string[] }} body */
-    mutationFn: (body) =>
-      apiRequest({ method: 'put', path: `v1/users/${id}/roles`, json: body, schema: userSchema }),
+    mutationFn: (body) => apiRequest({ method: 'put', path: `v1/users/${id}/roles`, json: body }),
     onSuccess: () => invalidateUsers(queryClient, id),
   });
 }

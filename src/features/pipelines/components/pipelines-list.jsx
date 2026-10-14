@@ -10,6 +10,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { PageHeader } from '@/components/layout/page-header';
 import { AsyncCombobox } from '@/components/shared/async-combobox';
 import { EmptyState } from '@/components/shared/empty-state';
+import { FilterBar } from '@/components/shared/filter-bar';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { Pagination } from '@/components/shared/pagination';
 import { ResponsiveList } from '@/components/shared/responsive-list';
@@ -17,6 +18,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
+import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { usePipelines } from '@/features/pipelines/api/queries';
@@ -39,6 +41,14 @@ export function PipelinesList() {
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const query = usePipelines({ ...params, limit });
   const vendors = useOptionLabels('vendors');
+  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (p) => [
+        p.name,
+        p.description,
+        vendors.labelOf(p.vendor_id),
+      ])
+    : [];
   const [creating, setCreating] = useState(false);
   const selectedVendor = params.vendor_id
     ? { value: params.vendor_id, label: vendors.labelOf(params.vendor_id) }
@@ -47,6 +57,7 @@ export function PipelinesList() {
   const columns = [
     {
       id: 'name',
+      meta: { sortValue: (/** @type {any} */ p) => p.name },
       header: 'Pipeline',
       cell: ({ row }) => (
         <Link
@@ -57,10 +68,21 @@ export function PipelinesList() {
         </Link>
       ),
     },
-    { id: 'vendor', header: 'Vendor', cell: ({ row }) => vendors.labelOf(row.original.vendor_id) },
-    { id: 'count', header: 'Jumlah task', cell: ({ row }) => taskCount(row.original.item_count) },
+    {
+      id: 'vendor',
+      header: 'Vendor',
+      meta: { sortValue: (/** @type {any} */ p) => vendors.labelOf(p.vendor_id) },
+      cell: ({ row }) => vendors.labelOf(row.original.vendor_id),
+    },
+    {
+      id: 'count',
+      header: 'Jumlah task',
+      meta: { sortValue: (/** @type {any} */ p) => p.item_count },
+      cell: ({ row }) => taskCount(row.original.item_count),
+    },
     {
       id: 'status',
+      meta: { sortValue: (/** @type {any} */ p) => p.status },
       header: 'Status',
       cell: ({ row }) => <StatusBadge status={MASTER_STATUS_BADGES[row.original.status]} />,
     },
@@ -85,6 +107,12 @@ export function PipelinesList() {
         }
       />
 
+      <FilterBar
+        className="mb-3"
+        search={params.q}
+        onSearchChange={(q) => setFilters({ q })}
+        searchPlaceholder="Cari nama pipeline atau vendor"
+      />
       <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,320px)_200px]">
         <AsyncCombobox
           lookup="vendors"
@@ -109,16 +137,16 @@ export function PipelinesList() {
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? <ErrorState onRetry={() => query.refetch()} /> : null}
-      {query.isSuccess && query.data.data.length === 0 ? (
+      {query.isSuccess && rows.length === 0 ? (
         <EmptyState
           icon={Workflow}
           title="Belum ada pipeline"
           description="Ubah filter, atau buat pipeline baru."
         />
       ) : null}
-      {query.isSuccess && query.data.data.length > 0 ? (
+      {query.isSuccess && rows.length > 0 ? (
         <ResponsiveList
-          data={query.data.data}
+          data={rows}
           columns={columns}
           getRowId={(pipeline) => pipeline.id}
           caption="Daftar pipeline"

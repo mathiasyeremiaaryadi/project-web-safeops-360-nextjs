@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { listResponseSchema, masterStatusSchema, withMasterStatus } from '@/lib/api/lists';
+import {
+  entityResponseSchema,
+  listResponseSchema,
+  masterStatusSchema,
+  withMasterStatus,
+} from '@/lib/api/lists';
 
 /*
  * `/pipelines`, `/pipelines/{id}/items`, `/pipeline-items/{id}` (BRD 8.4).
@@ -23,12 +28,19 @@ export const pipelineSchema = z.preprocess(
 
 export const pipelineListSchema = listResponseSchema(pipelineSchema);
 
+/** `GET /pipelines/{id}` (bare or wrapped in `pipeline` / `data`). */
+export const pipelineDetailSchema = entityResponseSchema(pipelineSchema, 'pipeline');
+
 export const pipelineItemSchema = z.preprocess(
-  withMasterStatus,
+  (raw) => {
+    const row = /** @type {any} */ (withMasterStatus(raw));
+    // The task may only be embedded as `item: { id, name }`.
+    return row && typeof row === 'object' ? { ...row, item_id: row.item_id ?? row.item?.id } : row;
+  },
   z.object({
     id: z.coerce.string(),
     item_id: z.coerce.string(),
-    sort_order: z.number(),
+    sort_order: z.coerce.number().catch(0),
     status: masterStatusSchema,
     /** Task name, if the API embeds it (`item_name` or `item.name`). */
     item_name: z.string().nullish(),

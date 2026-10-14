@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { userKeys } from '@/features/users/api/keys';
-import { userListSchema, userSchema } from '@/features/users/api/schemas';
+import { userDetailSchema, userListSchema } from '@/features/users/api/schemas';
 
 /**
  * `GET /users?page=&limit=&q=&role=&status=`
@@ -22,6 +22,6 @@ export function useUsers(params) {
 export function useUser(id) {
   return useQuery({
     queryKey: userKeys.detail(id),
-    queryFn: () => apiRequest({ method: 'get', path: `v1/users/${id}`, schema: userSchema }),
+    queryFn: () => apiRequest({ method: 'get', path: `v1/users/${id}`, schema: userDetailSchema }),
   });
 }

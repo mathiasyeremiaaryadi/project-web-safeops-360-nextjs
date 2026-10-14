@@ -89,3 +89,20 @@ export const idListSchema = z.preprocess(
       : [],
   z.array(z.coerce.string()),
 );
+
+/**
+ * Schema of a single-record response (`GET /<resource>/{id}`), tolerant to wrappers:
+ * `{...}`, `{ data: {...} }`, `{ <key>: {...} }` or `{ data: { <key>: {...} } }`.
+ * @template {z.ZodType} T
+ * @param {T} schema Record schema.
+ * @param {string} key Wrapper key used by the backend, e.g. `pipeline`, `user`.
+ */
+export function entityResponseSchema(schema, key) {
+  return z.preprocess((raw) => {
+    if (!isRecord(raw)) return raw;
+    const body = /** @type {Record<string, any>} */ (raw);
+    if (body.id !== undefined) return body;
+    const data = isRecord(body.data) ? body.data : {};
+    return [body[key], data[key], body.data].find(isRecord) ?? body;
+  }, schema);
+}
