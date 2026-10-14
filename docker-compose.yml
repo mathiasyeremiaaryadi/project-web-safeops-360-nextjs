@@ -7,8 +7,12 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     networks: [safeops]
-    # Frontend memanggil /api/v1 di origin yang sama. Reverse proxy di depan container ini
-    # harus meneruskan /api/v1 ke backend Go dan sisanya ke port ini.
+    # BFF: browser hanya memanggil container ini (/api/*); server Next.js yang memanggil Go.
+    # Nilai dibaca saat runtime (bukan saat build) dari environment Jenkins / shell.
+    environment:
+      API_ORIGIN: ${API_ORIGIN:-http://103.150.226.7:8082}
+      # Opsional. Kosong = kunci acak per start container (semua user logout setiap deploy).
+      SESSION_SECRET: ${SESSION_SECRET:-}
     ports: ['3001:3000']
 
 # Dinamai pasti supaya health check Jenkins bisa join ke network ini.

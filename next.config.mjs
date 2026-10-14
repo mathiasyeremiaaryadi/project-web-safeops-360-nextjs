@@ -1,8 +1,8 @@
 import { withSerwist } from '@serwist/turbopack';
-import { getServerEnv } from './src/config/env.js';
 
-// Fails `next dev` / `next build` when required environment variables are missing.
-const env = getServerEnv();
+// Server env (API_ORIGIN, SESSION_SECRET) is validated at server start (src/instrumentation.js),
+// not here: the Docker build has no runtime secrets, and must not bake them into the image.
+const isProduction = process.env.NODE_ENV === 'production';
 
 /**
  * Static security headers. The Content-Security-Policy header is set per request
@@ -13,7 +13,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(self), geolocation=(self), microphone=()' },
   { key: 'X-Frame-Options', value: 'DENY' },
-  ...(env.NODE_ENV === 'production'
+  ...(isProduction
     ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' }]
     : []),
 ];

@@ -10,6 +10,7 @@ pipeline {
     APP        = 'safeops-360-web'   // nama image, container, dan project compose
     HEALTH_URL = 'http://safeops-360-web:3000/login'
     NETWORK    = 'safeops-network'   // network dari docker-compose.yml
+    API_ORIGIN = 'http://103.150.226.7:8082'   // backend Go, dipanggil server Next.js (BFF)
   }
   stages {
     stage('Test') {
@@ -19,14 +20,15 @@ pipeline {
     }
     stage('Build') {
       steps {
-        // NEXT_PUBLIC_* di-inline saat build; mocking wajib disabled di production
-        sh 'docker build --build-arg NEXT_PUBLIC_API_MOCKING=disabled -t $APP:$GIT_COMMIT .'
+        // Build tidak butuh secret; env server diberikan saat deploy.
+        sh 'docker build -t $APP:$GIT_COMMIT .'
       }
     }
     stage('Deploy') {
       when { anyOf { branch 'main'; branch 'ci/docker-jenkinsfile' } }
       steps {
-        sh 'IMAGE_TAG=$GIT_COMMIT docker compose up -d --no-build --remove-orphans'
+        // SESSION_SECRET tidak di-set: container membuat kunci acak sendiri (user logout setiap deploy).
+        sh 'IMAGE_TAG=$GIT_COMMIT API_ORIGIN=$API_ORIGIN docker compose up -d --no-build --remove-orphans'
       }
     }
     stage('Health check') {

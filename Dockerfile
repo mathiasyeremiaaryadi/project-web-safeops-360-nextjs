@@ -10,8 +10,6 @@ RUN corepack enable
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# public/ dibutuhkan postinstall msw (workerDirectory)
-COPY public ./public
 # Tanpa RUN --mount: Docker CLI di container Jenkins tidak punya buildx (legacy builder)
 RUN pnpm install --frozen-lockfile
 
@@ -24,10 +22,11 @@ FROM source AS test
 RUN pnpm lint && pnpm format:check && pnpm test
 
 FROM source AS builder
-# NEXT_PUBLIC_* di-inline saat build, jadi harus di-set di sini, bukan saat runtime.
-# env.js menolak build production kalau mocking "enabled".
-ARG NEXT_PUBLIC_API_MOCKING=disabled
-ENV NODE_ENV=production NEXT_PUBLIC_API_MOCKING=${NEXT_PUBLIC_API_MOCKING}
+# Build tanpa secret: API_ORIGIN dan SESSION_SECRET baru dibaca saat container jalan
+# (docker-compose.yml) dan divalidasi oleh src/instrumentation.js saat server start.
+# NEXT_PUBLIC_* di-inline saat build; set di sini bila perlu (mis. NEXT_PUBLIC_APP_TIMEZONE).
+ARG NEXT_PUBLIC_APP_TIMEZONE=Asia/Jakarta
+ENV NODE_ENV=production NEXT_PUBLIC_APP_TIMEZONE=${NEXT_PUBLIC_APP_TIMEZONE}
 RUN pnpm build
 
 # Stage terakhir = image yang dijalankan (output: 'standalone' di next.config.mjs)
