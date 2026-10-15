@@ -2,6 +2,7 @@ import {
   ClipboardList,
   Database,
   FileText,
+  Gauge,
   History,
   Home,
   Inbox,
@@ -10,7 +11,9 @@ import {
   PackagePlus,
   PackageX,
   ShieldAlert,
+  SlidersHorizontal,
   TrendingUp,
+  UserCheck,
   UserRound,
   Users,
   Workflow,
@@ -57,7 +60,16 @@ export const NAV_ITEMS = Object.freeze([
     shortLabel: 'Progress',
     href: '/vendor-progress',
     icon: TrendingUp,
-    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
+    roles: [SUPER_ADMIN, ADMIN],
+  },
+  {
+    // Admin vendor: their own vendor only, so the progress is shown per pipeline.
+    key: 'pipeline-progress',
+    label: 'Progress pipeline',
+    shortLabel: 'Progress',
+    href: '/pipeline-progress',
+    icon: TrendingUp,
+    roles: [ADMIN_WORKER],
   },
   {
     key: 'reports-tasks',
@@ -80,6 +92,13 @@ export const NAV_ITEMS = Object.freeze([
     disabledReason: 'Menunggu dukungan API',
   },
   {
+    key: 'sla',
+    label: 'SLA & maturity',
+    href: '/sla',
+    icon: Gauge,
+    roles: [SUPER_ADMIN, ADMIN],
+  },
+  {
     // Admin and Admin vendor: at the top, like the mockups (Super Admin: under "Data master").
     key: 'reports-inventory-top',
     label: 'Laporan inventory',
@@ -88,6 +107,14 @@ export const NAV_ITEMS = Object.freeze([
     icon: PackageX,
     roles: [ADMIN, ADMIN_WORKER],
     bottomNavRoles: [ADMIN, ADMIN_WORKER],
+  },
+  {
+    // Admin vendor: after "Laporan inventory" (mockup); same page as above.
+    key: 'sla-vendor',
+    label: 'SLA & maturity',
+    href: '/sla',
+    icon: Gauge,
+    roles: [ADMIN_WORKER],
   },
   {
     key: 'master',
@@ -126,11 +153,29 @@ export const NAV_ITEMS = Object.freeze([
     section: 'Data master',
   },
   {
+    // Admin: site overrides of their site (default vendor rules read-only).
+    key: 'sla-rules-site',
+    label: 'Pengaturan SLA',
+    href: '/sla/rules',
+    icon: SlidersHorizontal,
+    roles: [ADMIN],
+    section: 'Data master',
+  },
+  {
     // Admin vendor: the pipelines of their vendor, where they manage the tasks (not the header).
     key: 'pipeline-items',
     label: 'Pipeline item',
     href: '/pipelines',
     icon: Workflow,
+    roles: [ADMIN_WORKER],
+    section: 'Data master',
+  },
+  {
+    // Admin vendor: which worker does which task (Postman: only they may assign).
+    key: 'assignments',
+    label: 'Penugasan worker',
+    href: '/assignments',
+    icon: UserCheck,
     roles: [ADMIN_WORKER],
     section: 'Data master',
   },
@@ -142,6 +187,14 @@ export const NAV_ITEMS = Object.freeze([
     icon: PackageX,
     roles: [SUPER_ADMIN],
     section: 'Data master',
+  },
+  {
+    key: 'sla-rules',
+    label: 'Pengaturan SLA',
+    href: '/sla/rules',
+    icon: SlidersHorizontal,
+    roles: [SUPER_ADMIN],
+    section: 'Administrasi',
   },
   {
     key: 'users',

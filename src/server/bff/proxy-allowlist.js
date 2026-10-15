@@ -13,12 +13,21 @@ export const API_PROXY_ALLOWLIST = Object.freeze([
   'items',
   'pipelines',
   'pipeline-items',
+  // Admin vendor: workers assigned to pipeline tasks.
+  'assignments',
   'inventories',
   'policies',
   'pipeline-reports',
   'inventory-reports',
   'dashboard',
   'reports',
+  // SLA & maturity: catalogs, versioned rules and scores.
+  'sla-catalog',
+  'maturity-catalog',
+  'sla-rules',
+  'maturity-rules',
+  'sla-scores',
+  'maturity-levels',
   // Worker: own tasks of the day (`GET /me/tasks`).
   'me',
 ]);

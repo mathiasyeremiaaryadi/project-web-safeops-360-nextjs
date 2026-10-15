@@ -11,17 +11,19 @@ import { ROLES } from '@/lib/constants';
 const SA = [ROLES.SUPER_ADMIN];
 
 describe('navigation config', () => {
-  it('gives Super Admin the 12 menu items in order', () => {
+  it('gives Super Admin the 14 menu items in order', () => {
     expect(getNavItems(SA).map((item) => item.label)).toEqual([
       'Beranda',
       'Progress vendor',
       'Review laporan',
       'Catatan safety',
+      'SLA & maturity',
       'Site & vendor',
       'Pipeline & task',
       'Inventory',
       'SOP',
       'Laporan inventory',
+      'Pengaturan SLA',
       'Manajemen user',
       'Audit log',
       'Profil & sesi',
@@ -35,11 +37,13 @@ describe('navigation config', () => {
       null,
       null,
       null,
+      null,
       'Data master',
       'Data master',
       'Data master',
       'Data master',
       'Data master',
+      'Administrasi',
       'Administrasi',
       'Administrasi',
       'Akun',
@@ -62,14 +66,30 @@ describe('navigation config', () => {
   });
 
   it('uses the most privileged role for multi-role users', () => {
-    expect(getNavItems([ROLES.WORKER, ROLES.SUPER_ADMIN])).toHaveLength(12);
+    expect(getNavItems([ROLES.WORKER, ROLES.SUPER_ADMIN])).toHaveLength(14);
   });
 
-  it('opens "Progress vendor" to the managers only', () => {
-    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER]) {
+  it('opens "Progress vendor" to Super Admin / Admin, "Progress pipeline" to Admin vendor', () => {
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN]) {
       expect(canAccessPath('/vendor-progress/v1', [role])).toBe(true);
+      expect(canAccessPath('/pipeline-progress', [role])).toBe(false);
     }
+    expect(canAccessPath('/vendor-progress', [ROLES.ADMIN_WORKER])).toBe(false);
+    expect(canAccessPath('/pipeline-progress', [ROLES.ADMIN_WORKER])).toBe(true);
+    expect(canAccessPath('/assignments', [ROLES.ADMIN_WORKER])).toBe(true);
+    expect(canAccessPath('/assignments', [ROLES.ADMIN])).toBe(false);
     expect(canAccessPath('/vendor-progress', [ROLES.WORKER])).toBe(false);
+  });
+
+  it('SLA: dashboard for the managers, rules for Super Admin and Admin only', () => {
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER]) {
+      expect(canAccessPath('/sla/detail', [role])).toBe(true);
+    }
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN]) {
+      expect(canAccessPath('/sla/rules/new', [role])).toBe(true);
+    }
+    expect(canAccessPath('/sla/rules', [ROLES.ADMIN_WORKER])).toBe(false);
+    expect(canAccessPath('/sla', [ROLES.WORKER])).toBe(false);
   });
 
   it('guards sub-routes with the owning menu item', () => {
@@ -98,11 +118,13 @@ describe('navigation config', () => {
       ['', 'Progress vendor'],
       ['', 'Review laporan'],
       ['', 'Catatan safety'],
+      ['', 'SLA & maturity'],
       ['', 'Laporan inventory'],
       ['Data site', 'Vendor'],
       ['Data site', 'Pipeline & task'],
       ['Data site', 'Inventory'],
       ['Data site', 'SOP'],
+      ['Data site', 'Pengaturan SLA'],
       ['Akun', 'Profil & sesi'],
     ]);
     expect(getBottomNavItems(admin).map((item) => item.shortLabel)).toEqual([
@@ -119,16 +141,18 @@ describe('navigation config', () => {
     expect(getHomeRoute(admin)).toBe('/dashboard');
   });
 
-  it('gives Admin vendor the 9 vendor menu items, without master, safety notes and audit log', () => {
+  it('gives Admin vendor the 11 vendor menu items, without master, safety notes and audit log', () => {
     const vendor = [ROLES.ADMIN_WORKER];
     expect(getNavItems(vendor).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
-      ['', 'Progress vendor'],
+      ['', 'Progress pipeline'],
       ['', 'Review laporan'],
       ['', 'Laporan inventory'],
+      ['', 'SLA & maturity'],
       ['Data vendor', 'Inventory'],
       ['Data vendor', 'SOP'],
       ['Data vendor', 'Pipeline item'],
+      ['Data vendor', 'Penugasan worker'],
       ['Akun', 'Akun worker'],
       ['Akun', 'Profil & sesi'],
     ]);

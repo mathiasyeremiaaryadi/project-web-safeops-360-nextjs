@@ -38,6 +38,11 @@ export const LOOKUPS = Object.freeze({
     label: (/** @type {any} */ r) => r.name ?? r.id,
     hint: () => undefined,
   },
+  pipelines: {
+    path: 'v1/pipelines',
+    label: (/** @type {any} */ r) => r.name ?? r.id,
+    hint: () => undefined,
+  },
   users: {
     path: 'v1/users',
     label: (/** @type {any} */ r) => r.full_name || r.username || r.id,

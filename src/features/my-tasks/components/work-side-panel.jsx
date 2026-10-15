@@ -7,13 +7,14 @@ import { formatFileSize } from '@/components/shared/file-field';
 import { MASTER_STATUS } from '@/lib/constants';
 import { toastApiError } from '@/lib/notify';
 import { useOpenPolicyFile, usePolicies } from '@/features/policies';
+import { MySlaCard } from '@/features/sla-results';
 
 /** SOPs shown next to the tasks: the vendor's active SOPs (there is no task → SOP relation). */
 const SOP_LIMIT = 3;
 
 /**
  * Side panel of "Tugas hari ini" (beside the list from 1024px, below it on smaller screens):
- * the vendor's SOPs and a shortcut to report broken equipment.
+ * the worker's SLA score, the vendor's SOPs and a shortcut to report broken equipment.
  */
 export function WorkSidePanel() {
   const policies = usePolicies({ page: 1, limit: SOP_LIMIT, status: MASTER_STATUS.ACTIVE });
@@ -22,6 +23,7 @@ export function WorkSidePanel() {
 
   return (
     <aside className="flex flex-col gap-4">
+      <MySlaCard />
       <section aria-labelledby="vendor-sop-title" className="rounded-2xl border bg-card p-4 sm:p-5">
         <h2 id="vendor-sop-title" className="mb-3 font-semibold text-foreground">
           SOP vendor

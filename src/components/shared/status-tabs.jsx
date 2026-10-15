@@ -22,7 +22,7 @@ export function StatusTabs({ options, value, onChange, label }) {
           const active = option.value === value;
           return (
             <button
-              key={option.value || 'all'}
+              key={`tab-${option.value}`}
               type="button"
               aria-pressed={active}
               onClick={() => onChange(option.value)}

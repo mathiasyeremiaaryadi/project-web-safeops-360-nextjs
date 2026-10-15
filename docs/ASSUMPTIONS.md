@@ -179,9 +179,9 @@ status` (BRD: list menyertakan `site_ids`). Item: `id, name, description?, statu
   task = `sort_order` terbesar + 1. "Lepas dari pipeline" = `DELETE /pipeline-items/{id}`;
   "Aktifkan/Nonaktifkan" = `PATCH { status }`. **Perlu konfirmasi** apakah DELETE item pipeline
   menghapus atau hanya menonaktifkan.
-- **P4.** Form "Buat pipeline" memilih **Site** lalu vendor (daftar vendor difilter
-  `site_id`), dan `POST /pipelines` mengirim `site_id`. BRD hanya menyebut `vendor_id`, `name`,
-  `description`, jadi **perlu konfirmasi** backend menyimpan `site_id` (bukan menolaknya).
+- **P4.** `POST /pipelines` mengirim `site_id` (Postman: wajib, salah satu site vendor, dan dalam
+  scope Admin). Form "Buat pipeline" memilih **Vendor** dulu, lalu **Site** dari `site_ids` vendor
+  tersebut (`GET /vendors`), dibatasi site Admin. Bila hanya ada satu site, langsung terisi.
 - **P4.** "Atur penugasan" (worker per shift) di mockup tidak dibuat karena API penugasan belum ada.
 
 ## Inventory (`/inventories`)
@@ -317,6 +317,61 @@ Postman tidak memuat endpoint Worker. Endpoint bertanda ⚠ mengikuti kontrak ta
   mengirim `from`/`to`/`status`/`revision_status`; "Revisi diminta" = `revision_status=REQUESTED`.
 - **W9.** Pilihan inventory: `GET /inventories?vendor_id=&status=ACTIVE` (juga difilter `ACTIVE`
   di klien bila backend mengabaikan `status`).
+
+## Progress vendor, progress pipeline, penugasan
+
+- **VP1.** `/vendor-progress` (Super Admin, Admin): `GET /dashboard/summary` →
+  `data.vendor_progress[]` (`vendor_id, vendor_name, total_task, completed, in_progress,
+not_started, progress_percentage, vendor_progress_detail { total_area, area_detail[],
+total_point, total_worker, total_assignment }`). Isi `area_detail[]` belum terlihat: dibaca dari
+  `area_name|name`, `total_point`, `total_task`, `completed`, `in_progress`, `not_started`,
+  `progress_percentage` (`features/vendor-progress/lib/progress.js`). **Perlu konfirmasi.**
+- **VP2.** Endpoint progres hanya menerima satu `date`. Rentang Dari–Sampai (default hari ini, maks.
+  31 hari) = satu request per hari, dijumlahkan per vendor/pipeline; persentase dihitung ulang.
+  Area, point, worker, dan penugasan diambil nilai terbesarnya (bukan dijumlah).
+- **VP3.** Kolom Site: `site_name` baris, lalu filter site, lalu `site_ids` vendor (`GET /vendors`).
+- **VP4.** `/pipeline-progress` (Admin vendor): `GET /reports/daily` per pipeline (Postman:
+  `task_count, report_count, completed_count, in_progress_count, late_upload_count`). Belum mulai =
+  `task_count − report_count`. Baris membuka `/pipelines/{id}`.
+- **AS1.** `/assignments` (Admin vendor, Postman): `GET /assignments?is_active=&pipeline_id=&user_id=`,
+  `POST { pipeline_item_id, user_id }` (409 = sudah ditugaskan), `PATCH { is_active }`. Shift
+  **tidak** dipilih di penugasan (dipilih worker per laporan). Nama worker/task/pipeline dibaca dari
+  beberapa kemungkinan field (`features/assignments/api/schemas.js`). Filter aktif/nonaktif juga
+  diterapkan di klien.
+
+## SLA & maturity
+
+Postman memuat semua endpoint `sla-*` dan `maturity-*`, tetapi **tanpa contoh respons**. Bentuk di
+bawah mengikuti prompt SLA bagian 4 dan dibaca toleran (beberapa nama field).
+
+- **SL1. Katalog** (`features/sla-shared/catalog-schemas.js`): `GET /sla-catalog` → daftar
+  `{ code, unit, direction, sla, maturity }` (bare, `data`, atau `data.indicators`). `unit`:
+  `PERCENT`/`%` → persen, `MIN*`/`menit` → menit, lainnya skor. `direction`: `DOWN`/`LOWER*` → turun.
+  `GET /maturity-catalog` → `{ dimensions[], levels[] }` (`levels` = syarat default Level 2–5).
+- **SL2. Aturan** (`features/sla-rules/api/schemas.js`): `id, vendor_id, site_id (null = default
+vendor), period_type, version, created_by(_name), created_at, superseded_at, indicators[]
+{code, weight, target}, dimensions[] {code, weight}, levels[]`. Nama vendor/site dari cache
+  lookup bila tidak ada; nama pembuat "—" bila hanya id.
+- **SL3.** "Edit" = `POST` versi baru (tidak ada PUT/PATCH). `levels` dikirim hanya bila berbeda
+  dari default katalog. Nomor versi di toast dihitung dari versi aktif + 1 (respons POST tidak
+  dibaca, karena bentuknya tidak diketahui). 400 → pesan server di atas form (belum dipetakan ke
+  field, karena format field error tidak diketahui); 403 → "Anda tidak berhak membuat aturan untuk
+  cakupan ini."
+- **SL4. Hasil** (`features/sla-results/api/schemas.js`): baris `scope_type, vendor_id/name,
+site_id/name, worker_id/name, period_type, period_start/end, status (OK|NO_DATA|NO_RULE), score,
+compliant, task_count, live, rule_id, rule_version, level, items[] {indicator_code, actual, target,
+score, met, weight, is_na}, dimensions[]`. SLA dan maturity digabung `mergeResults` per
+  `scope_type + vendor_id + site_id + worker_id + period_start`. Gagal memuat maturity tidak
+  menggagalkan SLA. Tidak ada endpoint rincian: `/sla/detail` memakai live atau riwayat
+  `from = to = period_start`. Penanda "Menuju Level" dari `GET /maturity-rules/{rule_id}`; bila
+  tidak tersedia, penanda disembunyikan.
+- **SL5. Akses belum dikonfirmasi:** Admin vendor membaca hasil vendornya (read-only) dan Worker
+  membaca skornya sendiri (`SLA_RESULTS_READ`, `SLA_RESULTS_READ_OWN` di
+  `lib/auth/permissions.js`, satu baris untuk dicabut). Bila backend 403: kartu Worker tidak
+  dirender; halaman Admin vendor menampilkan error. Postman: daftar aturan hanya SUPER_ADMIN/ADMIN.
+- **SL6.** Nama permission mengikuti konvensi proyek (UPPER_SNAKE): `SLA_RULES_READ`,
+  `SLA_RULES_CREATE_DEFAULT`, `SLA_RULES_CREATE_SITE_OVERRIDE`, `SLA_RULES_DEACTIVATE`,
+  `SLA_RESULTS_READ`, `SLA_RESULTS_READ_OWN` (= `slaRules.*` / `slaResults.*` di prompt).
 
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 

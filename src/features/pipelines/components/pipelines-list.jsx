@@ -42,12 +42,16 @@ export function PipelinesList() {
   const siteId = site.siteIdFor();
   const query = usePipelines({ ...params, site_id: siteId, limit });
   const vendors = useOptionLabels('vendors');
+  const sites = useOptionLabels('sites');
+  /** @param {{ site_id?: string | null }} p */
+  const siteOf = (p) => (p.site_id ? sites.labelOf(p.site_id) : '—');
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
     ? searchRows(query.data.data, params.q, (p) => [
         p.name,
         p.description,
         vendors.labelOf(p.vendor_id),
+        siteOf(p),
       ])
     : [];
   const [creating, setCreating] = useState(false);
@@ -71,6 +75,12 @@ export function PipelinesList() {
       header: 'Vendor',
       meta: { sortValue: (/** @type {any} */ p) => vendors.labelOf(p.vendor_id) },
       cell: ({ row }) => vendors.labelOf(row.original.vendor_id),
+    },
+    {
+      id: 'site',
+      header: 'Site',
+      meta: { hideBelow: 'lg', sortValue: siteOf },
+      cell: ({ row }) => siteOf(row.original),
     },
     {
       id: 'count',
@@ -166,7 +176,8 @@ export function PipelinesList() {
               <StatusBadge status={MASTER_STATUS_BADGES[pipeline.status]} />
             </span>
             <span className="text-sm text-muted-foreground">
-              {vendors.labelOf(pipeline.vendor_id)} · {taskCount(pipeline.item_count)}
+              {vendors.labelOf(pipeline.vendor_id)} · {siteOf(pipeline)} ·{' '}
+              {taskCount(pipeline.item_count)}
             </span>
           </Link>
         )}

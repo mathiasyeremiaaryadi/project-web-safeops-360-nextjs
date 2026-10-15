@@ -99,12 +99,40 @@ export function createFixtures() {
       {
         id: 'p1',
         vendor_id: 'v1',
+        site_id: 's1',
         name: 'Cleaning Turbine Hall',
         description: 'Lantai 1',
         status: 'ACTIVE',
         item_count: 2,
       },
       { id: 'p2', vendor_id: 'v2', name: 'Cleaning Boiler', status: 'INACTIVE', item_count: 0 },
+    ],
+    /** `GET /assignments`: workers on pipeline tasks (shift is chosen per report). */
+    assignments: [
+      {
+        id: 'as1',
+        vendor_id: 'v1',
+        user_id: 'u1',
+        user_full_name: 'Agus Pratama',
+        pipeline_item_id: 'pi1',
+        item_name: 'Sapu dan pel lantai',
+        pipeline_id: 'p1',
+        pipeline_name: 'Cleaning Turbine Hall',
+        is_active: true,
+        created_at: '2026-10-01T02:00:00Z',
+      },
+      {
+        id: 'as2',
+        vendor_id: 'v1',
+        user_id: 'u1',
+        user_full_name: 'Agus Pratama',
+        pipeline_item_id: 'pi2',
+        item_name: 'Lap panel',
+        pipeline_id: 'p1',
+        pipeline_name: 'Cleaning Turbine Hall',
+        is_active: false,
+        created_at: '2026-09-20T02:00:00Z',
+      },
     ],
     pipelineItems: [
       {

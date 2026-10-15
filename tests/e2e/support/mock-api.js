@@ -23,6 +23,7 @@ const RESOURCES = {
   'pipeline-reports': 'pipelineReports',
   'inventory-reports': 'inventoryReports',
   'audit-logs': 'auditLogs',
+  assignments: 'assignments',
 };
 
 /** Exact-match filters applied to lists (others are ignored, like a lenient backend). */
@@ -170,6 +171,21 @@ function applyWrite(data, { method, resource, id, sub, body }) {
   if (resource === 'users' && sub === 'scopes' && row) {
     if (body.roles) row.roles = body.roles;
     row.scopes = { site_ids: body.site_ids, vendor_ids: body.vendor_ids };
+  }
+  if (resource === 'assignments' && method === 'POST') {
+    const item = data.pipelineItems.find((i) => i.id === body.pipeline_item_id);
+    const worker = data.users.find((u) => u.id === body.user_id);
+    data.assignments.unshift({
+      id: `as-new-${data.assignments.length}`,
+      vendor_id: 'v1',
+      ...body,
+      user_full_name: worker?.full_name,
+      item_name: item?.item?.name,
+      pipeline_id: 'p1',
+      pipeline_name: 'Cleaning Turbine Hall',
+      is_active: true,
+    });
+    return { data: { id: data.assignments[0].id } };
   }
   if (resource === 'users' && sub === 'reset-password')
     return { temporary_password: 'Reset-Passw0rd' };

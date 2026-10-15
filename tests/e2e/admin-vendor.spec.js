@@ -33,12 +33,14 @@ test('menu, vendor label and "Progres per pipeline" on the dashboard', async ({ 
   await page.goto('/dashboard');
   await expect(page.getByRole('navigation', { name: 'Menu utama' }).getByRole('link')).toHaveText([
     'Beranda',
-    'Progress vendor',
+    'Progress pipeline',
     'Review laporan',
     'Laporan inventory',
+    'SLA & maturity',
     'Inventory',
     'SOP',
     'Pipeline item',
+    'Penugasan worker',
     'Akun worker',
     'Profil & sesi',
   ]);
@@ -321,3 +323,78 @@ for (const width of [360, 1280]) {
     expect(serious).toEqual([]);
   });
 }
+
+test('progress per pipeline: today by default, from "Rekap lengkap", row opens the pipeline', async ({
+  page,
+}) => {
+  await signInAsRina(page);
+  await page.goto('/dashboard');
+  await page.getByRole('link', { name: 'Rekap lengkap' }).click();
+  await expect(page).toHaveURL(/\/pipeline-progress$/);
+  await expect(page.getByRole('heading', { name: 'Progress pipeline', level: 1 })).toBeVisible();
+
+  const table = page.getByRole('table');
+  await expect(table.getByRole('row')).toHaveCount(3);
+  const turbine = table.getByRole('row').filter({ hasText: 'Cleaning Turbine Hall' });
+  await expect(turbine).toContainText('67%');
+  await page.getByRole('searchbox').fill('admin');
+  await expect(table.getByRole('row')).toHaveCount(2);
+  await page.getByRole('searchbox').fill('');
+  await expect(table.getByRole('row')).toHaveCount(3);
+
+  // Site filter: sent to the API and applied here too (the API may ignore it).
+  await page.getByRole('combobox', { name: 'Filter site' }).click();
+  await page.getByRole('option', { name: /PLTU Pacitan/ }).click();
+  await expect(page).toHaveURL(/site_id=s4/);
+  await expect(table.getByRole('row').filter({ hasText: 'Cleaning Turbine Hall' })).toHaveCount(0);
+  await expect(table.getByRole('row').filter({ hasText: 'Cleaning Admin Building' })).toHaveCount(
+    1,
+  );
+  await page.getByRole('combobox', { name: 'Filter site' }).click();
+  await page.getByRole('option', { name: /PLTU Paiton/ }).click();
+  await expect(turbine).toContainText('PLTU Paiton');
+  await turbine.click();
+  await expect(page).toHaveURL(/\/pipelines\/p1$/);
+});
+
+test('worker assignments: active by default, assign a worker, deactivate one', async ({ page }) => {
+  const api = await signInAsRina(page);
+  await page.goto('/assignments');
+  await expect(page.getByRole('heading', { name: 'Penugasan worker', level: 1 })).toBeVisible();
+  const table = page.getByRole('table');
+  await expect(table.getByRole('row')).toHaveCount(2);
+  await expect(table).toContainText('Sapu dan pel lantai');
+  await page.getByRole('button', { name: 'Nonaktif', exact: true }).click();
+  await expect(table).toContainText('Lap panel');
+
+  await page.getByRole('button', { name: 'Tambah penugasan' }).click();
+  const form = dialog(page);
+  await expect(form.getByRole('combobox', { name: 'Task' })).toBeDisabled();
+  await form.getByRole('button', { name: 'Tugaskan' }).click();
+  await expect(form.getByText('Pipeline wajib dipilih.')).toBeVisible();
+  await form.getByRole('combobox', { name: 'Pipeline' }).click();
+  await page.getByRole('option', { name: /Cleaning Turbine Hall/ }).click();
+  await form.getByRole('combobox', { name: 'Task' }).selectOption({ label: '2. Lap panel' });
+  await form.getByRole('combobox', { name: 'Worker' }).click();
+  await page.getByRole('option', { name: /Agus Pratama/ }).click();
+  await form.getByRole('button', { name: 'Tugaskan' }).click();
+  await expect(page.getByText('Worker berhasil ditugaskan.')).toBeVisible();
+  expect(api.writes.find((w) => w.path === '/assignments')).toMatchObject({
+    method: 'POST',
+    body: { pipeline_item_id: 'pi2', user_id: 'u1' },
+  });
+
+  await page.getByRole('button', { name: 'Aktif', exact: true }).click();
+  await table
+    .getByRole('row')
+    .filter({ hasText: 'Sapu dan pel lantai' })
+    .getByRole('button', { name: 'Nonaktifkan' })
+    .click();
+  await dialog(page).getByRole('button', { name: 'Nonaktifkan' }).click();
+  await expect(page.getByText('Penugasan dinonaktifkan.')).toBeVisible();
+  expect(api.writes.at(-1)).toMatchObject({
+    method: 'PATCH',
+    path: '/assignments/as1',
+    body: { is_active: false },
+  });
+});

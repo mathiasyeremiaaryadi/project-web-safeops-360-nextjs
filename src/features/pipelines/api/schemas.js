@@ -16,6 +16,8 @@ export const pipelineSchema = z.preprocess(
   z.object({
     id: z.coerce.string(),
     vendor_id: z.coerce.string(),
+    /** Required when creating (Postman); older rows may not have it. */
+    site_id: z.coerce.string().nullish().catch(null),
     name: z.string(),
     description: z.string().nullish(),
     status: masterStatusSchema,

@@ -277,27 +277,25 @@ test('audit log shows user names, searches and sorts', async ({ page }) => {
   await expect(dialog(page).getByText('Agus Pratama')).toBeVisible();
 });
 
-test('"Buat pipeline": choose the site first, then a vendor of that site', async ({ page }) => {
+test('"Buat pipeline": choose the vendor first, then one of its sites', async ({ page }) => {
   const api = await mockApi(page);
-  /** @type {string[]} */
-  const vendorQueries = [];
-  page.on('request', (request) => {
-    if (request.url().includes('/api/v1/vendors?')) vendorQueries.push(request.url());
-  });
   await page.goto('/pipelines');
   await page.getByRole('button', { name: 'Buat pipeline' }).click();
   const form = dialog(page);
-  await expect(form.getByRole('combobox', { name: 'Vendor' })).toBeDisabled();
+  const siteSelect = form.getByRole('combobox', { name: 'Site' });
+  await expect(siteSelect).toBeDisabled();
+  await expect(siteSelect).toHaveValue('');
 
-  await form.getByRole('button', { name: 'Simpan pipeline' }).click();
-  await expect(form.getByText('Site wajib dipilih.')).toBeVisible();
-
-  await form.getByRole('combobox', { name: 'Site' }).click();
-  await page.getByRole('option', { name: /PLTU Paiton/ }).click();
-  await form.getByRole('combobox', { name: 'Vendor' }).click();
-  await expect.poll(() => vendorQueries.some((url) => url.includes('site_id=s1'))).toBe(true);
-  await page.getByRole('option', { name: /Bersih Jaya/ }).click();
   await form.getByLabel('Nama pipeline').fill('Cleaning Area Baru');
+  await form.getByRole('button', { name: 'Simpan pipeline' }).click();
+  await expect(form.getByText('Vendor wajib dipilih.')).toBeVisible();
+
+  await form.getByRole('combobox', { name: 'Vendor' }).click();
+  await page.getByRole('option', { name: /Bersih Jaya/ }).click();
+  // PT Bersih Jaya works at one site only: it is filled in.
+  await expect(siteSelect).toBeEnabled();
+  await expect(siteSelect.locator('option:checked')).toHaveText('PLTU Paiton');
+  await expect(siteSelect.locator('option')).toHaveText(['Pilih site', 'PLTU Paiton']);
   await form.getByRole('button', { name: 'Simpan pipeline' }).click();
   await expect(page.getByText('Pipeline berhasil disimpan.')).toBeVisible();
 

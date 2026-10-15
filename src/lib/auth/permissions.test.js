@@ -9,6 +9,31 @@ import {
 import { ROLES } from '@/lib/constants';
 
 describe('permissions (BRD section 7)', () => {
+  it.each([
+    // permission,                     SA,    ADMIN, AW,    WORKER
+    ['SLA_RULES_READ', true, true, false, false],
+    ['SLA_RULES_CREATE_DEFAULT', true, false, false, false],
+    ['SLA_RULES_CREATE_SITE_OVERRIDE', true, true, false, false],
+    ['SLA_RULES_DEACTIVATE', true, true, false, false],
+    ['SLA_RESULTS_READ', true, true, true, false],
+    ['SLA_RESULTS_READ_OWN', false, false, false, true],
+  ])('SLA: %s', (permission, superAdmin, admin, adminWorker, worker) => {
+    const roles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER, ROLES.WORKER];
+    expect(roles.map((role) => can({ roles: [role] }, permission))).toEqual([
+      superAdmin,
+      admin,
+      adminWorker,
+      worker,
+    ]);
+  });
+
+  it('lets only the Admin vendor assign workers to tasks (Postman)', () => {
+    expect(can({ roles: [ROLES.ADMIN_WORKER] }, 'ASSIGNMENT_WRITE')).toBe(true);
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.WORKER]) {
+      expect(can({ roles: [role] }, 'ASSIGNMENT_WRITE')).toBe(false);
+    }
+  });
+
   it('lets only Super Admin set roles/scopes and read the audit log', () => {
     expect(can({ roles: [ROLES.SUPER_ADMIN] }, 'USER_ACCESS_ADMIN')).toBe(true);
     expect(can({ roles: [ROLES.ADMIN_WORKER] }, 'USER_ACCESS_ADMIN')).toBe(false);
@@ -38,7 +63,7 @@ describe('permissions (BRD section 7)', () => {
     const { allowed, denied } = describeAccess([ROLES.WORKER]);
     expect(allowed).toContain('Membuat laporan inventory');
     expect(denied).toContain('Melihat audit log');
-    expect(allowed.length + denied.length).toBe(17);
+    expect(allowed.length + denied.length).toBe(24);
   });
 });
 

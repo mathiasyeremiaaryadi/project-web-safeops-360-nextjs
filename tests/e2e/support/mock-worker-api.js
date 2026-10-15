@@ -1,3 +1,5 @@
+import { SLA_CATALOG, WORKER_SLA } from './mock-sla.js';
+
 /*
  * In-browser mock of the BFF for the Worker E2E tests (see mock-api.js for the other roles).
  * Two workers of PT Bersih Jaya: Agus (the signed-in user, 5 tasks in the mockup's states) and
@@ -137,9 +139,10 @@ function readBody(request) {
 /**
  * Signs the page in as a Worker against the mock API.
  * @param {import('@playwright/test').Page} page
- * @param {{ user?: object }} [options]
+ * @param {{ user?: object, slaForbidden?: boolean }} [options] `slaForbidden`: the SLA score
+ *   endpoint answers 403 (the "Skor SLA saya" card must disappear).
  */
-export async function mockWorkerApi(page, { user = WORKER_AGUS } = {}) {
+export async function mockWorkerApi(page, { user = WORKER_AGUS, slaForbidden = false } = {}) {
   const data = createWorkerData();
   /** @type {{ method: string, path: string, body: any }[]} */
   const writes = [];
@@ -280,6 +283,10 @@ export async function mockWorkerApi(page, { user = WORKER_AGUS } = {}) {
       }
       const list = data.inventoryReports.filter((r) => r.user_id === user.id);
       return json({ inventory_reports: list, page: 1, limit: 20, total: list.length });
+    }
+    if (resource === 'sla-catalog') return json({ data: SLA_CATALOG });
+    if (resource === 'sla-scores' && id === 'live') {
+      return slaForbidden ? error(403, 'FORBIDDEN') : json({ data: [WORKER_SLA] });
     }
     if (resource === 'inventories') return json({ inventories: data.inventories });
     if (resource === 'policies' && sub === 'file') {

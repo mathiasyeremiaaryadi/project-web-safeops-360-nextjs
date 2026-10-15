@@ -24,6 +24,8 @@ export const PERMISSIONS = Object.freeze({
   ITEM_WRITE: { label: 'Mengelola master task', roles: [SUPER_ADMIN] },
   PIPELINE_WRITE: { label: 'Membuat dan mengubah pipeline', roles: [SUPER_ADMIN, ADMIN] },
   PIPELINE_ITEM_WRITE: { label: 'Mengatur task di dalam pipeline', roles: MANAGERS },
+  // Postman: only the Admin vendor creates/changes assignments, for their own vendor.
+  ASSIGNMENT_WRITE: { label: 'Menugaskan worker ke task pipeline', roles: [ADMIN_WORKER] },
   PIPELINE_REPORT_READ: { label: 'Melihat laporan task', roles: ALL_ROLES },
   PIPELINE_REPORT_REVIEW: { label: 'Mereview laporan task', roles: MANAGERS },
   INVENTORY_REPORT_CREATE: { label: 'Membuat laporan inventory', roles: ALL_ROLES },
@@ -34,6 +36,24 @@ export const PERMISSIONS = Object.freeze({
   DASHBOARD_READ: { label: 'Melihat rekap harian', roles: MANAGERS },
   TASK_REPORT_WRITE: { label: 'Mengerjakan task dan mengisi laporan sendiri', roles: [WORKER] },
   AUDIT_LOG_READ: { label: 'Melihat audit log', roles: [SUPER_ADMIN] },
+  // SLA & maturity (prompt SLA section 2). Admin: only site overrides of their sites; the default
+  // vendor rule is read-only for them. Admin vendor / Worker results access still to be confirmed
+  // (docs/ASSUMPTIONS.md SL5) — revoking it is one line here.
+  SLA_RULES_READ: { label: 'Melihat aturan SLA & maturity', roles: [SUPER_ADMIN, ADMIN] },
+  SLA_RULES_CREATE_DEFAULT: {
+    label: 'Membuat aturan SLA & maturity default vendor',
+    roles: [SUPER_ADMIN],
+  },
+  SLA_RULES_CREATE_SITE_OVERRIDE: {
+    label: 'Membuat aturan SLA & maturity khusus site',
+    roles: [SUPER_ADMIN, ADMIN],
+  },
+  SLA_RULES_DEACTIVATE: {
+    label: 'Menonaktifkan aturan SLA & maturity',
+    roles: [SUPER_ADMIN, ADMIN],
+  },
+  SLA_RESULTS_READ: { label: 'Melihat skor SLA & maturity', roles: MANAGERS },
+  SLA_RESULTS_READ_OWN: { label: 'Melihat skor SLA sendiri', roles: [WORKER] },
 });
 
 /** @typedef {keyof typeof PERMISSIONS} Permission */

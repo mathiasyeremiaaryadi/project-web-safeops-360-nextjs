@@ -21,6 +21,7 @@ export function PipelineDetail({ id }) {
   const query = usePipeline(id);
   const { user } = useSession();
   const vendors = useOptionLabels('vendors');
+  const sites = useOptionLabels('sites');
   const changeStatus = useChangePipelineStatus(id);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -39,6 +40,7 @@ export function PipelineDetail({ id }) {
 
   const pipeline = query.data;
   const vendorName = vendors.labelOf(pipeline.vendor_id);
+  const siteName = pipeline.site_id ? sites.labelOf(pipeline.site_id) : null;
   const canEditPipeline = can(user, 'PIPELINE_WRITE');
 
   return (
@@ -49,8 +51,7 @@ export function PipelineDetail({ id }) {
           <div className="min-w-0">
             <p className="text-xl font-semibold text-foreground md:sr-only">{pipeline.name}</p>
             <p className="text-sm text-muted-foreground">
-              {vendorName}
-              {pipeline.description ? ` · ${pipeline.description}` : ''}
+              {[vendorName, siteName, pipeline.description].filter(Boolean).join(' · ')}
             </p>
           </div>
           <StatusBadge status={MASTER_STATUS_BADGES[pipeline.status]} />

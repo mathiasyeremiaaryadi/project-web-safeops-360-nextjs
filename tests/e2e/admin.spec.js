@@ -40,11 +40,13 @@ test('Admin sees the site menu with the site name, and no users or audit log', a
     'Beranda',
     'Progress vendor',
     'Review laporan',
+    'SLA & maturity',
     'Laporan inventory',
     'Vendor',
     'Pipeline & task',
     'Inventory',
     'SOP',
+    'Pengaturan SLA',
     'Profil & sesi',
   ]);
   await expect(menu.getByText('Data site')).toBeVisible();

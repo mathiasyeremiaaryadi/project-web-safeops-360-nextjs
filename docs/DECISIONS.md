@@ -266,3 +266,25 @@ dicek setelah sesi; respons BFF diberi CSP `sandbox`; cookie sesi dengan nama la
   diantrekan.
 - Daftar kartu Worker memakai `useInfiniteListQuery` + `LoadMore` ("Muat lebih banyak", 20 per
   halaman).
+
+## D21. SLA & maturity
+
+- Tiga fitur: `sla-shared` (konstanta, format angka `Intl` id-ID, katalog, link, aturan akses),
+  `sla-rules` (`/sla/rules/*`), `sla-results` (`/sla`, `/sla/history`, `/sla/detail`, kartu Worker).
+  Katalog dan helper bersama ada di `sla-shared` supaya `sla-rules` dan `sla-results` tidak saling
+  mengimpor.
+- **Frontend tidak menghitung skor.** Skor, tercapai, N/A, dan level selalu dari backend. Yang ada
+  di frontend: validasi form (cermin 400 backend), `getResultDisplay` (satu-satunya tempat
+  "status → tampilan"), agregasi KPI tampilan (rata-rata dan jumlah baris `OK`), dan
+  `nextLevelGap` (hanya membandingkan angka yang tampil dengan syarat level berikutnya).
+- **Grafik tanpa library.** Prompt menyebut "Recharts yang sudah ada", tetapi Recharts tidak
+  terpasang dan prompt melarang library chart baru. Grafik batang Riwayat & tren dibuat dengan CSS
+  (`scoreChartBars`: baseline otomatis, tanpa garis target, live putus-putus), dengan `aria-label`
+  dan daftar ringkasan sebagai alternatif teks.
+- Satu `RuleForm` untuk SLA dan maturity (prop `type`), mode baru / edit (POST versi baru) / lihat.
+  Admin: opsi "Default vendor" nonaktif dan skema menolak `site_id: null`.
+- Navigasi: "SLA & maturity" dan "Pengaturan SLA" masing-masing dua item dengan href sama (posisi
+  berbeda per role, sesuai mockup). Bottom nav tidak berubah.
+- Bundle (gzip): `/tasks` ±171 KB (+5 KB karena kartu "Skor SLA saya", tanpa tabel/chart),
+  `/sla` ±186 KB, `/sla/history` ±166 KB, `/sla/detail` ±178 KB, `/sla/rules` ±191 KB,
+  `/sla/rules/new` ±197 KB.

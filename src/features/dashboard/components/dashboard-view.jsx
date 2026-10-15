@@ -21,14 +21,16 @@ const FILTERS = {
 };
 
 /**
- * "Rekap lengkap" → `/vendor-progress` for the same day (today: no date) and chosen site.
- * @param {{ date: string, siteId: string }} filters
+ * "Rekap lengkap" → `/vendor-progress` (or `/pipeline-progress` for an Admin vendor) for the same
+ * day (today: no date) and chosen site.
+ * @param {{ date: string, siteId: string, groupBy: string }} filters
  */
-function vendorProgressHref({ date, siteId }) {
+function progressHref({ date, siteId, groupBy }) {
   const query = new URLSearchParams(
     Object.entries({ from: date, to: date, site_id: siteId }).filter(([, value]) => value),
   ).toString();
-  return `/vendor-progress${query ? `?${query}` : ''}`;
+  const page = groupBy === 'pipeline' ? '/pipeline-progress' : '/vendor-progress';
+  return `${page}${query ? `?${query}` : ''}`;
 }
 
 /**
@@ -81,7 +83,7 @@ export function DashboardView() {
             <ProgressList
               query={progress}
               groupBy={groupBy}
-              fullHref={vendorProgressHref({ date: params.date, siteId: params.site_id })}
+              fullHref={progressHref({ date: params.date, siteId: params.site_id, groupBy })}
             />
           </div>
           <LatestInventoryReports siteId={siteId ?? ''} vendorId={params.vendor_id} />
