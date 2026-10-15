@@ -115,6 +115,9 @@ export async function mockApi(page, { user = SUPER_ADMIN, vendorScope } = {}) {
     let list = rows;
     for (const field of FILTER_FIELDS) {
       const value = url.searchParams.get(field);
+      // Users have `is_active`, not `status`: the mock ignores that filter, like a backend
+      // that does not support it (the page filters itself).
+      if (resource === 'users' && field === 'status') continue;
       if (value) list = list.filter((r) => String(r[field] ?? '') === value);
     }
     return json({ [resource.replace('-', '_')]: list, page: 1, limit: 20, total: list.length });
@@ -136,7 +139,7 @@ function isForbiddenForVendor({ method, resource, id, sub, body }) {
   if (resource === 'users' && method === 'POST' && !id) {
     return JSON.stringify(body.roles) !== JSON.stringify(['WORKER']);
   }
-  if (resource === 'users' && (sub === 'roles' || sub === 'sessions')) return true;
+  if (resource === 'users' && ['roles', 'scopes', 'sessions'].includes(sub)) return true;
   return resource === 'pipelines' && !sub;
 }
 
@@ -150,6 +153,11 @@ function applyWrite(data, { method, resource, id, sub, body }) {
     const user = { id: 'u-new', is_active: true, ...body, scopes: { vendor_ids: body.vendor_ids } };
     data.users.push(user);
     return { user, temporary_password: 'Tmp-Passw0rd' };
+  }
+  if (resource === 'users' && sub === 'roles' && row) row.roles = body.roles;
+  if (resource === 'users' && sub === 'scopes' && row) {
+    if (body.roles) row.roles = body.roles;
+    row.scopes = { site_ids: body.site_ids, vendor_ids: body.vendor_ids };
   }
   if (resource === 'users' && sub === 'reset-password')
     return { temporary_password: 'Reset-Passw0rd' };

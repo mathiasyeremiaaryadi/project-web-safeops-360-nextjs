@@ -1,6 +1,7 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,8 @@ import { useSavePipeline } from '@/features/pipelines/api/mutations';
 import { pipelineFormSchema, toPipelinePayload } from '@/features/pipelines/api/schemas';
 
 /**
- * "Buat pipeline" / "Edit pipeline". The vendor is chosen only when creating.
+ * "Buat pipeline" / "Edit pipeline". The site and vendor are chosen only when creating; the
+ * vendor list shows the vendors of the chosen site (an Admin's active site is pre-filled).
  * @param {object} props
  * @param {boolean} props.open
  * @param {import('@/features/pipelines/api/schemas').Pipeline | null} props.pipeline
@@ -24,15 +26,24 @@ import { pipelineFormSchema, toPipelinePayload } from '@/features/pipelines/api/
 export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose }) {
   const site = useSiteContext();
   const savePipeline = useSavePipeline();
+  const activeSite = site.sites.find((option) => option.value === site.activeSiteId) ?? null;
   const form = useForm({
     resolver: zodResolver(pipelineFormSchema),
     values: {
+      isNew: !pipeline,
+      site: pipeline ? null : activeSite,
       vendor: pipeline ? { value: pipeline.vendor_id, label: vendorName } : null,
       name: pipeline?.name ?? '',
       description: pipeline?.description ?? '',
     },
   });
   const { errors } = form.formState;
+  const siteId = useWatch({ control: form.control, name: 'site' })?.value;
+
+  // Another site: the chosen vendor may not work there.
+  useEffect(() => {
+    if (!pipeline) form.setValue('vendor', null);
+  }, [form, pipeline, siteId]);
 
   const close = () => {
     savePipeline.reset();
@@ -43,7 +54,7 @@ export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose })
 
   const onSubmit = form.handleSubmit((values) => {
     savePipeline.mutate(
-      { id: pipeline?.id, body: toPipelinePayload(values, !pipeline) },
+      { id: pipeline?.id, body: toPipelinePayload(values) },
       {
         onSuccess: () => {
           toast.success('Pipeline berhasil disimpan.');
@@ -65,15 +76,25 @@ export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose })
       }
       submitLabel="Simpan pipeline"
     >
+      {pipeline ? null : (
+        <ComboboxField
+          control={form.control}
+          name="site"
+          id="pipeline-site"
+          label="Site"
+          lookup="sites"
+          placeholder="Pilih site"
+        />
+      )}
       <ComboboxField
         control={form.control}
         name="vendor"
         id="pipeline-vendor"
         label="Vendor"
         lookup="vendors"
-        params={site.activeVendorParams}
-        placeholder="Pilih vendor"
-        disabled={Boolean(pipeline)}
+        params={pipeline ? site.activeVendorParams : { status: 'ACTIVE', site_id: siteId }}
+        placeholder={pipeline || siteId ? 'Pilih vendor' : 'Pilih site dulu'}
+        disabled={Boolean(pipeline) || !siteId}
       />
       <FormField id="pipeline-name" label="Nama pipeline" error={errors.name?.message}>
         <Input

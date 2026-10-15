@@ -55,6 +55,32 @@ test('Beranda shows total / in progress / completed and the progress per vendor'
   await expect(page.getByLabel('Konteks data: Semua site')).toBeVisible();
 });
 
+test('"Salin" copies the temporary password, also on plain HTTP (no Clipboard API)', async ({
+  page,
+}) => {
+  // The app opened by IP over http: no secure context, so no navigator.clipboard.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'isSecureContext', { value: false });
+    Object.defineProperty(navigator, 'clipboard', { value: undefined });
+    document.addEventListener('copy', () => {
+      const field = /** @type {HTMLTextAreaElement} */ (document.activeElement);
+      /** @type {any} */ (window).copiedText = field?.value ?? '';
+    });
+  });
+  await mockApi(page);
+  await page.goto('/users/new');
+  await page.getByLabel('Nama lengkap').fill('Joko Susilo');
+  await page.getByLabel('Username').fill('joko.susilo');
+  await page.getByText('Worker', { exact: true }).click();
+  await page.getByRole('combobox', { name: /vendor/i }).click();
+  await page.getByRole('option', { name: /Bersih Jaya/ }).click();
+  await page.getByRole('button', { name: 'Simpan user' }).click();
+
+  await page.getByRole('button', { name: 'Salin' }).click();
+  await expect(page.getByRole('button', { name: 'Tersalin' })).toBeVisible();
+  expect(await page.evaluate(() => /** @type {any} */ (window).copiedText)).toBe('Tmp-Passw0rd');
+});
+
 test('create a Worker with a vendor, then reset the password (shown once)', async ({ page }) => {
   const api = await mockApi(page);
   await page.goto('/users/new');
@@ -249,4 +275,91 @@ test('audit log shows user names, searches and sorts', async ({ page }) => {
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button', { name: /^14 Okt 2026/ }).click();
   await expect(dialog(page).getByText('Agus Pratama')).toBeVisible();
+});
+
+test('"Buat pipeline": choose the site first, then a vendor of that site', async ({ page }) => {
+  const api = await mockApi(page);
+  /** @type {string[]} */
+  const vendorQueries = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/vendors?')) vendorQueries.push(request.url());
+  });
+  await page.goto('/pipelines');
+  await page.getByRole('button', { name: 'Buat pipeline' }).click();
+  const form = dialog(page);
+  await expect(form.getByRole('combobox', { name: 'Vendor' })).toBeDisabled();
+
+  await form.getByRole('button', { name: 'Simpan pipeline' }).click();
+  await expect(form.getByText('Site wajib dipilih.')).toBeVisible();
+
+  await form.getByRole('combobox', { name: 'Site' }).click();
+  await page.getByRole('option', { name: /PLTU Paiton/ }).click();
+  await form.getByRole('combobox', { name: 'Vendor' }).click();
+  await expect.poll(() => vendorQueries.some((url) => url.includes('site_id=s1'))).toBe(true);
+  await page.getByRole('option', { name: /Bersih Jaya/ }).click();
+  await form.getByLabel('Nama pipeline').fill('Cleaning Area Baru');
+  await form.getByRole('button', { name: 'Simpan pipeline' }).click();
+  await expect(page.getByText('Pipeline berhasil disimpan.')).toBeVisible();
+
+  expect(api.writes.find((w) => w.path === '/pipelines')?.body).toMatchObject({
+    site_id: 's1',
+    vendor_id: 'v1',
+    name: 'Cleaning Area Baru',
+  });
+});
+
+test('users: the role and status filters work even if the API ignores them', async ({ page }) => {
+  await mockApi(page);
+  await page.goto('/users');
+  const table = page.getByRole('table');
+  await expect(table.getByText('@agus')).toBeVisible();
+
+  await page.getByRole('combobox', { name: 'Filter role' }).selectOption('WORKER');
+  await expect(page).toHaveURL(/role=WORKER/);
+  await expect(table.getByText('@agus')).toBeVisible();
+  await expect(table.getByText('@siti')).toHaveCount(0);
+  await expect(table.getByText('@superadmin')).toHaveCount(0);
+
+  await page.getByRole('combobox', { name: 'Filter role' }).selectOption('');
+  await page.getByRole('combobox', { name: 'Filter status' }).selectOption('INACTIVE');
+  await expect(table.getByText('@siti')).toBeVisible();
+  await expect(table.getByText('@agus')).toHaveCount(0);
+});
+
+test('users: changing the scope saves roles and scopes, and the table shows the new scope', async ({
+  page,
+}) => {
+  const api = await mockApi(page);
+  await page.goto('/users/u2');
+  await page.getByRole('combobox', { name: 'Site' }).click();
+  await page.getByRole('option', { name: /PLTGU Grati/ }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Simpan role & scope' }).click();
+  await expect(page.getByText('Role dan scope berhasil disimpan.')).toBeVisible();
+
+  expect(api.writes.map((w) => [w.method, w.path, w.body])).toEqual([
+    ['PUT', '/users/u2/scopes', { roles: ['ADMIN'], site_ids: ['s1', 's2'], vendor_ids: [] }],
+  ]);
+
+  await page.goto('/users');
+  await expect(
+    page
+      .getByRole('row')
+      .filter({ hasText: '@siti' })
+      .getByText(/PLTU Paiton, PLTGU Grati/),
+  ).toBeVisible();
+});
+
+test('users: Admin → Worker changes role and scope together in one call', async ({ page }) => {
+  const api = await mockApi(page);
+  await page.goto('/users/u2');
+  await page.locator('#role-ADMIN').click();
+  await page.locator('#role-WORKER').click();
+  await page.getByRole('combobox', { name: 'Vendor' }).click();
+  await page.getByRole('option', { name: /Bersih Jaya/ }).click();
+  await page.getByRole('button', { name: 'Simpan role & scope' }).click();
+  await expect(page.getByText('Role dan scope berhasil disimpan.')).toBeVisible();
+  expect(api.writes.map((w) => [w.path, w.body])).toEqual([
+    ['/users/u2/scopes', { roles: ['WORKER'], site_ids: [], vendor_ids: ['v1'] }],
+  ]);
 });

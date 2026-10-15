@@ -44,12 +44,19 @@ export function useUpdateUser(id) {
   });
 }
 
-/** `PUT /users/{id}/roles` with roles and scopes in one call. @param {string} id */
+/**
+ * Saves roles and scope in ONE call, so the backend checks them together (FR-18):
+ * `PUT /users/{id}/scopes` `{ roles, site_ids, vendor_ids }` (BRD: "Update scopes; optional
+ * roles"). Two calls fail when they change together, e.g. Admin with sites → Worker with a
+ * vendor: the first call leaves roles and scope mismatched ("scope does not match assigned
+ * roles"). `PUT /users/{id}/roles` with scopes did not save the scope.
+ * @param {string} id
+ */
 export function useUpdateUserAccess(id) {
   const queryClient = useQueryClient();
   return useMutation({
     /** @param {{ roles: string[], site_ids: string[], vendor_ids: string[] }} body */
-    mutationFn: (body) => apiRequest({ method: 'put', path: `v1/users/${id}/roles`, json: body }),
+    mutationFn: (body) => apiRequest({ method: 'put', path: `v1/users/${id}/scopes`, json: body }),
     onSuccess: () => invalidateUsers(queryClient, id),
   });
 }

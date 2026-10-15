@@ -141,9 +141,11 @@ must_change_password, last_login_at, scopes { site_ids[], vendor_ids[] }`. Statu
   `role` dan `status`.**
 - **U3.** `POST /users` → 201 `{ user, temporary_password? }` (dari Postman test script).
   `POST /users/{id}/reset-password` dengan body `{}` → `{ temporary_password }` (asumsi).
-- **U4.** Ubah role dan scope sekaligus memakai satu panggilan `PUT /users/{id}/roles` dengan
-  `{ roles, site_ids, vendor_ids }` (BRD: "optional scopes"). Aturan FR-18 juga divalidasi di
-  frontend.
+- **U4.** Ubah role dan scope memakai **satu** panggilan `PUT /users/{id}/scopes`
+  `{ roles, site_ids, vendor_ids }` (BRD: "Update scopes; optional roles"), supaya backend
+  memvalidasi keduanya bersamaan. Dua panggilan terpisah gagal saat role dan scope berubah bersama
+  (mis. Admin → Worker: "scope does not match assigned roles"), dan `PUT /users/{id}/roles` dengan
+  scope tidak menyimpan scope-nya. Aturan FR-18 juga divalidasi di frontend.
 - **U5.** Nama site/vendor pada kolom Scope diambil dari `GET /sites` dan `GET /vendors`
   (`limit=100`). Jika data lebih dari 100, sebagian nama tampil "—". **Saran ke backend:** sertakan
   `sites[]`/`vendors[]` (id + nama) pada objek user.
@@ -177,6 +179,9 @@ status` (BRD: list menyertakan `site_ids`). Item: `id, name, description?, statu
   task = `sort_order` terbesar + 1. "Lepas dari pipeline" = `DELETE /pipeline-items/{id}`;
   "Aktifkan/Nonaktifkan" = `PATCH { status }`. **Perlu konfirmasi** apakah DELETE item pipeline
   menghapus atau hanya menonaktifkan.
+- **P4.** Form "Buat pipeline" memilih **Site** lalu vendor (daftar vendor difilter
+  `site_id`), dan `POST /pipelines` mengirim `site_id`. BRD hanya menyebut `vendor_id`, `name`,
+  `description`, jadi **perlu konfirmasi** backend menyimpan `site_id` (bukan menolaknya).
 - **P4.** "Atur penugasan" (worker per shift) di mockup tidak dibuat karena API penugasan belum ada.
 
 ## Inventory (`/inventories`)

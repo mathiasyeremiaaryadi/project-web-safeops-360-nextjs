@@ -23,6 +23,7 @@ import {
   USER_STATUS_FILTERS,
 } from '@/features/users/constants';
 import { describeScope } from '@/features/users/lib/describe-scope';
+import { filterUsers } from '@/features/users/lib/filter-users';
 import { getUserStatus } from '@/features/users/lib/get-user-status';
 
 const FILTERS = { role: parseAsString.withDefault(''), status: parseAsString.withDefault('') };
@@ -34,7 +35,9 @@ export function UsersList() {
   const { user: currentUser } = useSession();
   // Super Admin sees every role; an Admin vendor only manages Worker accounts of their vendor.
   const manageAccess = can(currentUser, 'USER_ACCESS_ADMIN');
-  const query = useUsers({ ...params, limit });
+  // `is_active` too: the backend may filter on it rather than on `status`.
+  const isActive = params.status ? String(params.status === 'ACTIVE') : '';
+  const query = useUsers({ ...params, is_active: isActive, limit });
   const sites = useOptionLabels('sites');
   const vendors = useOptionLabels('vendors');
   /** @param {import('@/features/users/api/schemas').User} user */
@@ -44,9 +47,9 @@ export function UsersList() {
   const rolesOf = (user) => user.roles.map((role) => ROLE_LABELS[role] ?? role).join(', ');
   /** @param {import('@/features/users/api/schemas').User} user */
   const statusOf = (user) => USER_STATUS_BADGES[getUserStatus(user)]?.label ?? '';
-  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  // Server filters + the same filters and search here, in case the backend ignores them.
   const rows = query.data
-    ? searchRows(query.data.data, params.q, (user) => [
+    ? searchRows(filterUsers(query.data.data, params), params.q, (user) => [
         user.full_name,
         user.username,
         user.email,

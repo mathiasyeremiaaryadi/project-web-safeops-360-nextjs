@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * Shows a temporary password exactly once (it is not stored anywhere in the app).
@@ -21,15 +23,17 @@ import {
  */
 export function TemporaryPasswordDialog({ password, username, onClose }) {
   const [copied, setCopied] = useState(false);
+  const passwordRef = useRef(/** @type {HTMLOutputElement | null} */ (null));
 
   const copy = async () => {
     if (!password) return;
-    try {
-      await navigator.clipboard.writeText(password);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
+    const output = passwordRef.current;
+    const ok = await copyText(password, output?.parentElement ?? undefined);
+    setCopied(ok);
+    if (ok) return;
+    // Let the admin copy it by hand: select the password.
+    if (output) window.getSelection()?.selectAllChildren(output);
+    toast.error('Gagal menyalin otomatis. Password sudah diblok, salin manual (Ctrl+C).');
   };
 
   return (
@@ -44,8 +48,9 @@ export function TemporaryPasswordDialog({ password, username, onClose }) {
         </DialogHeader>
         <div className="flex gap-2">
           <output
+            ref={passwordRef}
             aria-label="Password sementara"
-            className="flex h-11 min-w-0 flex-1 items-center rounded-lg border bg-muted px-3.5 font-mono text-base break-all"
+            className="flex h-11 min-w-0 flex-1 items-center rounded-lg border bg-muted px-3.5 font-mono text-base break-all select-all"
           >
             {password}
           </output>

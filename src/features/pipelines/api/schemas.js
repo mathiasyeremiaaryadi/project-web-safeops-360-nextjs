@@ -55,18 +55,28 @@ export const pipelineItemListSchema = listResponseSchema(pipelineItemSchema);
 
 const optionSchema = z.object({ value: z.string(), label: z.string() });
 
-export const pipelineFormSchema = z.object({
-  vendor: optionSchema.nullable().refine(Boolean, 'Vendor wajib dipilih.'),
-  name: z.string().trim().min(1, 'Nama pipeline wajib diisi.').max(120),
-  description: z.string().trim().max(500),
-});
+/** Site and vendor are only chosen when creating (a pipeline keeps its vendor). */
+export const pipelineFormSchema = z
+  .object({
+    isNew: z.boolean(),
+    site: optionSchema.nullable(),
+    vendor: optionSchema.nullable().refine(Boolean, 'Vendor wajib dipilih.'),
+    name: z.string().trim().min(1, 'Nama pipeline wajib diisi.').max(120),
+    description: z.string().trim().max(500),
+  })
+  .superRefine((values, ctx) => {
+    if (values.isNew && !values.site) {
+      ctx.addIssue({ code: 'custom', path: ['site'], message: 'Site wajib dipilih.' });
+    }
+  });
 
 /**
+ * Body of `POST /pipelines` (with `site_id` and `vendor_id`) or `PATCH /pipelines/{id}`.
+ * `site_id` is not in the BRD columns — docs/ASSUMPTIONS.md P4.
  * @param {z.infer<typeof pipelineFormSchema>} values
- * @param {boolean} isNew The vendor is only sent when creating.
  */
-export const toPipelinePayload = (values, isNew) => ({
-  ...(isNew ? { vendor_id: values.vendor?.value } : {}),
+export const toPipelinePayload = (values) => ({
+  ...(values.isNew ? { site_id: values.site?.value, vendor_id: values.vendor?.value } : {}),
   name: values.name,
   description: values.description || undefined,
 });
