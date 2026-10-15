@@ -10,6 +10,7 @@ import {
   PackagePlus,
   PackageX,
   ShieldAlert,
+  TrendingUp,
   UserRound,
   Users,
   Workflow,
@@ -49,6 +50,14 @@ export const NAV_ITEMS = Object.freeze([
     icon: Home,
     roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
     bottomNavRoles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
+  },
+  {
+    key: 'vendor-progress',
+    label: 'Progress vendor',
+    shortLabel: 'Progress',
+    href: '/vendor-progress',
+    icon: TrendingUp,
+    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
   },
   {
     key: 'reports-tasks',

@@ -363,3 +363,51 @@ test('users: Admin → Worker changes role and scope together in one call', asyn
     ['/users/u2/scopes', { roles: ['WORKER'], site_ids: [], vendor_ids: ['v1'] }],
   ]);
 });
+
+test('vendor progress: today by default, period sums the days, row opens the detail', async ({
+  page,
+}) => {
+  await mockApi(page);
+  /** @type {string[]} */
+  const dates = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/v1/dashboard/summary')
+      dates.push(url.searchParams.get('date') ?? '');
+  });
+  // "Rekap lengkap" on the dashboard opens this page.
+  await page.goto('/dashboard');
+  await page.getByRole('link', { name: 'Rekap lengkap' }).click();
+  await expect(page).toHaveURL(/\/vendor-progress$/);
+  const table = page.getByRole('table');
+  await expect(table.getByRole('row')).toHaveCount(3);
+  await expect(table.getByRole('row').nth(1)).toContainText('PT Bersih Jaya');
+  await expect(table.getByRole('row').nth(1)).toContainText('PLTU Paiton');
+  await expect(table.getByRole('row').nth(1)).toContainText('75%');
+  expect(new Set(dates).size).toBe(1);
+
+  // Search, then sort by progress (highest first after two clicks).
+  await page.getByRole('searchbox').fill('karya');
+  await expect(table.getByRole('row')).toHaveCount(2);
+  await page.getByRole('searchbox').fill('');
+  await expect(table.getByRole('row')).toHaveCount(3);
+
+  // Three days: one request per day, counts added up.
+  dates.length = 0;
+  const today = await page.getByLabel('Sampai').inputValue();
+  const [y, m, d] = today.split('-').map(Number);
+  const from = new Date(Date.UTC(y, m - 1, d - 2)).toISOString().slice(0, 10);
+  await page.getByLabel('Dari').fill(from);
+  await expect(table.getByRole('row').nth(1)).toContainText('60');
+  expect(new Set(dates).size).toBe(3);
+
+  await table.getByRole('row').filter({ hasText: 'PT Bersih Jaya' }).click();
+  await expect(page).toHaveURL((url) => url.href.endsWith(`/vendor-progress/v1?from=${from}`));
+  await expect(page.getByRole('heading', { name: 'PT Bersih Jaya', level: 1 })).toBeVisible();
+  await expect(page.getByText('Total worker')).toBeVisible();
+  const areas = page.getByRole('table', { name: /Progres per area/ });
+  await expect(areas.getByRole('row')).toHaveCount(3);
+  await expect(areas.getByRole('row').filter({ hasText: 'Turbine Hall' })).toContainText('83%');
+  await page.getByRole('link', { name: 'Kembali ke progress vendor' }).click();
+  await expect(page).toHaveURL((url) => url.href.endsWith(`/vendor-progress?from=${from}`));
+});

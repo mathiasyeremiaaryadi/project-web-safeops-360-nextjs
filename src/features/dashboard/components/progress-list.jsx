@@ -22,8 +22,9 @@ const GROUP_TEXT = Object.freeze({
  * @param {object} props
  * @param {import('@tanstack/react-query').UseQueryResult<import('@/features/dashboard/lib/summary').Progress[]>} props.query
  * @param {import('@/features/dashboard/lib/summary').ProgressGroup} props.groupBy
+ * @param {string} props.fullHref "Rekap lengkap": the vendor progress page, same date and site.
  */
-export function ProgressList({ query, groupBy }) {
+export function ProgressList({ query, groupBy, fullHref }) {
   const vendors = useOptionLabels('vendors');
   const text = GROUP_TEXT[groupBy];
   /** @param {import('@/features/dashboard/lib/summary').Progress} v */
@@ -36,7 +37,7 @@ export function ProgressList({ query, groupBy }) {
           {text.title}
         </h2>
         <Link
-          href="/reports/tasks?tab=ALL"
+          href={fullHref}
           className="shrink-0 text-sm font-medium whitespace-nowrap text-primary hover:underline"
         >
           Rekap lengkap

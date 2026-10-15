@@ -1,0 +1,154 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { BarChart3 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
+import { FilterBar } from '@/components/shared/filter-bar';
+import { LookupFilter } from '@/components/shared/lookup-filter';
+import { QueryList } from '@/components/shared/query-list';
+import { formatLongDate } from '@/lib/date';
+import { searchRows } from '@/lib/search';
+import { useVendorProgress } from '@/features/vendor-progress/api/queries';
+import { ProgressBar } from '@/features/vendor-progress/components/progress-bar';
+import { ProgressPeriodFilter } from '@/features/vendor-progress/components/progress-period-filter';
+import {
+  useProgressFilters,
+  useSiteNames,
+} from '@/features/vendor-progress/hooks/use-progress-filters';
+
+/** @typedef {import('@/features/vendor-progress/lib/progress').VendorProgress} VendorProgress */
+
+/** "Kamis, 15 Okt 2026" or "13 – 15 Okt 2026"-like period text. @param {{ from: string, to: string }} range */
+export const periodText = ({ from, to }) =>
+  from === to ? formatLongDate(from) : `${formatLongDate(from)} – ${formatLongDate(to)}`;
+
+/** @param {number} value */
+const count = (value) => <span className="tabular-nums">{value}</span>;
+
+/** `/vendor-progress` — task progress per vendor for a period (today by default). */
+export function VendorProgressList() {
+  const router = useRouter();
+  const { params, setParams, today, range, site, siteId, search } = useProgressFilters();
+  const query = useVendorProgress({ dates: range.dates, site_id: siteId });
+  const siteNameOf = useSiteNames(siteId);
+  /** @param {VendorProgress} row */
+  const nameOf = (row) => row.vendorName ?? '—';
+  const rows = query.data
+    ? searchRows(query.data.data, params.q, (row) => [nameOf(row), siteNameOf(row)])
+    : [];
+  /** @param {VendorProgress} row */
+  const hrefOf = (row) => `/vendor-progress/${row.vendorId}${search ? `?${search}` : ''}`;
+
+  const columns = [
+    {
+      id: 'vendor',
+      header: 'Vendor',
+      meta: { sortValue: nameOf },
+      cell: ({ row }) => <span className="font-semibold">{nameOf(row.original)}</span>,
+    },
+    {
+      id: 'site',
+      header: 'Site',
+      meta: { sortValue: siteNameOf },
+      cell: ({ row }) => <span className="text-muted-foreground">{siteNameOf(row.original)}</span>,
+    },
+    {
+      id: 'progress',
+      header: 'Progres',
+      meta: { sortValue: (/** @type {VendorProgress} */ r) => r.percent },
+      cell: ({ row }) => (
+        <ProgressBar percent={row.original.percent} label={`Progres ${nameOf(row.original)}`} />
+      ),
+    },
+    {
+      id: 'completed',
+      header: 'Selesai',
+      meta: { sortValue: (/** @type {VendorProgress} */ r) => r.completed },
+      cell: ({ row }) => count(row.original.completed),
+    },
+    {
+      id: 'in_progress',
+      header: 'Dikerjakan',
+      meta: { hideBelow: 'lg', sortValue: (/** @type {VendorProgress} */ r) => r.inProgress },
+      cell: ({ row }) => count(row.original.inProgress),
+    },
+    {
+      id: 'not_started',
+      header: 'Belum mulai',
+      meta: { hideBelow: 'lg', sortValue: (/** @type {VendorProgress} */ r) => r.notStarted },
+      cell: ({ row }) => count(row.original.notStarted),
+    },
+    {
+      id: 'total',
+      header: 'Total task',
+      meta: { sortValue: (/** @type {VendorProgress} */ r) => r.total },
+      cell: ({ row }) => count(row.original.total),
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title="Progress vendor"
+        description={`Progres task per vendor · ${range.error ? '—' : periodText(range)}`}
+      />
+
+      <FilterBar
+        className="mb-3"
+        search={params.q}
+        onSearchChange={(q) => setParams({ q: q || null })}
+        searchPlaceholder="Cari vendor atau site"
+      />
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end">
+        <ProgressPeriodFilter range={range} today={today} onChange={setParams} />
+        {site.showSiteFilter ? (
+          <div className="lg:w-64">
+            <LookupFilter
+              lookup="sites"
+              value={params.site_id}
+              onChange={(site_id) => setParams({ site_id: site_id || null })}
+              placeholder="Semua site"
+              ariaLabel="Filter site"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {range.error ? null : (
+        <QueryList
+          query={query}
+          rows={rows}
+          empty={{
+            icon: BarChart3,
+            title: 'Belum ada progres',
+            description: 'Tidak ada task vendor pada periode dan filter ini.',
+          }}
+          noun="vendor"
+          onPageChange={() => {}}
+          columns={columns}
+          getRowId={(row) => `${row.vendorId}-${row.siteId ?? ''}`}
+          caption="Progress vendor"
+          cardGridClassName="sm:grid-cols-2"
+          onRowClick={(row) => router.push(hrefOf(row))}
+          renderCard={(row) => (
+            <Link
+              href={hrefOf(row)}
+              className="flex flex-col gap-3 rounded-2xl border bg-card p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex flex-col">
+                <span className="font-semibold text-foreground">{nameOf(row)}</span>
+                <span className="text-sm text-muted-foreground">{siteNameOf(row)}</span>
+              </span>
+              <ProgressBar percent={row.percent} label={`Progres ${nameOf(row)}`} />
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {row.completed} selesai · {row.inProgress} dikerjakan · {row.notStarted} belum mulai
+                · {row.total} task
+              </span>
+            </Link>
+          )}
+        />
+      )}
+    </>
+  );
+}

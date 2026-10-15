@@ -33,6 +33,7 @@ test('menu, vendor label and "Progres per pipeline" on the dashboard', async ({ 
   await page.goto('/dashboard');
   await expect(page.getByRole('navigation', { name: 'Menu utama' }).getByRole('link')).toHaveText([
     'Beranda',
+    'Progress vendor',
     'Review laporan',
     'Laporan inventory',
     'Inventory',

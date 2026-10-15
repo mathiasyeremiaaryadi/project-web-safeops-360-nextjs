@@ -21,6 +21,17 @@ const FILTERS = {
 };
 
 /**
+ * "Rekap lengkap" → `/vendor-progress` for the same day (today: no date) and chosen site.
+ * @param {{ date: string, siteId: string }} filters
+ */
+function vendorProgressHref({ date, siteId }) {
+  const query = new URLSearchParams(
+    Object.entries({ from: date, to: date, site_id: siteId }).filter(([, value]) => value),
+  ).toString();
+  return `/vendor-progress${query ? `?${query}` : ''}`;
+}
+
+/**
  * `/dashboard` — "Rekap harian". The date defaults to today in APP_TIMEZONE and is always sent
  * explicitly (the backend would otherwise use the UTC date). A user limited to their own sites
  * (Admin) has no site filter: the site comes from the site switcher and is named in the subtitle.
@@ -67,7 +78,11 @@ export function DashboardView() {
         <KpiCards query={kpis} />
         <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
           <div className="lg:col-span-2">
-            <ProgressList query={progress} groupBy={groupBy} />
+            <ProgressList
+              query={progress}
+              groupBy={groupBy}
+              fullHref={vendorProgressHref({ date: params.date, siteId: params.site_id })}
+            />
           </div>
           <LatestInventoryReports siteId={siteId ?? ''} vendorId={params.vendor_id} />
         </div>

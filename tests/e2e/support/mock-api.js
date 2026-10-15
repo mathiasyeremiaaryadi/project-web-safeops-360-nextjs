@@ -88,6 +88,18 @@ export async function mockApi(page, { user = SUPER_ADMIN, vendorScope } = {}) {
     }
 
     const siteId = url.searchParams.get('site_id') ?? '';
+    if (resource === 'dashboard' && id === 'summary') {
+      const vendorId = url.searchParams.get('vendor_id') ?? '';
+      const rows = data.vendorProgress.filter(
+        (row) =>
+          (!siteId || row.site_id === siteId) &&
+          (!vendorId || row.vendor_id === vendorId) &&
+          (!vendorScope || row.vendor_id === vendorScope.vendorId),
+      );
+      return json({
+        data: { filter: { site_id: siteId, vendor_id: vendorId }, vendor_progress: rows },
+      });
+    }
     if (resource === 'dashboard') return json(data.dashboardBySite[siteId] ?? data.dashboard);
     if (resource === 'reports' && id === 'daily') {
       const daily = data.dailyBySite[siteId] ?? data.daily;

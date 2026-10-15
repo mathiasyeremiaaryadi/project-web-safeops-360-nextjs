@@ -11,9 +11,10 @@ import { ROLES } from '@/lib/constants';
 const SA = [ROLES.SUPER_ADMIN];
 
 describe('navigation config', () => {
-  it('gives Super Admin the 11 menu items in order', () => {
+  it('gives Super Admin the 12 menu items in order', () => {
     expect(getNavItems(SA).map((item) => item.label)).toEqual([
       'Beranda',
+      'Progress vendor',
       'Review laporan',
       'Catatan safety',
       'Site & vendor',
@@ -30,6 +31,7 @@ describe('navigation config', () => {
   it('groups Super Admin items into the documented sections', () => {
     const sections = getNavItems(SA).map((item) => item.section ?? null);
     expect(sections).toEqual([
+      null,
       null,
       null,
       null,
@@ -60,7 +62,14 @@ describe('navigation config', () => {
   });
 
   it('uses the most privileged role for multi-role users', () => {
-    expect(getNavItems([ROLES.WORKER, ROLES.SUPER_ADMIN])).toHaveLength(11);
+    expect(getNavItems([ROLES.WORKER, ROLES.SUPER_ADMIN])).toHaveLength(12);
+  });
+
+  it('opens "Progress vendor" to the managers only', () => {
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER]) {
+      expect(canAccessPath('/vendor-progress/v1', [role])).toBe(true);
+    }
+    expect(canAccessPath('/vendor-progress', [ROLES.WORKER])).toBe(false);
   });
 
   it('guards sub-routes with the owning menu item', () => {
@@ -86,6 +95,7 @@ describe('navigation config', () => {
     const admin = [ROLES.ADMIN];
     expect(getNavItems(admin).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
+      ['', 'Progress vendor'],
       ['', 'Review laporan'],
       ['', 'Catatan safety'],
       ['', 'Laporan inventory'],
@@ -109,10 +119,11 @@ describe('navigation config', () => {
     expect(getHomeRoute(admin)).toBe('/dashboard');
   });
 
-  it('gives Admin vendor the 8 vendor menu items, without master, safety notes and audit log', () => {
+  it('gives Admin vendor the 9 vendor menu items, without master, safety notes and audit log', () => {
     const vendor = [ROLES.ADMIN_WORKER];
     expect(getNavItems(vendor).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
+      ['', 'Progress vendor'],
       ['', 'Review laporan'],
       ['', 'Laporan inventory'],
       ['Data vendor', 'Inventory'],

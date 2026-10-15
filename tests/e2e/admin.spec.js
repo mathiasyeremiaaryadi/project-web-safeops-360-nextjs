@@ -38,6 +38,7 @@ test('Admin sees the site menu with the site name, and no users or audit log', a
   const menu = page.getByRole('navigation', { name: 'Menu utama' });
   await expect(menu.getByRole('link')).toHaveText([
     'Beranda',
+    'Progress vendor',
     'Review laporan',
     'Laporan inventory',
     'Vendor',

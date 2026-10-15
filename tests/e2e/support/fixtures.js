@@ -221,6 +221,48 @@ export function createFixtures() {
         created_at: '2026-10-14T02:00:00Z',
       },
     ],
+    /** `GET /dashboard/summary` rows (same for every date), the shape seen on the backend. */
+    vendorProgress: [
+      {
+        vendor_id: 'v1',
+        vendor_name: 'PT Bersih Jaya',
+        site_id: 's1',
+        total_task: 20,
+        completed: 15,
+        in_progress: 3,
+        not_started: 2,
+        progress_percentage: 75,
+        vendor_progress_detail: {
+          total_area: 2,
+          area_detail: [
+            { area_name: 'Turbine Hall', total_point: 12, total_task: 12, completed: 10 },
+            { area_name: 'Boiler', total_point: 8, total_task: 8, completed: 5 },
+          ],
+          total_point: 20,
+          total_worker: 4,
+          total_assignment: 20,
+        },
+      },
+      {
+        vendor_id: 'v2',
+        vendor_name: 'PT Karya Aman',
+        site_id: 's2',
+        total_task: 10,
+        completed: 9,
+        in_progress: 1,
+        not_started: 0,
+        progress_percentage: 90,
+        vendor_progress_detail: {
+          total_area: 1,
+          area_detail: [
+            { area_name: 'Gas Turbine', total_point: 10, total_task: 10, completed: 9 },
+          ],
+          total_point: 10,
+          total_worker: 2,
+          total_assignment: 10,
+        },
+      },
+    ],
     dashboard: {
       data: {
         pipeline_reports: { PENDING: 6, IN_PROGRESS: 4, SUBMITTED: 9, COMPLETED: 29 },
