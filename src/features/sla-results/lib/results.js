@@ -37,19 +37,25 @@ export { formatIndicatorValue, formatScore, formatTarget } from '@/features/sla-
 export const resultKey = (r) =>
   [r.scope_type, r.vendor_id, r.site_id, r.worker_id, r.period_start].map((v) => v ?? '').join('|');
 
+/** Same entity, any period. @param {Result} r */
+const entityOnlyKey = (r) =>
+  [r.scope_type, r.vendor_id, r.site_id, r.worker_id].map((v) => v ?? '').join('|');
+
 /**
  * Joins SLA and maturity rows of the same entity and period
  * (`scope_type + vendor_id + site_id + worker_id + period_start`). Order: SLA rows first.
+ * The row's own period fields come from the SLA row when there is one.
  * @param {Result[]} slaRows
  * @param {Result[]} maturityRows
+ * @param {(row: Result) => string} [keyOf]
  * @returns {MergedResult[]}
  */
-export function mergeResults(slaRows, maturityRows) {
+export function mergeResults(slaRows, maturityRows, keyOf = resultKey) {
   /** @type {Map<string, MergedResult>} */
   const merged = new Map();
   /** @param {Result} row @param {'sla' | 'maturity'} kind */
   const add = (row, kind) => {
-    const key = resultKey(row);
+    const key = keyOf(row);
     const current = merged.get(key);
     merged.set(key, {
       key,
@@ -72,6 +78,17 @@ export function mergeResults(slaRows, maturityRows) {
   maturityRows.forEach((row) => add(row, 'maturity'));
   return [...merged.values()];
 }
+
+/**
+ * Live (running) periods: one row per entity. SLA and maturity rules may use different period
+ * types (e.g. a quarterly SLA override and a weekly maturity default), so their running periods
+ * start on different dates; each keeps its own period in `row.sla` / `row.maturity`.
+ * @param {Result[]} slaRows
+ * @param {Result[]} maturityRows
+ * @returns {MergedResult[]}
+ */
+export const mergeLiveResults = (slaRows, maturityRows) =>
+  mergeResults(slaRows, maturityRows, entityOnlyKey);
 
 /** `YYYY-MM-DD` → UTC date (period dates are calendar dates). @param {string} iso */
 const toUtcDate = (iso) => {
@@ -271,9 +288,13 @@ export function summarizeResults(rows) {
  * @returns {{ from: string, to: string } | null}
  */
 export function previousPeriodRange(rows) {
+  // SLA and maturity of a live row may use different periods: cover the previous one of each.
   const starts = rows
-    .filter((row) => row.period_start)
-    .map((row) => periodStartBefore(row.period_type, /** @type {string} */ (row.period_start)))
+    .flatMap((row) => [row.sla ?? row, row.maturity ?? row])
+    .filter((period) => period.period_start)
+    .map((period) =>
+      periodStartBefore(period.period_type, /** @type {string} */ (period.period_start)),
+    )
     .sort();
   return starts.length ? { from: starts[0], to: starts[starts.length - 1] } : null;
 }

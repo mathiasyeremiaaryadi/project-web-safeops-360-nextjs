@@ -82,13 +82,25 @@ export function SlaDashboard() {
   const previousByKey = new Map(
     (previous.data ?? []).map((row) => [`${entityKey(row)}|${row.period_start}`, row]),
   );
-  /** @param {MergedResult} row */
-  const previousOf = (row) =>
-    row.period_start
-      ? previousByKey.get(
-          `${entityKey(row)}|${periodStartBefore(row.period_type, row.period_start)}`,
-        )
-      : undefined;
+  /**
+   * The frozen result of the period before a live SLA or maturity result. SLA and maturity of a
+   * row may run on different period types, so each is looked up on its own.
+   * @param {MergedResult} row
+   * @param {'sla' | 'maturity'} kind
+   */
+  const previousOf = (row, kind) => {
+    const current = row[kind];
+    if (!current?.period_start) return undefined;
+    const start = periodStartBefore(current.period_type, current.period_start);
+    return previousByKey.get(`${entityKey(row)}|${start}`)?.[kind] ?? undefined;
+  };
+  /** Period label under a value. @param {MergedResult['sla']} result */
+  const periodNote = (result) =>
+    result?.period_start ? (
+      <span className="text-xs text-muted-foreground">
+        {formatPeriod(result.period_type, result.period_start)}
+      </span>
+    ) : null;
   const namesOf = useEntityNames(scope);
   const summary = summarizeResults(rows);
   const mayCreate = canCreateRules(user);
@@ -127,6 +139,7 @@ export function SlaDashboard() {
           tone={display.tone}
           label={`Skor SLA ${namesOf(row).title}`}
         />
+        {periodNote(row.sla)}
       </span>
     );
   };
@@ -147,11 +160,12 @@ export function SlaDashboard() {
   const levelCell = (row) => {
     const display = getResultDisplay(row.maturity, 'maturity');
     if (!display.showScore) return <StatusBadge status={display.badge} />;
-    const before = previousOf(row)?.maturity?.level;
+    const before = previousOf(row, 'maturity')?.level;
     const level = row.maturity?.level ?? 0;
     return (
       <span className="flex flex-col gap-1">
         <LevelPips level={level} />
+        {periodNote(row.maturity)}
         {before && before > level ? (
           <span className="text-xs text-warning">Turun dari Level {before}</span>
         ) : null}
@@ -161,7 +175,7 @@ export function SlaDashboard() {
 
   /** @param {MergedResult} row */
   const trendOf = (row) => {
-    const before = previousOf(row)?.sla;
+    const before = previousOf(row, 'sla');
     if (!getResultDisplay(row.sla).showScore || !getResultDisplay(before).showScore) return null;
     return /** @type {number} */ (row.sla?.score) - /** @type {number} */ (before?.score);
   };
@@ -249,10 +263,8 @@ export function SlaDashboard() {
     <>
       <PageHeader
         title="SLA & maturity"
-        description={[
-          site.label,
-          first ? formatPeriod(first.period_type, first.period_start) : null,
-        ]
+        // Rows may run on different period types: each value shows its own period.
+        description={[site.label, rows.length ? 'Periode berjalan' : null]
           .filter(Boolean)
           .join(' · ')}
         actions={first?.live ? <LiveBadge /> : null}

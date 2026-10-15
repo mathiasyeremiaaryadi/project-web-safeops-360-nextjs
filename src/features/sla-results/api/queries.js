@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { resultListSchema } from '@/features/sla-results/api/schemas';
-import { mergeResults } from '@/features/sla-results/lib/results';
+import { mergeLiveResults, mergeResults } from '@/features/sla-results/lib/results';
 
 /**
  * @typedef {object} ResultParams
@@ -40,7 +40,8 @@ async function fetchResults(kind, when, params) {
 }
 
 /**
- * SLA and maturity results, merged per entity and period. Maturity is optional: when it fails
+ * SLA and maturity results, merged per entity (live: SLA and maturity may run on different
+ * period types) or per entity and period (history). Maturity is optional: when it fails
  * (e.g. no access) the SLA results are still shown.
  * @param {'live' | 'history'} when
  * @param {ResultParams} params
@@ -50,7 +51,7 @@ async function fetchMerged(when, params) {
     fetchResults('sla', when, params),
     fetchResults('maturity', when, params).catch(() => []),
   ]);
-  return mergeResults(sla, maturity);
+  return when === 'live' ? mergeLiveResults(sla, maturity) : mergeResults(sla, maturity);
 }
 
 /**

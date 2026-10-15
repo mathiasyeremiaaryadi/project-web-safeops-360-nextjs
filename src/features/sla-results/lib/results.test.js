@@ -6,6 +6,7 @@ import {
   formatTarget,
   getResultDisplay,
   levelChangeText,
+  mergeLiveResults,
   mergeResults,
   nextLevelGap,
   periodStartBefore,
@@ -63,6 +64,25 @@ describe('mergeResults', () => {
       [],
     );
     expect(merged).toHaveLength(3);
+  });
+});
+
+describe('mergeLiveResults', () => {
+  it('joins the running SLA and maturity periods of one entity even when the period types differ', () => {
+    const merged = mergeLiveResults(
+      [result({ period_type: 'QUARTER', period_start: '2026-10-01' })],
+      [result({ period_type: 'WEEK', period_start: '2026-10-12', level: 2 })],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].sla?.period_type).toBe('QUARTER');
+    expect(merged[0].maturity?.period_type).toBe('WEEK');
+    // The row's own period is the SLA one (used by the detail link).
+    expect(merged[0].period_start).toBe('2026-10-01');
+  });
+
+  it('keeps other sites apart', () => {
+    const merged = mergeLiveResults([result()], [result({ site_id: 's2', level: 3 })]);
+    expect(merged).toHaveLength(2);
   });
 });
 
@@ -163,6 +183,14 @@ describe('summarizeResults / previousPeriodRange', () => {
       [],
     );
     expect(previousPeriodRange(rows)).toEqual({ from: '2026-09-01', to: '2026-10-05' });
+  });
+
+  it('also covers the previous maturity period when it differs from the SLA one', () => {
+    const rows = mergeLiveResults(
+      [result({ period_type: 'QUARTER', period_start: '2026-10-01' })],
+      [result({ period_type: 'WEEK', period_start: '2026-10-12', level: 2 })],
+    );
+    expect(previousPeriodRange(rows)).toEqual({ from: '2026-07-01', to: '2026-10-05' });
   });
 });
 

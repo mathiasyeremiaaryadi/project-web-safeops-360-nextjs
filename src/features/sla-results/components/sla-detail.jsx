@@ -111,7 +111,14 @@ export function SlaDetail() {
   const naCount = sla ? sla.items.filter((item) => item.is_na).length : 0;
   const period = formatPeriod(row.period_type, row.period_start);
   const level = row.maturity?.level ?? null;
-  const previousLevel = previousRow?.maturity?.level ?? null;
+  // A live row's maturity may run on another period type than its SLA (e.g. a weekly maturity
+  // next to a quarterly SLA): show that period, and only compare with the previous SLA period's
+  // level when both share the period.
+  const maturityPeriod =
+    row.maturity?.period_start && row.maturity.period_start !== row.period_start
+      ? formatPeriod(row.maturity.period_type, row.maturity.period_start)
+      : null;
+  const previousLevel = maturityPeriod ? null : (previousRow?.maturity?.level ?? null);
   const ruleText = sla?.rule_version
     ? `aturan v${sla.rule_version} (${PERIOD_LABELS[/** @type {keyof typeof PERIOD_LABELS} */ (row.period_type ?? '')] ?? row.period_type})`
     : null;
@@ -204,6 +211,7 @@ export function SlaDetail() {
             {maturityDisplay.showScore
               ? [
                   LEVEL_NAMES[/** @type {keyof typeof LEVEL_NAMES} */ (level ?? 0)],
+                  maturityPeriod,
                   previousLevel && previousLevel !== level
                     ? `sebelumnya Level ${previousLevel}`
                     : null,
@@ -263,7 +271,8 @@ export function SlaDetail() {
       {maturityDisplay.showScore && row.maturity ? (
         <section aria-labelledby="maturity-title" className="rounded-2xl border bg-card p-4 sm:p-5">
           <h2 id="maturity-title" className="mb-1 text-lg font-semibold text-foreground">
-            Maturity · skor {formatScore(row.maturity.score)}
+            Maturity · {maturityPeriod ? `${maturityPeriod} · ` : ''}skor{' '}
+            {formatScore(row.maturity.score)}
           </h2>
           <ul className="mt-3 flex flex-col gap-3">
             {row.maturity.dimensions.map((dimension) => (
