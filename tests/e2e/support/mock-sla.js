@@ -241,7 +241,8 @@ function historyRows(scope, siteId) {
       vendor_name: 'PT Bersih Jaya',
       ...site,
       period_type: 'MONTH',
-      period_start: start,
+      // Like the backend: a timestamp, not a date.
+      period_start: `${start}T00:00:00+07:00`,
       status: 'OK',
       score,
       compliant,
@@ -275,7 +276,10 @@ function historyRows(scope, siteId) {
 function inRange(rows, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
-  return rows.filter((r) => (!from || r.period_start >= from) && (!to || r.period_start <= to));
+  const day = (/** @type {string} */ value) => value.slice(0, 10);
+  return rows.filter(
+    (r) => (!from || day(r.period_start) >= from) && (!to || day(r.period_start) <= to),
+  );
 }
 
 /**
@@ -367,7 +371,16 @@ export async function mockSla(page, { role, siteIds = [], vendorId }) {
       return json({ data: active });
     }
 
-    // Scores and levels.
+    // Scores and levels. Like the backend, `from` / `to` must be dates.
+    for (const field of ['from', 'to']) {
+      const value = url.searchParams.get(field);
+      if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return json(
+          { error: { code: 'INVALID_OPERATIONAL_DATA', message: `${field} must be YYYY-MM-DD` } },
+          400,
+        );
+      }
+    }
     const scope = url.searchParams.get('scope') ?? 'VENDOR';
     const siteId = url.searchParams.get('site_id') ?? undefined;
     const ownVendor = (r) => !vendorId || r.vendor_id === vendorId;

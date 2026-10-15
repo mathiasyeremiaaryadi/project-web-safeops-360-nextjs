@@ -15,21 +15,66 @@ export const roleSchema = z.enum([
   ROLES.WORKER,
 ]);
 
-export const userSchema = z.object({
-  id: z.coerce.string(),
-  username: z.string(),
-  full_name: z.string().nullish(),
-  email: z.string().nullish(),
-  phone: z.string().nullish(),
-  roles: z.array(roleSchema),
-  is_active: z.boolean().catch(true),
-  locked_until: z.string().nullish(),
-  must_change_password: z.boolean().catch(false),
-  last_login_at: z.string().nullish(),
-  scopes: z
-    .object({ site_ids: idListSchema.catch([]), vendor_ids: idListSchema.catch([]) })
-    .catch({ site_ids: [], vendor_ids: [] }),
-});
+/**
+ * Scope of a user from the shapes Go sends: `scopes: [{ type: 'SITE' | 'VENDOR', id, name }]`
+ * (current backend), `scopes: { site_ids, vendor_ids }`, or top-level `site_ids` / `vendor_ids`.
+ * Names sent with the scope are kept, so the scope column does not need the lookups.
+ * @param {any} user
+ */
+export function toUserScopes(user) {
+  /** @type {Record<string, string>} */
+  const names = {};
+  const siteIds = new Set();
+  const vendorIds = new Set();
+  /** @param {Set<string>} into @param {unknown} list */
+  const addIds = (into, list) => {
+    if (!Array.isArray(list)) return;
+    for (const entry of list) {
+      const id = entry && typeof entry === 'object' ? /** @type {any} */ (entry).id : entry;
+      if (id !== undefined && id !== null && id !== '') into.add(String(id));
+    }
+  };
+  if (Array.isArray(user?.scopes)) {
+    for (const row of user.scopes) {
+      const type = String(row?.type ?? row?.scope_type ?? '').toUpperCase();
+      const id = row?.id ?? row?.site_id ?? row?.vendor_id;
+      if (!id) continue;
+      if (type === 'VENDOR' || (!type && row?.vendor_id)) vendorIds.add(String(id));
+      else siteIds.add(String(id));
+      if (row?.name) names[String(id)] = String(row.name);
+    }
+  } else {
+    addIds(siteIds, user?.scopes?.site_ids);
+    addIds(vendorIds, user?.scopes?.vendor_ids);
+  }
+  addIds(siteIds, user?.site_ids);
+  addIds(vendorIds, user?.vendor_ids);
+  return { site_ids: [...siteIds], vendor_ids: [...vendorIds], names };
+}
+
+export const userSchema = z.preprocess(
+  (raw) => (raw && typeof raw === 'object' ? { ...raw, scopes: toUserScopes(raw) } : raw),
+  z.object({
+    id: z.coerce.string(),
+    username: z.string(),
+    full_name: z.string().nullish(),
+    email: z.string().nullish(),
+    phone: z.string().nullish(),
+    roles: z.array(roleSchema),
+    is_active: z.boolean().catch(true),
+    locked_until: z.string().nullish(),
+    must_change_password: z.boolean().catch(false),
+    last_login_at: z.string().nullish(),
+    scopes: z
+      .object({
+        site_ids: idListSchema.catch([]),
+        vendor_ids: idListSchema.catch([]),
+        /** Site / vendor names sent with the scope, by id. */
+        names: z.record(z.string(), z.string()).catch({}),
+      })
+      .catch({ site_ids: [], vendor_ids: [], names: {} }),
+  }),
+);
 
 /** @typedef {z.infer<typeof userSchema>} User */
 

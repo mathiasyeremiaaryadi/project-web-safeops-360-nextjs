@@ -7,7 +7,7 @@ import { FilterBar } from '@/components/shared/filter-bar';
 import { QueryList } from '@/components/shared/query-list';
 import { useListParams } from '@/hooks/use-list-params';
 import { formatDateTime } from '@/lib/date';
-import { searchRows } from '@/lib/search';
+import { filterRows, searchRows } from '@/lib/search';
 import { useAuditLogs } from '@/features/audit-logs/api/queries';
 import { ActionBadge } from '@/features/audit-logs/components/action-badge';
 import { ActorName, useActorName } from '@/features/audit-logs/components/actor-name';
@@ -32,6 +32,8 @@ export function AuditLogsList() {
     page: params.page,
     limit,
     q: params.q,
+    // Postman: `user_id`; `user` kept for older backends.
+    user_id: params.user,
     user: params.user,
     action: params.action,
     entity: params.entity,
@@ -41,15 +43,23 @@ export function AuditLogsList() {
   const actorName = useActorName();
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
-    ? searchRows(query.data.data, params.q, (log) => [
-        actorName(log),
-        log.actor_username,
-        log.action,
-        log.entity,
-        log.entity_id,
-        summaryOf(log),
-        log.ip,
-      ])
+    ? searchRows(
+        filterRows(query.data.data, {
+          actor_id: params.user,
+          action: params.action,
+          entity: params.entity,
+        }),
+        params.q,
+        (log) => [
+          actorName(log),
+          log.actor_username,
+          log.action,
+          log.entity,
+          log.entity_id,
+          summaryOf(log),
+          log.ip,
+        ],
+      )
     : [];
   const [selected, setSelected] = useState(
     /** @type {import('@/features/audit-logs/api/schemas').AuditLog | null} */ (null),

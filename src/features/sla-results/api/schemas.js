@@ -41,6 +41,14 @@ const itemSchema = z.preprocess(
 
 /** @typedef {z.infer<typeof itemSchema>} ResultItem */
 
+/**
+ * `YYYY-MM-DD` of a period date. The backend may send a timestamp
+ * (`2026-09-01T00:00:00+07:00`); the score endpoints only accept a date in `from` / `to`.
+ * @param {unknown} value
+ */
+const toDate = (value) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+
 /** @param {any} r */
 function normaliseResult(r) {
   const score = r.score ?? r.total_score;
@@ -53,8 +61,8 @@ function normaliseResult(r) {
     worker_id: firstValue(r.worker_id, r.user_id, r.worker?.id) ?? null,
     worker_name: firstValue(r.worker_name, r.worker_full_name, r.worker?.full_name),
     period_type: r.period_type,
-    period_start: r.period_start,
-    period_end: r.period_end,
+    period_start: toDate(r.period_start),
+    period_end: toDate(r.period_end),
     status: r.status ?? (score === null || score === undefined ? RESULT_STATUS.NO_DATA : 'OK'),
     score,
     compliant: firstValue(r.compliant, r.is_compliant, r.met),

@@ -16,7 +16,7 @@ import { useListParams } from '@/hooks/use-list-params';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
-import { searchRows } from '@/lib/search';
+import { filterRows, searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { usePipelines } from '@/features/pipelines/api/queries';
@@ -45,14 +45,13 @@ export function PipelinesList() {
   const sites = useOptionLabels('sites');
   /** @param {{ site_id?: string | null }} p */
   const siteOf = (p) => (p.site_id ? sites.labelOf(p.site_id) : '—');
-  // Server `?q=` + the same search here, in case the backend ignores `q`.
+  // Server `?q=` / filters + the same here, in case the backend ignores them.
   const rows = query.data
-    ? searchRows(query.data.data, params.q, (p) => [
-        p.name,
-        p.description,
-        vendors.labelOf(p.vendor_id),
-        siteOf(p),
-      ])
+    ? searchRows(
+        filterRows(query.data.data, { vendor_id: params.vendor_id, status: params.status }),
+        params.q,
+        (p) => [p.name, p.description, vendors.labelOf(p.vendor_id), siteOf(p)],
+      )
     : [];
   const [creating, setCreating] = useState(false);
 

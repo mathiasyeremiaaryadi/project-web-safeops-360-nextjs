@@ -16,7 +16,7 @@ import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { formatDate } from '@/lib/date';
-import { searchRows } from '@/lib/search';
+import { filterRows, searchRows } from '@/lib/search';
 import { useSession } from '@/features/auth';
 import { useInventories } from '@/features/inventories/api/queries';
 import { ConditionBadge } from '@/features/inventories/components/condition-badge';
@@ -74,11 +74,14 @@ export function InventoriesList() {
   const [creating, setCreating] = useState(false);
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
-    ? searchRows(query.data.data, params.q, (r) => [
-        r.item,
-        r.jenis_item,
-        vendors.labelOf(r.vendor_id),
-      ])
+    ? searchRows(
+        filterRows(query.data.data, {
+          status_condition: params.status_condition,
+          vendor_id: params.vendor_id,
+        }),
+        params.q,
+        (r) => [r.item, r.jenis_item, vendors.labelOf(r.vendor_id)],
+      )
     : [];
 
   return (

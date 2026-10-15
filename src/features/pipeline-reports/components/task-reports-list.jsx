@@ -14,12 +14,12 @@ import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatDateTime } from '@/lib/date';
+import { filterRows } from '@/lib/search';
 import { useTaskReports } from '@/features/pipeline-reports/api/queries';
 import { ReportBadges, shiftLabel } from '@/features/pipeline-reports/components/report-badges';
 import { TaskReportDetail } from '@/features/pipeline-reports/components/task-report-detail';
 import {
   DEFAULT_TASK_REPORT_TAB,
-  REVISION_STATUS,
   TASK_REPORT_TABS,
 } from '@/features/pipeline-reports/lib/constants';
 
@@ -45,10 +45,8 @@ export function TaskReportsList() {
   const query = useTaskReports({ page, limit, from, to, site_id, vendor_id, ...tab.params });
   const users = useOptionLabels('users');
   const panel = useDetailPanel(hrefOf);
-  // Same filter here for "Revisi diminta", in case the backend ignores `revision_status`.
-  const rows = (query.data?.data ?? []).filter(
-    (r) => tab.value !== 'REVISION' || r.revision_status === REVISION_STATUS.REQUESTED,
-  );
+  // Same filters here (Postman has no `revision_status` filter), in case the backend ignores them.
+  const rows = filterRows(query.data?.data ?? [], { ...tab.params, vendor_id });
   const workerOf = (/** @type {TaskReport} */ r) => r.worker_name ?? users.labelOf(r.user_id);
 
   /** @param {TaskReport} r */

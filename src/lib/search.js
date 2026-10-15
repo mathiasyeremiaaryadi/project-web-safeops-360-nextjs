@@ -32,3 +32,29 @@ export function compareValues(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return String(a).localeCompare(String(b), 'id', { sensitivity: 'base', numeric: true });
 }
+
+/**
+ * Exact-match filters (`status`, `vendor_id`, …) applied to the loaded rows too, in case the
+ * backend ignores a filter it was sent. Case-insensitive. Empty filter values are skipped, and so
+ * are fields the rows do not have (the server's answer is trusted for those).
+ * @template {Record<string, any>} T
+ * @param {T[]} rows
+ * @param {Record<string, string | number | null | undefined>} filters
+ * @returns {T[]}
+ */
+export function filterRows(rows, filters) {
+  const active = Object.entries(filters).filter(
+    ([, value]) => value !== undefined && value !== null && value !== '',
+  );
+  if (active.length === 0) return rows;
+  return rows.filter((row) =>
+    active.every(([key, value]) => {
+      const own = row[key];
+      return (
+        own === undefined ||
+        own === null ||
+        String(own).toLowerCase() === String(value).toLowerCase()
+      );
+    }),
+  );
+}

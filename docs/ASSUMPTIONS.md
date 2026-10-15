@@ -298,11 +298,17 @@ Postman tidak memuat endpoint Worker. Endpoint bertanda ⚠ mengikuti kontrak ta
 - **W2.** Jam shift ditampilkan hanya bila response menyertakan `start_time`/`end_time`; jika
   tidak, hanya nama shift. Jam mulai/selesai laporan dibaca dari `opened_at`/`open_date` dan
   `closed_at`/`closed_date`; klien tidak mengirimnya.
-- **W3. ⚠ Unggah foto:** `POST /pipeline-reports/{id}/evidence` multipart `file` + `type=before|after`
-  → `uploadEvidence()` di `features/task-report/api/report-api.js`. 404/405 → "Unggah foto belum
-  didukung server. Hubungi admin." (BRD hanya menerima object key.)
-- **W4. ⚠ Kirim laporan:** `POST /pipeline-reports/{id}/submit` → `submitReport()` di file yang
-  sama. 422 → "Foto sebelum dan sesudah wajib ada." (BRD: lewat `PATCH` status.)
+- **W3. Unggah foto** (Postman "Update Pipeline Report (Upload Photo)"): `PATCH /pipeline-reports/{id}`
+  multipart `evidence_before` + `open_date`, atau `evidence_after` + `closed_date` (waktu unggah,
+  RFC 3339; EXIF dibuang aplikasi sehingga backend memakai waktu ini) → `uploadEvidence()` di
+  `features/task-report/api/report-api.js`. 409 `REPORT_UPLOAD_CLOSED` → "Waktu unggah foto untuk
+  laporan ini sudah ditutup."
+- **W4. Kirim laporan** (Postman "Update Pipeline Report"): `PATCH /pipeline-reports/{id}`
+  `{ status: "COMPLETED", closed_date }` → `submitReport()` di
+  `features/task-report/api/report-api.js`. COMPLETED wajib `evidence_after` dan `closed_date`
+  (jam foto sesudah, atau saat kirim). Status revisi diisi server (SUBMITTED bila terlambat).
+  Setelah dikirim laporan berstatus Selesai ("Laporan selesai dan sudah terkirim."). Catatan:
+  Postman tidak punya endpoint review laporan task untuk admin; layar review mengikuti PRD.
 - **W5. ⚠ Riwayat status:** `GET /pipeline-reports/{id}/history` → `fetchReportHistory()` di file
   yang sama. 404/405 → bagian "Riwayat status" disembunyikan.
 - **W6. Lapor inventory:** `POST /inventory-reports` dikirim sebagai **JSON** sesuai BRD
@@ -320,12 +326,17 @@ Postman tidak memuat endpoint Worker. Endpoint bertanda ⚠ mengikuti kontrak ta
 
 ## Progress vendor, progress pipeline, penugasan
 
-- **VP1.** `/vendor-progress` (Super Admin, Admin): `GET /dashboard/summary` →
-  `data.vendor_progress[]` (`vendor_id, vendor_name, total_task, completed, in_progress,
-not_started, progress_percentage, vendor_progress_detail { total_area, area_detail[],
-total_point, total_worker, total_assignment }`). Isi `area_detail[]` belum terlihat: dibaca dari
-  `area_name|name`, `total_point`, `total_task`, `completed`, `in_progress`, `not_started`,
-  `progress_percentage` (`features/vendor-progress/lib/progress.js`). **Perlu konfirmasi.**
+- **VP1.** `/vendor-progress` (Super Admin, Admin): daftar dari `GET /dashboard/summary` →
+  `vendor_progress[]`. Detail vendor dari `GET /dashboard/summary/detail?type=vendor_progress`
+  (contoh Postman): `data.data.vendor_progress[].vendor_progress_detail.area_detail[]` →
+  `{ area_id, nama_area, total_point_per_area, total_worker_per_area, total_assignment_per_area,
+point_detail[] }`; tiap titik `{ nama_point, pipeline_item_id, total_worker, total_assignment,
+pending_detail[], <SHIFT>: { task_detail[] } }` dengan task `{ status, open_date, close_date,
+worker_name, notes, category_note }` (`"-"` = tanpa kategori). Setiap kunci yang berisi
+  `task_detail` dianggap kode shift (`DAY`/`EVENING`/`NIGHT`, ditampilkan Pagi/Sore/Malam).
+  Jumlah per area dihitung dari task dan `pending_detail` (hanya tampilan). Endpoint detail
+  dikirimi `vendor_id`; bila diabaikan, halaman tetap memilih vendor itu
+  (`features/vendor-progress/lib/progress.js`).
 - **VP2.** Endpoint progres hanya menerima satu `date`. Rentang Dari–Sampai (default hari ini, maks.
   31 hari) = satu request per hari, dijumlahkan per vendor/pipeline; persentase dihitung ulang.
   Area, point, worker, dan penugasan diambil nilai terbesarnya (bukan dijumlah).

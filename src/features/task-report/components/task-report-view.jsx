@@ -222,7 +222,9 @@ function ReportForm({ report }) {
                     type="button"
                     className="h-12 text-base font-semibold"
                     disabled={Boolean(blocker)}
-                    onClick={() => submit.mutate({ notes: dirty ? values : null })}
+                    onClick={() =>
+                      submit.mutate({ notes: dirty ? values : null, closedAt: report.closed_at })
+                    }
                   >
                     {submit.isPending ? 'Mengirim…' : 'Kirim laporan'}
                   </Button>
@@ -240,7 +242,7 @@ function ReportForm({ report }) {
               >
                 <CheckCircle2 aria-hidden="true" className="size-4 text-success" />
                 {report.status === REPORT_STATUS.COMPLETED
-                  ? 'Laporan disetujui.'
+                  ? 'Laporan selesai dan sudah terkirim.'
                   : 'Menunggu review admin vendor.'}
               </p>
             )}

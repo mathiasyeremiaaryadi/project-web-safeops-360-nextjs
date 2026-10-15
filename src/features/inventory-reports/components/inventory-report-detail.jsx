@@ -6,13 +6,16 @@ import { PageHeader } from '@/components/layout/page-header';
 import { StickyActionBar } from '@/components/layout/sticky-action-bar';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
-import { SignedImage } from '@/components/shared/signed-image';
+import { asImageUrl, SignedImage } from '@/components/shared/signed-image';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { formatDateTime } from '@/lib/date';
 import { useSession } from '@/features/auth';
-import { useInventoryReport } from '@/features/inventory-reports/api/queries';
+import {
+  useInventoryReport,
+  useInventoryReportEvidence,
+} from '@/features/inventory-reports/api/queries';
 import { InventoryReportReview } from '@/features/inventory-reports/components/inventory-report-review';
 import { LinkedInventory } from '@/features/inventory-reports/components/linked-inventory';
 import {
@@ -40,6 +43,11 @@ function Fact({ label, children }) {
  */
 export function InventoryReportDetail({ id, variant, onReviewed }) {
   const query = useInventoryReport(id);
+  // Only an object key in the report: ask the evidence endpoint for a signed URL.
+  const evidenceKey = query.data?.evidence_url;
+  const evidence = useInventoryReportEvidence(id, {
+    enabled: Boolean(evidenceKey) && !asImageUrl(evidenceKey),
+  });
   const { user } = useSession();
   const users = useOptionLabels('users');
   const vendors = useOptionLabels('vendors');
@@ -99,7 +107,7 @@ export function InventoryReportDetail({ id, variant, onReviewed }) {
         <div className="flex flex-col gap-4">
           {report.evidence_url ? (
             <SignedImage
-              url={report.evidence_url}
+              url={asImageUrl(report.evidence_url) ?? evidence.data}
               alt="Foto evidence"
               placeholder="Foto belum tersedia"
               className="aspect-[4/3] w-full max-w-md"

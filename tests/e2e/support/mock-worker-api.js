@@ -235,28 +235,29 @@ export async function mockWorkerApi(page, { user = WORKER_AGUS, slaForbidden = f
       if (sub === 'history') return error(404, 'NOT_FOUND');
       if (method === 'GET') return json({ data: report });
       if (report.status === 'COMPLETED') return error(403, 'FORBIDDEN');
-      if (sub === 'evidence') {
-        // kontrak PRD 1.2 — belum ada di BRD
-        const now = new Date().toISOString();
-        if (body.type === 'before') {
-          report.evidence_before_url = photoUrl(`${id}-before`);
-          report.opened_at = now;
-        } else {
-          report.evidence_after_url = photoUrl(`${id}-after`);
-          report.closed_at = now;
-        }
-        return json({ data: report });
-      }
-      if (sub === 'submit') {
-        // kontrak PRD 1.2 — belum ada di BRD
-        if (!report.evidence_before_url || !report.evidence_after_url) {
+      if (method === 'PATCH' && body.status === 'COMPLETED') {
+        // Postman "Update Pipeline Report": COMPLETED needs both photos and closed_date.
+        if (!report.evidence_before_url || !report.evidence_after_url || !body.closed_date) {
           return error(422, 'EVIDENCE_REQUIRED');
         }
         const revision = report.revision_status === 'REQUESTED';
         Object.assign(report, {
-          status: 'SUBMITTED',
+          status: 'COMPLETED',
+          closed_at: body.closed_date,
           revision_status: revision ? 'RESUBMITTED' : report.revision_status,
         });
+        return json({ data: report });
+      }
+      if (method === 'PATCH' && (body.evidence_before || body.evidence_after)) {
+        // Postman "Update Pipeline Report (Upload Photo)": multipart evidence_before / _after.
+        if (body.evidence_before) {
+          report.evidence_before_url = photoUrl(`${id}-before`);
+          report.opened_at = body.open_date ?? new Date().toISOString();
+        }
+        if (body.evidence_after) {
+          report.evidence_after_url = photoUrl(`${id}-after`);
+          report.closed_at = body.closed_date ?? new Date().toISOString();
+        }
         return json({ data: report });
       }
       if (method === 'PATCH') {

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { listResponseSchema, masterStatusSchema, withMasterStatus } from '@/lib/api/lists';
+import {
+  listResponseSchema,
+  masterStatusSchema,
+  signedUrlSchema,
+  withMasterStatus,
+} from '@/lib/api/lists';
 
 /* `/policies` (BRD 8.4). Response field names are assumptions — docs/ASSUMPTIONS.md (SOP1–SOP3). */
 
@@ -28,23 +33,8 @@ export const policySchema = z.preprocess(
 
 export const policyListSchema = listResponseSchema(policySchema);
 
-/** First string under the usual URL keys of an object. @param {any} object */
-const findUrl = (object) =>
-  object && typeof object === 'object'
-    ? [object.url, object.signed_url, object.file_url, object.download_url].find(
-        (value) => typeof value === 'string',
-      )
-    : undefined;
-
-/**
- * `GET /policies/{id}/file` → signed URL (10 minutes). Accepts a bare string, `{ url }`,
- * `{ signed_url | file_url | download_url }`, or any of these under `data`.
- */
-export const policyFileSchema = z.preprocess(
-  (raw) =>
-    typeof raw === 'string' ? raw : (findUrl(raw) ?? findUrl(/** @type {any} */ (raw)?.data)),
-  z.url({ protocol: /^https?$/ }),
-);
+/** `GET /policies/{id}/file` → signed URL (10 minutes). */
+export const policyFileSchema = signedUrlSchema;
 
 const optionSchema = z.object({ value: z.string(), label: z.string() });
 

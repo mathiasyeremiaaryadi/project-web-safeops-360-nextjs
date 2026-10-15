@@ -7,8 +7,8 @@ import { auditLogKeys } from '@/features/audit-logs/api/keys';
 import { auditLogListSchema } from '@/features/audit-logs/api/schemas';
 
 /**
- * `GET /audit-logs?q=&user=&action=&entity=&from=&to=&page=&limit=` (from/to: RFC3339, Postman).
- * @param {{ page: number, limit: number, q: string, user: string, action: string, entity: string, from: string, to: string }} params
+ * `GET /audit-logs?q=&user_id=&action=&entity=&from=&to=&page=&limit=` (from/to: RFC3339, Postman).
+ * @param {{ page: number, limit: number, q: string, user_id: string, user: string, action: string, entity: string, from: string, to: string }} params
  *   `from`/`to` are `YYYY-MM-DD` in APP_TIMEZONE.
  */
 export function useAuditLogs(params) {

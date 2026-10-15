@@ -55,6 +55,29 @@ test('Beranda shows total / in progress / completed and the progress per vendor'
   await expect(page.getByLabel('Konteks data: Semua site')).toBeVisible();
 });
 
+test('Beranda shows the safety notes of the day, newest first, filterable per category', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.goto('/dashboard');
+  const panel = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Catatan safety' }),
+  });
+  const items = panel.getByRole('list', { name: 'Daftar catatan safety' }).getByRole('listitem');
+  await expect(items).toHaveCount(2);
+  await expect(items.first()).toContainText('Near miss');
+  await expect(items.first()).toContainText('Shift Sore · 16.30');
+  await expect(items.first()).toContainText('PLTU Labuan · Coal Yard › Coal Stockpile');
+  await expect(items.first()).toContainText('PT Bersih Jaya · Sinta Maharani');
+  await expect(items.nth(1)).toContainText('Shift Pagi · 08.30–09.00');
+
+  await panel.getByRole('button', { name: 'Unsafe condition (1)' }).click();
+  await expect(items).toHaveCount(1);
+  await expect(items.first()).toContainText('Railing tangga longgar');
+  await panel.getByRole('button', { name: 'Unsafe action (0)' }).click();
+  await expect(panel.getByText('Tidak ada catatan untuk kategori ini.')).toBeVisible();
+});
+
 test('"Salin" copies the temporary password, also on plain HTTP (no Clipboard API)', async ({
   page,
 }) => {
@@ -403,9 +426,26 @@ test('vendor progress: today by default, period sums the days, row opens the det
   await expect(page).toHaveURL((url) => url.href.endsWith(`/vendor-progress/v1?from=${from}`));
   await expect(page.getByRole('heading', { name: 'PT Bersih Jaya', level: 1 })).toBeVisible();
   await expect(page.getByText('Total worker')).toBeVisible();
-  const areas = page.getByRole('table', { name: /Progres per area/ });
-  await expect(areas.getByRole('row')).toHaveCount(3);
-  await expect(areas.getByRole('row').filter({ hasText: 'Turbine Hall' })).toContainText('83%');
+  await expect(page.getByText('Temuan safety', { exact: true })).toBeVisible();
+  const turbine = page.locator('details').filter({ hasText: 'Turbine Hall' });
+  await expect(turbine).toContainText('83%');
+  await expect(turbine).toContainText('Shift Pagi');
+  await expect(turbine).toContainText('temuan safety');
+  await turbine.locator('summary').click();
+  const points = turbine.getByRole('table', { name: 'Titik di area Turbine Hall' });
+  await expect(points.getByRole('row').filter({ hasText: 'Lantai Turbin' })).toContainText(
+    'Agus Pratama',
+  );
+  await expect(points.getByRole('row').filter({ hasText: 'Lantai Turbin' })).toContainText(
+    'Unsafe condition',
+  );
+  await expect(points.getByRole('row').filter({ hasText: 'Sinta Maharani' })).toContainText(
+    'Belum dikerjakan',
+  );
+  // Search narrows the areas down to the matching points.
+  await page.getByPlaceholder('Cari area, titik, atau worker').fill('sinta');
+  await expect(page.locator('details')).toHaveCount(1);
+  await page.getByPlaceholder('Cari area, titik, atau worker').fill('');
   await page.getByRole('link', { name: 'Kembali ke progress vendor' }).click();
   await expect(page).toHaveURL((url) => url.href.endsWith(`/vendor-progress?from=${from}`));
 });

@@ -54,20 +54,29 @@ test('start → photo before → photo after → notes → save → send', async
 
   await page.getByRole('button', { name: 'Kirim laporan' }).click();
   await expect(page).toHaveURL(/\/tasks$/);
-  await expect(page.getByText('Laporan terkirim untuk review.')).toBeVisible();
-  await expect(taskRow(page, 'Periksa jalur evakuasi')).toContainText('Menunggu review');
+  await expect(page.getByText('Laporan terkirim.')).toBeVisible();
+  await expect(taskRow(page, 'Periksa jalur evakuasi')).toContainText('Selesai');
 
-  const uploads = api.writes.filter((w) => w.path.endsWith('/evidence'));
-  // Compressed to JPEG and named after the type before upload.
-  expect(uploads.map((w) => [w.body.type, w.body.file])).toEqual([
-    ['before', { file: 'before.jpg' }],
-    ['after', { file: 'after.jpg' }],
+  // Postman: PATCH multipart evidence_before / evidence_after with open_date / closed_date;
+  // compressed to JPEG and named after the type.
+  const uploads = api.writes.filter((w) => w.body.evidence_before || w.body.evidence_after);
+  expect(uploads.map((w) => [w.path, w.body.evidence_before ?? w.body.evidence_after])).toEqual([
+    ['/pipeline-reports/r-new-1', { file: 'before.jpg' }],
+    ['/pipeline-reports/r-new-1', { file: 'after.jpg' }],
   ]);
-  expect(api.writes.find((w) => w.method === 'PATCH')?.body).toEqual({
+  expect(uploads[0].body.open_date).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(uploads[1].body.closed_date).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(api.writes.find((w) => w.method === 'PATCH' && 'notes' in w.body)?.body).toEqual({
     notes: 'Lampu darurat jalur evakuasi mati.',
     note_category: 'UNSAFE_CONDITION',
   });
-  expect(api.writes.at(-1)?.path).toBe('/pipeline-reports/r-new-1/submit');
+  // Postman: "Kirim" = PATCH status COMPLETED with the close time.
+  expect(api.writes.at(-1)).toMatchObject({
+    method: 'PATCH',
+    path: '/pipeline-reports/r-new-1',
+    body: { status: 'COMPLETED' },
+  });
+  expect(api.writes.at(-1)?.body.closed_date).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 });
 
 test('"Mulai" on a task that already has a report (409) opens that report', async ({ page }) => {
@@ -93,10 +102,7 @@ test('revision: the reason is shown, the after photo is replaced and the report 
   await expect(page.getByText('Mengunggah…')).toBeHidden();
   await page.getByRole('button', { name: 'Kirim laporan' }).click();
   await expect(page).toHaveURL(/\/tasks$/);
-  expect(api.writes.map((w) => w.path)).toEqual([
-    '/pipeline-reports/r4/evidence',
-    '/pipeline-reports/r4/submit',
-  ]);
+  expect(api.writes.map((w) => w.path)).toEqual(['/pipeline-reports/r4', '/pipeline-reports/r4']);
 });
 
 test('a photo taken offline waits on the device and is sent when back online', async ({ page }) => {
@@ -117,7 +123,9 @@ test('a photo taken offline waits on the device and is sent when back online', a
   await api.setOffline(false);
   await expect(page.getByText('Menunggu sinyal', { exact: true })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Kirim laporan' })).toBeEnabled();
-  expect(api.writes.filter((w) => w.path === '/pipeline-reports/r3/evidence')).toHaveLength(1);
+  expect(
+    api.writes.filter((w) => w.path === '/pipeline-reports/r3' && w.body.evidence_after),
+  ).toHaveLength(1);
 });
 
 test('read-only once submitted; another worker’s report is not found', async ({ page }) => {

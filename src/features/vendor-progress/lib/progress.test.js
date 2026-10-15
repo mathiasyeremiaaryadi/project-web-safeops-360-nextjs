@@ -101,3 +101,121 @@ describe('resolveProgressRange', () => {
     );
   });
 });
+
+describe('toVendorProgress — detail endpoint (Postman example)', () => {
+  const detail = {
+    data: {
+      type: 'vendor_progress',
+      data: {
+        site_id: '',
+        vendor_progress: [
+          {
+            vendor_id: 'f47',
+            vendor_name: 'CV Sinergi Perkasa',
+            total_task: 64,
+            completed: 37,
+            in_progress: 8,
+            pending: 19,
+            progress_percentage: 58,
+            vendor_progress_detail: {
+              total_area: 10,
+              area_detail: [
+                {
+                  area_id: 'a1',
+                  nama_area: 'Ash Handling System',
+                  point_detail: [
+                    {
+                      DAY: {
+                        task_detail: [
+                          {
+                            notes: 'Foto after diganti karena foto sebelumnya blur',
+                            status: 'COMPLETED',
+                            open_date: '2026-10-15T08:30:00+07:00',
+                            close_date: '2026-10-15T09:00:00+07:00',
+                            worker_name: 'Andi Hidayat',
+                            assignment_id: 'as1',
+                            category_note: 'UNSAFE_CONDITION',
+                          },
+                        ],
+                      },
+                      nama_point: 'Ash Conveyor',
+                      total_worker: 1,
+                      pending_detail: [],
+                      pipeline_item_id: 'pi1',
+                      total_assignment: 1,
+                    },
+                    {
+                      NIGHT: {
+                        task_detail: [
+                          {
+                            status: 'IN_PROGRESS',
+                            open_date: '2026-10-15T00:30:00+07:00',
+                            close_date: null,
+                            worker_name: 'Fikri Hidayat',
+                            assignment_id: 'as2',
+                            category_note: '-',
+                          },
+                        ],
+                      },
+                      nama_point: 'Ash Hopper',
+                      pending_detail: [],
+                      pipeline_item_id: 'pi2',
+                    },
+                    {
+                      nama_point: 'Fly Ash Silo',
+                      pending_detail: [
+                        { status: 'PENDING', worker_name: 'Fikri Hidayat', assignment_id: 'as3' },
+                      ],
+                      pipeline_item_id: 'pi3',
+                    },
+                  ],
+                  total_point_per_area: 3,
+                  total_worker_per_area: 2,
+                  total_assignment_per_area: 3,
+                },
+              ],
+              total_point: 64,
+              total_worker: 10,
+              total_assignment: 64,
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it('reads the nested data, areas, points, shifts and pending assignments', () => {
+    const [vendor] = toVendorProgress(detail);
+    expect(vendor).toMatchObject({ vendorName: 'CV Sinergi Perkasa', notStarted: 19, percent: 58 });
+    const [area] = vendor.areas;
+    expect(area).toMatchObject({
+      name: 'Ash Handling System',
+      points: 3,
+      workers: 2,
+      total: 3,
+      completed: 1,
+      inProgress: 1,
+      notStarted: 1,
+      percent: 33,
+      shifts: ['DAY', 'NIGHT'],
+    });
+    expect(area.pointList.map((p) => [p.name, p.tasks.length, p.pending.length])).toEqual([
+      ['Ash Conveyor', 1, 0],
+      ['Ash Hopper', 1, 0],
+      ['Fly Ash Silo', 0, 1],
+    ]);
+    expect(area.pointList[0].tasks[0]).toMatchObject({
+      shift: 'DAY',
+      status: 'COMPLETED',
+      workerName: 'Andi Hidayat',
+      category: 'UNSAFE_CONDITION',
+    });
+    expect(area.pointList[1].tasks[0].category).toBeNull();
+  });
+
+  it('keeps the reports of every day when merging', () => {
+    const [vendor] = mergeVendorProgress([toVendorProgress(detail), toVendorProgress(detail)]);
+    expect(vendor.areas[0].pointList[0].tasks).toHaveLength(1);
+    expect(vendor.areas[0].total).toBe(6);
+  });
+});

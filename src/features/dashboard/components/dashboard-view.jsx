@@ -10,9 +10,10 @@ import { useSiteContext } from '@/hooks/use-site-context';
 import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatLongDate, todayInAppTimezone } from '@/lib/date';
 import { LatestInventoryReports } from '@/features/inventory-reports';
-import { useDashboardKpis, useProgress } from '@/features/dashboard/api/queries';
+import { useDashboardKpis, useProgress, useSafetyNotes } from '@/features/dashboard/api/queries';
 import { KpiCards } from '@/features/dashboard/components/kpi-cards';
 import { ProgressList } from '@/features/dashboard/components/progress-list';
+import { SafetyNotesPanel } from '@/features/dashboard/components/safety-notes-panel';
 
 const FILTERS = {
   date: parseAsString.withDefault(''),
@@ -49,6 +50,7 @@ export function DashboardView() {
   // A vendor's own user follows their pipelines; everyone else compares vendors.
   const groupBy = site.mode === DATA_SCOPE.VENDOR ? 'pipeline' : 'vendor';
   const progress = useProgress(filters, groupBy);
+  const safetyNotes = useSafetyNotes(filters);
   const scope =
     site.mode === DATA_SCOPE.ALL && params.site_id
       ? sites.labelOf(params.site_id)
@@ -87,6 +89,9 @@ export function DashboardView() {
             />
           </div>
           <LatestInventoryReports siteId={siteId ?? ''} vendorId={params.vendor_id} />
+          <div className="2xl:col-span-3">
+            <SafetyNotesPanel query={safetyNotes} />
+          </div>
         </div>
       </div>
     </>

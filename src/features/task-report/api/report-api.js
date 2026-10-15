@@ -1,26 +1,36 @@
 import { apiRequest } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { toFormData, UPLOAD_TIMEOUT_MS } from '@/lib/api/form-data';
+import { REPORT_STATUS } from '@/lib/task-reports';
 import { taskReportHistorySchema } from '@/features/pipeline-reports';
 
 /*
- * Worker calls on one task report. Endpoints marked ⚠ follow the PRD 1.2 contract and are not
- * in the BRD or the Postman collection yet — each lives in ONE function here so it is easy to
- * change when the backend adds it (docs/ASSUMPTIONS.md W3–W5).
+ * Worker calls on one task report, each in ONE function so it is easy to change. The upload
+ * follows Postman; endpoints marked ⚠ follow the PRD 1.2 contract and are not in Postman
+ * (docs/ASSUMPTIONS.md W3–W5).
  */
 
 const PATH = 'v1/pipeline-reports';
 
+/** Multipart fields per photo type (Postman "Update Pipeline Report (Upload Photo)"). */
+const EVIDENCE_FIELDS = Object.freeze({
+  before: { file: 'evidence_before', time: 'open_date' },
+  after: { file: 'evidence_after', time: 'closed_date' },
+});
+
 /**
- * ⚠ W3 — `POST /pipeline-reports/{id}/evidence`, multipart `file` + `type=before|after`.
+ * W3 — `PATCH /pipeline-reports/{id}` multipart `evidence_before` | `evidence_after`, with
+ * `open_date` | `closed_date` = now (RFC 3339). Postman: the camera's EXIF time wins over it for
+ * JPEGs, but the app strips EXIF (location), so the upload time is used.
  * @param {{ reportId: string, type: 'before' | 'after', file: Blob }} input
  */
 export function uploadEvidence({ reportId, type, file }) {
   const photo = file instanceof File ? file : new File([file], `${type}.jpg`, { type: file.type });
+  const fields = EVIDENCE_FIELDS[type];
   return apiRequest({
-    method: 'post',
-    path: `${PATH}/${reportId}/evidence`,
-    body: toFormData({ type, file: photo }),
+    method: 'patch',
+    path: `${PATH}/${reportId}`,
+    body: toFormData({ [fields.file]: photo, [fields.time]: new Date().toISOString() }),
     timeout: UPLOAD_TIMEOUT_MS,
   });
 }
@@ -38,11 +48,18 @@ export function saveReportNotes({ reportId, notes, category }) {
 }
 
 /**
- * ⚠ W4 — `POST /pipeline-reports/{id}/submit` → `SUBMITTED` (the server checks both photos).
- * @param {string} reportId
+ * W4 — "Kirim laporan" (Postman "Update Pipeline Report"): `PATCH /pipeline-reports/{id}`
+ * `{ status: "COMPLETED", closed_date }`. COMPLETED needs `evidence_after` and `closed_date`; the
+ * close time is the one stored with the "after" photo, else now. The server sets
+ * `status_revisi` (e.g. SUBMITTED when sent after the shift).
+ * @param {{ reportId: string, closedAt?: string | null }} input
  */
-export function submitReport(reportId) {
-  return apiRequest({ method: 'post', path: `${PATH}/${reportId}/submit` });
+export function submitReport({ reportId, closedAt }) {
+  return apiRequest({
+    method: 'patch',
+    path: `${PATH}/${reportId}`,
+    json: { status: REPORT_STATUS.COMPLETED, closed_date: closedAt || new Date().toISOString() },
+  });
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareValues, searchRows } from '@/lib/search';
+import { compareValues, filterRows, searchRows } from '@/lib/search';
 import { nextSort } from '@/components/shared/data-table';
 
 const sites = [
@@ -33,5 +33,24 @@ describe('nextSort', () => {
     expect(desc).toEqual({ id: 'name', desc: true });
     expect(nextSort(desc, 'name')).toBeNull();
     expect(nextSort(desc, 'code')).toEqual({ id: 'code', desc: false });
+  });
+});
+
+describe('filterRows', () => {
+  const rows = [
+    { id: 'a', status: 'SUBMITTED', vendor_id: 'v1' },
+    { id: 'b', status: 'COMPLETED', vendor_id: 'v2' },
+    { id: 'c', status: 'SUBMITTED' },
+  ];
+  const ids = (list) => list.map((row) => row.id);
+
+  it('keeps rows matching every non-empty filter', () => {
+    expect(ids(filterRows(rows, { status: 'SUBMITTED', vendor_id: 'v1' }))).toEqual(['a', 'c']);
+    expect(ids(filterRows(rows, { status: 'COMPLETED' }))).toEqual(['b']);
+  });
+
+  it('ignores empty filters and fields the rows do not have', () => {
+    expect(ids(filterRows(rows, { status: '', vendor_id: undefined }))).toEqual(['a', 'b', 'c']);
+    expect(ids(filterRows(rows, { site_id: 's1' }))).toEqual(['a', 'b', 'c']);
   });
 });

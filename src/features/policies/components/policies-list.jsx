@@ -17,7 +17,7 @@ import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { formatDate } from '@/lib/date';
 import { toastApiError } from '@/lib/notify';
-import { searchRows } from '@/lib/search';
+import { filterRows, searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { useChangePolicyStatus, useOpenPolicyFile } from '@/features/policies/api/mutations';
@@ -51,7 +51,10 @@ export function PoliciesList() {
   const [editing, setEditing] = useState(/** @type {Policy | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Policy | null} */ (null));
   const rows = query.data
-    ? searchRows(query.data.data, params.q, (p) => [p.name, vendors.labelOf(p.vendor_id)])
+    ? searchRows(filterRows(query.data.data, { vendor_id: params.vendor_id }), params.q, (p) => [
+        p.name,
+        vendors.labelOf(p.vendor_id),
+      ])
     : [];
 
   /** @param {Policy} policy */

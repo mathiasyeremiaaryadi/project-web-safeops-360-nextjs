@@ -13,7 +13,7 @@ import { ScopeFields } from '@/features/users/components/scope-fields';
 import { SIGN_OUT_WARNING } from '@/features/users/constants';
 
 /**
- * Role & scope of an existing user, saved in one `PUT /users/{id}/roles` (roles + scopes).
+ * Role & scope of an existing user, saved in one `PUT /users/{id}/scopes` (roles + scopes).
  * @param {object} props
  * @param {import('@/features/users/api/schemas').User} props.user
  * @param {(id: string) => string} props.siteName
@@ -22,12 +22,14 @@ import { SIGN_OUT_WARNING } from '@/features/users/constants';
 export function UserAccessCard({ user, siteName, vendorName }) {
   const updateAccess = useUpdateUserAccess(user.id);
   const vendorId = user.scopes.vendor_ids[0];
+  /** @param {string} id @param {(id: string) => string} lookup */
+  const nameOf = (id, lookup) => user.scopes.names[id] ?? lookup(id);
   const form = useForm({
     resolver: zodResolver(accessFormSchema),
     defaultValues: {
       roles: user.roles,
-      sites: user.scopes.site_ids.map((id) => ({ value: id, label: siteName(id) })),
-      vendor: vendorId ? { value: vendorId, label: vendorName(vendorId) } : null,
+      sites: user.scopes.site_ids.map((id) => ({ value: id, label: nameOf(id, siteName) })),
+      vendor: vendorId ? { value: vendorId, label: nameOf(vendorId, vendorName) } : null,
     },
   });
 

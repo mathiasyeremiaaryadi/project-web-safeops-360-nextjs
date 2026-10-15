@@ -20,7 +20,12 @@ import { compressPhoto, PhotoError } from '@/features/task-report/lib/photo';
 const APPROVED_MESSAGE = 'Laporan sudah disetujui dan tidak bisa diubah.';
 const UPLOAD_UNSUPPORTED = 'Unggah foto belum didukung server. Hubungi admin.';
 const REPORT_ERRORS = { 403: APPROVED_MESSAGE };
-const UPLOAD_ERRORS = { ...REPORT_ERRORS, 404: UPLOAD_UNSUPPORTED, 405: UPLOAD_UNSUPPORTED };
+const UPLOAD_ERRORS = {
+  ...REPORT_ERRORS,
+  405: UPLOAD_UNSUPPORTED,
+  // Postman: REPORT_UPLOAD_CLOSED after the same shift starts the next day.
+  409: 'Waktu unggah foto untuk laporan ini sudah ditutup.',
+};
 const SUBMIT_ERRORS = { ...REPORT_ERRORS, 422: 'Foto sebelum dan sesudah wajib ada.' };
 
 /**
@@ -107,14 +112,14 @@ export function useSubmitReport(reportId) {
   const router = useRouter();
   const refresh = useRefreshReport();
   return useMutation({
-    /** @param {{ notes?: { notes: string, category: string } | null }} input */
-    mutationFn: async ({ notes }) => {
+    /** @param {{ notes?: { notes: string, category: string } | null, closedAt?: string | null }} input */
+    mutationFn: async ({ notes, closedAt }) => {
       if (notes) await saveReportNotes({ reportId, ...notes });
-      await submitReport(reportId);
+      await submitReport({ reportId, closedAt });
     },
     networkMode: 'always',
     onSuccess: () => {
-      toast.success('Laporan terkirim untuk review.');
+      toast.success('Laporan terkirim.');
       router.push('/tasks');
       refresh();
     },

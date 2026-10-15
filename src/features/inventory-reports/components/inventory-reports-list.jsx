@@ -16,6 +16,7 @@ import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatDateTime } from '@/lib/date';
+import { filterRows } from '@/lib/search';
 import { useInventoryReports } from '@/features/inventory-reports/api/queries';
 import { InventoryReportDetail } from '@/features/inventory-reports/components/inventory-report-detail';
 import {
@@ -56,7 +57,8 @@ export function InventoryReportsList() {
   const users = useOptionLabels('users');
   const vendors = useOptionLabels('vendors');
   const panel = useDetailPanel(hrefOf);
-  const rows = query.data?.data ?? [];
+  // Same filters here (Postman has no `report_type` filter), in case the backend ignores them.
+  const rows = filterRows(query.data?.data ?? [], { status, report_type, vendor_id });
   const subjectOf = (/** @type {InventoryReport} */ r) =>
     r.inventory_name ?? vendors.labelOf(r.vendor_id);
   const reporterOf = (/** @type {InventoryReport} */ r) =>

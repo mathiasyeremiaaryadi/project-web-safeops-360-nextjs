@@ -129,3 +129,21 @@ export function enumTextSchema(fallback = '') {
     z.string().catch(fallback),
   );
 }
+
+/** First string under the usual URL keys of an object. @param {any} object */
+const findUrl = (object) =>
+  object && typeof object === 'object'
+    ? [object.url, object.signed_url, object.file_url, object.download_url].find(
+        (value) => typeof value === 'string',
+      )
+    : undefined;
+
+/**
+ * A short-lived signed URL (SOP file, report evidence): a bare string, `{ url }`,
+ * `{ signed_url | file_url | download_url }`, or any of these under `data`.
+ */
+export const signedUrlSchema = z.preprocess(
+  (raw) =>
+    typeof raw === 'string' ? raw : (findUrl(raw) ?? findUrl(/** @type {any} */ (raw)?.data)),
+  z.url({ protocol: /^https?$/ }),
+);

@@ -44,7 +44,11 @@ const DEFAULT_SCOPE = Object.freeze({
   [DATA_SCOPE.VENDOR]: SCOPES.VENDOR,
 });
 
-const SCOPE_TABS = Object.values(SCOPES).map((value) => ({ value, label: SCOPE_LABELS[value] }));
+/** Tabs in this order: vendors at a site, vendors, workers. */
+const SCOPE_TABS = [SCOPES.SITE, SCOPES.VENDOR, SCOPES.WORKER].map((value) => ({
+  value,
+  label: SCOPE_LABELS[value],
+}));
 
 const PARAMS = {
   scope: parseAsString.withDefault(''),

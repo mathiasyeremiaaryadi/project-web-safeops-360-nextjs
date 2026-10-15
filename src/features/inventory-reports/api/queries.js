@@ -1,5 +1,8 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/api/client';
+import { signedUrlSchema } from '@/lib/api/lists';
 import { useDetailQuery, useListQuery } from '@/hooks/use-resource';
 import { inventoryReportKeys } from '@/features/inventory-reports/api/keys';
 import {
@@ -28,4 +31,20 @@ export const useInventoryReport = (id) =>
     path: PATH,
     id,
     schema: inventoryReportDetailSchema,
+  });
+
+/**
+ * `GET /inventory-reports/{id}/evidence` (Postman) → signed URL of the evidence photo, when the
+ * report itself only has an object key. Not retried: no photo is not an error.
+ * @param {string} id
+ * @param {{ enabled: boolean }} options
+ */
+export const useInventoryReportEvidence = (id, { enabled }) =>
+  useQuery({
+    queryKey: [...inventoryReportKeys.detail(id), 'evidence'],
+    queryFn: () =>
+      apiRequest({ method: 'get', path: `${PATH}/${id}/evidence`, schema: signedUrlSchema }),
+    enabled,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });

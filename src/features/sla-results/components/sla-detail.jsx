@@ -57,6 +57,8 @@ const itemBadge = (item) => {
  */
 export function SlaDetail() {
   const [params] = useQueryStates(PARAMS);
+  // Old links may carry a timestamp: the API takes a date.
+  const periodStart = params.period_start.slice(0, 10);
   const entity = {
     scope: params.scope,
     vendor_id: params.vendor_id || undefined,
@@ -65,15 +67,15 @@ export function SlaDetail() {
   };
   const live = useLiveResults(entity);
   const liveRow = (live.data ?? []).find(
-    (row) => isEntity(row, entity) && row.period_start === params.period_start,
+    (row) => isEntity(row, entity) && row.period_start === periodStart,
   );
   const frozen = useHistoryResults(
-    { ...entity, from: params.period_start, to: params.period_start },
-    { enabled: live.isSuccess && !liveRow && Boolean(params.period_start) },
+    { ...entity, from: periodStart, to: periodStart },
+    { enabled: live.isSuccess && !liveRow && Boolean(periodStart) },
   );
   const row =
     liveRow ??
-    (frozen.data ?? []).find((r) => isEntity(r, entity) && r.period_start === params.period_start);
+    (frozen.data ?? []).find((r) => isEntity(r, entity) && r.period_start === periodStart);
   const previousStart = row?.period_start
     ? periodStartBefore(row.period_type, row.period_start)
     : undefined;

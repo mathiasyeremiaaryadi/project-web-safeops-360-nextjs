@@ -249,6 +249,42 @@ export function createFixtures() {
         created_at: '2026-10-14T02:00:00Z',
       },
     ],
+    /**
+     * `GET /dashboard/summary` `safety_reports` (same for every date). The backend rows only carry
+     * names; `site_id` / `vendor_id` are here for the mock's filters.
+     */
+    safetyReports: [
+      {
+        site_id: 's1',
+        vendor_id: 'v1',
+        site_name: 'PLTU Labuan',
+        vendor_name: 'PT Bersih Jaya',
+        worker_name: 'Agus Pratama',
+        category_name: 'Boiler Area',
+        area_name: 'Tangga Boiler',
+        note_category: 'UNSAFE_CONDITION',
+        notes: 'Railing tangga longgar, sudah dipasang barikade sementara',
+        open_date: '2026-10-15T08:30:00+07:00',
+        closed_date: '2026-10-15T09:00:00+07:00',
+        shift: 'DAY',
+        report_date: '2026-10-15T00:00:00Z',
+      },
+      {
+        site_id: 's1',
+        vendor_id: 'v1',
+        site_name: 'PLTU Labuan',
+        vendor_name: 'PT Bersih Jaya',
+        worker_name: 'Sinta Maharani',
+        category_name: 'Coal Yard',
+        area_name: 'Coal Stockpile',
+        note_category: 'NEAR_MISS',
+        notes: 'Hampir terpeleset karena ceceran oli di lantai',
+        open_date: '2026-10-15T16:30:00+07:00',
+        closed_date: null,
+        shift: 'EVENING',
+        report_date: '2026-10-15T00:00:00Z',
+      },
+    ],
     /** `GET /dashboard/summary` rows (same for every date), the shape seen on the backend. */
     vendorProgress: [
       {
@@ -263,7 +299,45 @@ export function createFixtures() {
         vendor_progress_detail: {
           total_area: 2,
           area_detail: [
-            { area_name: 'Turbine Hall', total_point: 12, total_task: 12, completed: 10 },
+            {
+              area_id: 'ar1',
+              nama_area: 'Turbine Hall',
+              total_point_per_area: 12,
+              total_worker_per_area: 2,
+              total_task: 12,
+              completed: 10,
+              point_detail: [
+                {
+                  DAY: {
+                    task_detail: [
+                      {
+                        notes: 'Railing tangga longgar, sudah dipasang barikade sementara',
+                        status: 'COMPLETED',
+                        open_date: '2026-10-15T08:30:00+07:00',
+                        close_date: '2026-10-15T09:00:00+07:00',
+                        worker_name: 'Agus Pratama',
+                        assignment_id: 'as-t1',
+                        category_note: 'UNSAFE_CONDITION',
+                      },
+                    ],
+                  },
+                  nama_point: 'Lantai Turbin',
+                  total_worker: 1,
+                  pending_detail: [],
+                  pipeline_item_id: 'pi1',
+                  total_assignment: 1,
+                },
+                {
+                  nama_point: 'Panel Kontrol',
+                  total_worker: 1,
+                  pending_detail: [
+                    { status: 'PENDING', worker_name: 'Sinta Maharani', assignment_id: 'as-t2' },
+                  ],
+                  pipeline_item_id: 'pi2',
+                  total_assignment: 1,
+                },
+              ],
+            },
             { area_name: 'Boiler', total_point: 8, total_task: 8, completed: 5 },
           ],
           total_point: 20,

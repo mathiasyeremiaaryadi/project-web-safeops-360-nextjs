@@ -10,6 +10,7 @@ import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { LoadMore } from '@/components/shared/load-more';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { formatDate, todayInAppTimezone } from '@/lib/date';
+import { filterRows } from '@/lib/search';
 import { ReportBadges } from '@/features/pipeline-reports';
 import { useMyReports } from '@/features/task-report/api/queries';
 import { HISTORY_TABS, resolveHistoryRange } from '@/features/task-report/lib/history';
@@ -30,7 +31,8 @@ export function MyReportsView() {
     { from: range.from, to: range.to, ...tab.params },
     { enabled: !range.error },
   );
-  const reports = query.data?.pages.flatMap((page) => page.data) ?? [];
+  // Same status filter here (Postman has no `revision_status` filter).
+  const reports = filterRows(query.data?.pages.flatMap((page) => page.data) ?? [], tab.params);
 
   return (
     <>

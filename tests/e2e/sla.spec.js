@@ -207,6 +207,11 @@ test('Admin vendor: only their vendor, history chart of 6 periods, no rules page
   await mockApi(page, { user: ADMIN_VENDOR_TWO_SITES, vendorScope: VENDOR_SCOPES.v1 });
   await mockSla(page, { role: 'ADMIN_WORKER', vendorId: 'v1' });
   await page.goto('/sla');
+  await expect(page.getByRole('group', { name: 'Tingkat' }).getByRole('button')).toHaveText([
+    'Vendor di site',
+    'Vendor',
+    'Worker',
+  ]);
   const table = page.getByRole('table');
   await expect(table.getByRole('row')).toHaveCount(2);
   await expect(table).toContainText('PT Bersih Jaya');
@@ -221,6 +226,14 @@ test('Admin vendor: only their vendor, history chart of 6 periods, no rules page
   const list = page.getByRole('region', { name: 'Ringkasan per periode' }).getByRole('listitem');
   await expect(list).toHaveCount(6);
   await expect(list.first()).toContainText('Sementara');
+
+  // "Rincian" of a closed period: the API sends timestamps, the request must use a date.
+  await list.filter({ hasText: 'September 2026' }).getByRole('link', { name: 'Rincian' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Rincian September 2026', level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByText('Final', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total skor 95,6 / 100')).toBeVisible();
 
   await page.goto('/sla/rules');
   await expect(
