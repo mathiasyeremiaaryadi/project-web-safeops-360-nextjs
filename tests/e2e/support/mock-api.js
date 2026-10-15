@@ -49,9 +49,11 @@ function readBody(request) {
 /**
  * Signs the page in against the mock API.
  * @param {import('@playwright/test').Page} page
- * @param {{ user?: object }} [options]
+ * @param {{ user?: object, vendorScope?: { vendorId: string, siteIds: string[] } }} [options]
+ *   `vendorScope` simulates the backend for an Admin vendor: lists only hold the vendor's data,
+ *   other vendors' records are 404, and actions reserved to other roles are 403.
  */
-export async function mockApi(page, { user = SUPER_ADMIN } = {}) {
+export async function mockApi(page, { user = SUPER_ADMIN, vendorScope } = {}) {
   const data = createFixtures();
   /** @type {{ method: string, path: string, body: any }[]} */
   const writes = [];
@@ -79,13 +81,21 @@ export async function mockApi(page, { user = SUPER_ADMIN } = {}) {
     if (method !== 'GET') {
       const body = readBody(request);
       writes.push({ method, path: `/${segments.join('/')}`, body });
+      if (vendorScope && isForbiddenForVendor({ method, resource, id, sub, body })) {
+        return json({ error: { code: 'FORBIDDEN', message: 'forbidden' } }, 403);
+      }
       return json(applyWrite(data, { method, resource, id, sub, body }));
     }
 
     const siteId = url.searchParams.get('site_id') ?? '';
     if (resource === 'dashboard') return json(data.dashboardBySite[siteId] ?? data.dashboard);
     if (resource === 'reports' && id === 'daily') {
-      return json(data.dailyBySite[siteId] ?? data.daily);
+      const daily = data.dailyBySite[siteId] ?? data.daily;
+      return json(
+        vendorScope
+          ? { data: daily.data.filter((r) => r.vendor_id === vendorScope.vendorId) }
+          : daily,
+      );
     }
     if (resource === 'pipelines' && sub === 'items')
       return json({ pipeline_items: data.pipelineItems });
@@ -95,7 +105,9 @@ export async function mockApi(page, { user = SUPER_ADMIN } = {}) {
 
     const key = RESOURCES[resource];
     if (!key) return json({ error: { code: 'NOT_FOUND', message: 'not mocked' } }, 404);
-    const rows = data[key];
+    const rows = vendorScope
+      ? data[key].filter((row) => inVendorScope(vendorScope, resource, row))
+      : data[key];
     if (id) {
       const row = rows.find((r) => String(r.id) === id);
       return row ? json({ data: row }) : json({ error: { code: 'NOT_FOUND' } }, 404);
@@ -111,6 +123,23 @@ export async function mockApi(page, { user = SUPER_ADMIN } = {}) {
   return { data, writes };
 }
 
+/** Whether a record belongs to the Admin vendor's scope (like the backend's filter). */
+function inVendorScope({ vendorId, siteIds }, resource, row) {
+  if (resource === 'sites') return siteIds.includes(row.id);
+  if (resource === 'vendors') return row.id === vendorId;
+  if (resource === 'users') return (row.scopes?.vendor_ids ?? []).includes(vendorId);
+  return row.vendor_id === undefined || row.vendor_id === vendorId;
+}
+
+/** Writes an Admin vendor may not do (BRD): non-Worker accounts, access, pipeline headers. */
+function isForbiddenForVendor({ method, resource, id, sub, body }) {
+  if (resource === 'users' && method === 'POST' && !id) {
+    return JSON.stringify(body.roles) !== JSON.stringify(['WORKER']);
+  }
+  if (resource === 'users' && (sub === 'roles' || sub === 'sessions')) return true;
+  return resource === 'pipelines' && !sub;
+}
+
 /** Applies the writes the UI relies on to show a result; returns the response body. */
 function applyWrite(data, { method, resource, id, sub, body }) {
   const key = RESOURCES[resource];
@@ -118,7 +147,7 @@ function applyWrite(data, { method, resource, id, sub, body }) {
   const row = rows.find((r) => String(r.id) === id);
 
   if (resource === 'users' && method === 'POST' && !id) {
-    const user = { id: 'u-new', is_active: true, ...body };
+    const user = { id: 'u-new', is_active: true, ...body, scopes: { vendor_ids: body.vendor_ids } };
     data.users.push(user);
     return { user, temporary_password: 'Tmp-Passw0rd' };
   }

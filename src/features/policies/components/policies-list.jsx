@@ -128,15 +128,17 @@ export function PoliciesList() {
         onSearchChange={(q) => setFilters({ q })}
         searchPlaceholder="Cari nama SOP atau vendor"
       />
-      <LookupFilter
-        className="mb-4 sm:max-w-80"
-        lookup="vendors"
-        params={siteId ? { site_id: siteId } : undefined}
-        value={params.vendor_id}
-        onChange={(vendor_id) => setFilters({ vendor_id })}
-        placeholder="Semua vendor"
-        ariaLabel="Filter vendor"
-      />
+      {site.showVendorFilter ? (
+        <LookupFilter
+          className="mb-4 sm:max-w-80"
+          lookup="vendors"
+          params={siteId ? { site_id: siteId } : undefined}
+          value={params.vendor_id}
+          onChange={(vendor_id) => setFilters({ vendor_id })}
+          placeholder="Semua vendor"
+          ariaLabel="Filter vendor"
+        />
+      ) : null}
 
       <QueryList
         query={query}

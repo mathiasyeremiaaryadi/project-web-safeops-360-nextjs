@@ -76,10 +76,10 @@ export function toDashboardKpis(raw) {
 }
 
 /**
- * @typedef {object} VendorProgress
- * @property {string} key Vendor id (or name when there is no id).
- * @property {string | null} vendorId
- * @property {string | null} vendorName
+ * @typedef {object} Progress
+ * @property {string} key Vendor or pipeline id (or name when there is no id).
+ * @property {string | null} id
+ * @property {string | null} name
  * @property {number} tasks
  * @property {number} completed
  * @property {number} submitted
@@ -87,6 +87,20 @@ export function toDashboardKpis(raw) {
  * @property {number} notStarted
  * @property {number} percent Completed / tasks, 0–100, rounded.
  */
+
+/** @typedef {'vendor' | 'pipeline'} ProgressGroup */
+
+/** How a daily row names the vendor or the pipeline it counts. */
+const GROUPS = Object.freeze({
+  vendor: {
+    id: (/** @type {any} */ r) => firstValue(r.vendor_id, r.vendor?.id),
+    name: (/** @type {any} */ r) => firstValue(r.vendor_name, r.vendor?.name),
+  },
+  pipeline: {
+    id: (/** @type {any} */ r) => firstValue(r.pipeline_id, r.pipeline?.id, r.id),
+    name: (/** @type {any} */ r) => firstValue(r.pipeline_name, r.pipeline?.name, r.name),
+  },
+});
 
 /** Counts of one daily row (a vendor, or a pipeline of a vendor). @param {any} r */
 function rowCounts(r) {
@@ -116,12 +130,14 @@ function addCounts(a, b) {
 }
 
 /**
- * "Progres per vendor" from `/reports/daily`: rows (per vendor or per vendor+pipeline) are
- * summed per vendor; sorted by percentage, highest first.
+ * "Progres per vendor" (Super Admin, Admin) or "Progres per pipeline" (Admin vendor) from
+ * `/reports/daily`. Rows (per vendor, per vendor + pipeline, or vendors with nested `pipelines`)
+ * are summed per group; sorted by percentage, highest first.
  * @param {unknown} raw
- * @returns {VendorProgress[]}
+ * @param {ProgressGroup} [groupBy]
+ * @returns {Progress[]}
  */
-export function toVendorProgress(raw) {
+export function toProgress(raw, groupBy = 'vendor') {
   const body = /** @type {any} */ (raw);
   const rows = Array.isArray(body)
     ? body
@@ -130,27 +146,35 @@ export function toVendorProgress(raw) {
           Array.isArray,
         ),
       ) ?? []);
+  const group = GROUPS[groupBy];
+  // Per pipeline: a vendor row with nested pipelines counts each of them.
+  const units =
+    groupBy === 'pipeline'
+      ? rows.flatMap((/** @type {any} */ r) =>
+          isRecord(r) && Array.isArray(r.pipelines) && r.pipelines.length > 0 ? r.pipelines : [r],
+        )
+      : rows;
 
-  /** @type {Map<string, VendorProgress>} */
-  const byVendor = new Map();
-  for (const r of /** @type {any[]} */ (rows)) {
+  /** @type {Map<string, Progress>} */
+  const byKey = new Map();
+  for (const r of /** @type {any[]} */ (units)) {
     if (!isRecord(r)) continue;
-    const vendorId = firstValue(r.vendor_id, r.vendor?.id);
-    const vendorName = firstValue(r.vendor_name, r.vendor?.name);
-    const key = String(vendorId ?? vendorName ?? '');
+    const id = group.id(r);
+    const name = group.name(r);
+    const key = String(id ?? name ?? '');
     if (!key) continue;
     const counts = rowCounts(r);
-    const previous = byVendor.get(key);
-    byVendor.set(key, {
+    const previous = byKey.get(key);
+    byKey.set(key, {
       key,
-      vendorId: vendorId === undefined ? null : String(vendorId),
-      vendorName: vendorName ?? previous?.vendorName ?? null,
+      id: id === undefined ? null : String(id),
+      name: name ?? previous?.name ?? null,
       ...(previous ? addCounts(previous, counts) : counts),
       percent: 0,
     });
   }
 
-  return [...byVendor.values()]
+  return [...byKey.values()]
     .map((v) => ({ ...v, percent: v.tasks > 0 ? Math.round((v.completed / v.tasks) * 100) : 0 }))
     .sort((a, b) => b.percent - a.percent);
 }

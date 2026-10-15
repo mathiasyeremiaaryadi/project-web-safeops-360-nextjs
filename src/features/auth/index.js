@@ -6,3 +6,4 @@ export { ChangePasswordForm } from '@/features/auth/components/change-password-f
 export { useSession } from '@/features/auth/hooks/use-session';
 export { useLogout, useLogoutAll } from '@/features/auth/hooks/use-logout';
 export { useActiveSite } from '@/features/auth/hooks/use-active-site';
+export { useCurrentVendorId, withOwnVendor } from '@/features/auth/hooks/use-current-vendor';

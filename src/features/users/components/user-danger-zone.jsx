@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { can } from '@/lib/auth/permissions';
+import { useSession } from '@/features/auth';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { FormCard } from '@/components/shared/form-layout';
 import { toastApiError } from '@/lib/notify';
@@ -42,6 +44,7 @@ const ACTIONS = Object.freeze({
  * @param {{ user: import('@/features/users/api/schemas').User, isSelf: boolean }} props
  */
 export function UserDangerZone({ user, isSelf }) {
+  const { user: currentUser } = useSession();
   const [action, setAction] = useState(/** @type {keyof typeof ACTIONS | null} */ (null));
   const [password, setPassword] = useState(/** @type {string | null} */ (null));
   const resetPassword = useResetUserPassword(user.id);
@@ -97,14 +100,17 @@ export function UserDangerZone({ user, isSelf }) {
         >
           Reset password
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 bg-card"
-          onClick={() => setAction('REVOKE')}
-        >
-          Cabut semua sesi
-        </Button>
+        {/* Revoking another user's sessions is Super Admin only (BRD). */}
+        {can(currentUser, 'USER_ACCESS_ADMIN') ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 bg-card"
+            onClick={() => setAction('REVOKE')}
+          >
+            Cabut semua sesi
+          </Button>
+        ) : null}
         {isSelf ? null : (
           <Button
             type="button"

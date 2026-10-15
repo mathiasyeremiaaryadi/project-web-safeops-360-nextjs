@@ -3,19 +3,23 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { StickyActionBar } from '@/components/layout/sticky-action-bar';
 import { FormAlert, FormCard } from '@/components/shared/form-layout';
+import { useSiteContext } from '@/hooks/use-site-context';
+import { useVendorField } from '@/hooks/use-vendor-field';
 import { getErrorMessage } from '@/lib/api/errors';
+import { can } from '@/lib/auth/permissions';
+import { ROLES } from '@/lib/constants';
+import { useSession } from '@/features/auth';
 import { useCreateUser } from '@/features/users/api/mutations';
 import { createUserFormSchema, toCreateUserPayload } from '@/features/users/api/schemas';
 import { AccessSummary } from '@/features/users/components/access-summary';
 import { ProfileFields } from '@/features/users/components/profile-fields';
-import { RoleCheckboxGroup } from '@/features/users/components/role-checkbox-group';
-import { ScopeFields } from '@/features/users/components/scope-fields';
+import { CreateUserAccess, WorkerAccessNote } from '@/features/users/components/create-user-access';
 import { TemporaryPasswordDialog } from '@/features/users/components/temporary-password-dialog';
 
 const DEFAULT_VALUES = {
@@ -28,20 +32,32 @@ const DEFAULT_VALUES = {
   vendor: null,
 };
 
-/** "Tambah user" form (`/users/new`). */
+/** Save errors of an Admin vendor (the role is locked in the UI, so this should not happen). */
+const WORKER_ONLY_ERRORS = Object.freeze({ 403: 'Admin vendor hanya bisa membuat akun Worker.' });
+
+/**
+ * "Tambah user" form (`/users/new`). Super Admin chooses roles and scope; an Admin vendor only
+ * creates Worker accounts of their own vendor (role locked, vendor filled in).
+ */
 export function CreateUserForm() {
   const router = useRouter();
   const createUser = useCreateUser();
+  const { user: currentUser } = useSession();
+  const manageAccess = can(currentUser, 'USER_ACCESS_ADMIN');
+  const vendorField = useVendorField();
+  const site = useSiteContext();
   const [created, setCreated] = useState(
     /** @type {{ id: string, username: string, password: string } | null} */ (null),
   );
   const form = useForm({
     resolver: zodResolver(createUserFormSchema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: manageAccess
+      ? DEFAULT_VALUES
+      : { ...DEFAULT_VALUES, roles: [ROLES.WORKER], vendor: vendorField.defaultValue },
   });
 
   const onSubmit = form.handleSubmit((values) => {
-    createUser.mutate(toCreateUserPayload(values), {
+    createUser.mutate(vendorField.complete(toCreateUserPayload(values)), {
       onSuccess: ({ user, temporary_password: password }) => {
         toast.success('User berhasil disimpan.');
         if (password) setCreated({ id: user.id, username: user.username, password });
@@ -57,11 +73,17 @@ export function CreateUserForm() {
 
   const formError =
     createUser.isError && /** @type {any} */ (createUser.error).status !== 409
-      ? getErrorMessage(createUser.error)
+      ? getErrorMessage(createUser.error, manageAccess ? {} : WORKER_ONLY_ERRORS)
       : null;
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_300px] xl:items-start">
+    <div
+      className={
+        manageAccess
+          ? 'grid gap-5 xl:grid-cols-[1fr_300px] xl:items-start'
+          : 'grid gap-5 lg:max-w-3xl'
+      }
+    >
       <form
         method="post"
         noValidate
@@ -73,26 +95,11 @@ export function CreateUserForm() {
           <ProfileFields form={form} withUsername />
         </FormCard>
 
-        <FormCard title="Role" description="Boleh lebih dari satu role.">
-          <Controller
-            control={form.control}
-            name="roles"
-            render={({ field, fieldState }) => (
-              <RoleCheckboxGroup
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        </FormCard>
-
-        <FormCard
-          title="Scope data"
-          description="Worker dan Admin Worker wajib tepat satu vendor. Admin wajib minimal satu site."
-        >
-          <ScopeFields control={form.control} />
-        </FormCard>
+        {manageAccess ? (
+          <CreateUserAccess control={form.control} />
+        ) : (
+          <WorkerAccessNote vendorName={site.shortLabel} />
+        )}
 
         <FormCard title="Password sementara">
           <p className="text-sm text-muted-foreground">
@@ -120,9 +127,11 @@ export function CreateUserForm() {
         </StickyActionBar>
       </form>
 
-      <div className="hidden xl:sticky xl:top-24 xl:block">
-        <AccessSummary control={form.control} />
-      </div>
+      {manageAccess ? (
+        <div className="hidden xl:sticky xl:top-24 xl:block">
+          <AccessSummary control={form.control} />
+        </div>
+      ) : null}
 
       <TemporaryPasswordDialog
         password={created?.password ?? null}

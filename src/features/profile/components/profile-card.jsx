@@ -5,7 +5,7 @@ import { UserAvatar } from '@/components/layout/user-avatar';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useSession } from '@/features/auth';
 import { formatDateTime } from '@/lib/date';
-import { can } from '@/lib/auth/permissions';
+import { can, DATA_SCOPE } from '@/lib/auth/permissions';
 import { ROLE_LABELS } from '@/lib/constants';
 
 /**
@@ -58,8 +58,9 @@ export function ProfileCard() {
             ))}
           </span>
         </Row>
+        {site.mode === DATA_SCOPE.VENDOR ? <Row label="Vendor">{site.shortLabel}</Row> : null}
         <Row label="Scope">
-          {site.scoped && site.sites.length > 0 ? (
+          {site.mode !== DATA_SCOPE.ALL && site.sites.length > 0 ? (
             <span className="flex flex-wrap gap-1.5" aria-label="Site yang dikelola">
               {site.sites.map((option) => (
                 <Badge key={option.value} variant="info">

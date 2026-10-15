@@ -142,4 +142,6 @@ Aturan: satu feature tidak boleh mengimpor isi feature lain kecuali lewat `index
 Selesai: login & ganti password, beranda (rekap harian), review laporan task, laporan inventory,
 site & vendor & master task, pipeline & task, inventory, SOP, manajemen user, audit log, profil &
 sesi. Catatan safety menunggu dukungan API (filter kategori temuan) — lihat
-`docs/ASSUMPTIONS.md` (G1). Halaman untuk role Admin, Admin Worker, dan Worker belum dibuat.
+`docs/ASSUMPTIONS.md` (G1). Role Admin (Admin site) dan Admin vendor (Admin Worker) memakai
+halaman yang sama dengan menu, hak akses, dan konteks site/vendor masing-masing. Halaman Worker
+belum dibuat.

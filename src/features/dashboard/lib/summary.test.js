@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  toDashboardKpis,
-  toStatusCounts,
-  toVendorProgress,
-} from '@/features/dashboard/lib/summary';
+import { toDashboardKpis, toStatusCounts, toProgress } from '@/features/dashboard/lib/summary';
 
 describe('toStatusCounts', () => {
   it('reads a map or a list of { status, count }', () => {
@@ -48,9 +44,9 @@ describe('toDashboardKpis', () => {
   });
 });
 
-describe('toVendorProgress', () => {
+describe('toProgress', () => {
   it('sums pipeline rows per vendor and computes the percentage', () => {
-    const progress = toVendorProgress({
+    const progress = toProgress({
       data: [
         {
           vendor_id: 'v1',
@@ -83,8 +79,8 @@ describe('toVendorProgress', () => {
     expect(progress).toEqual([
       {
         key: 'v1',
-        vendorId: 'v1',
-        vendorName: 'PT Bersih Jaya',
+        id: 'v1',
+        name: 'PT Bersih Jaya',
         tasks: 20,
         completed: 14,
         submitted: 3,
@@ -94,8 +90,8 @@ describe('toVendorProgress', () => {
       },
       {
         key: 'v2',
-        vendorId: 'v2',
-        vendorName: 'PT Karya Aman',
+        id: 'v2',
+        name: 'PT Karya Aman',
         tasks: 16,
         completed: 9,
         submitted: 4,
@@ -107,7 +103,7 @@ describe('toVendorProgress', () => {
   });
 
   it('reads nested pipelines and handles a vendor without tasks', () => {
-    const progress = toVendorProgress([
+    const progress = toProgress([
       {
         vendor: { id: 'v3', name: 'PT Sinar' },
         pipelines: [
@@ -124,7 +120,61 @@ describe('toVendorProgress', () => {
   });
 
   it('returns an empty list for an unknown shape', () => {
-    expect(toVendorProgress({ message: 'ok' })).toEqual([]);
-    expect(toVendorProgress(null)).toEqual([]);
+    expect(toProgress({ message: 'ok' })).toEqual([]);
+    expect(toProgress(null)).toEqual([]);
+  });
+
+  it('groups per pipeline for the Admin vendor dashboard', () => {
+    const progress = toProgress(
+      {
+        data: [
+          {
+            vendor_id: 'v1',
+            pipeline_id: 'p1',
+            pipeline_name: 'Turbine Hall',
+            total_tasks: 10,
+            completed: 9,
+          },
+          {
+            vendor_id: 'v1',
+            pipeline_id: 'p2',
+            pipeline_name: 'Boiler',
+            total_tasks: 4,
+            completed: 1,
+          },
+          {
+            vendor_id: 'v1',
+            pipeline_id: 'p1',
+            pipeline_name: 'Turbine Hall',
+            total_tasks: 10,
+            completed: 5,
+          },
+        ],
+      },
+      'pipeline',
+    );
+    expect(progress.map((p) => [p.name, p.tasks, p.completed, p.percent])).toEqual([
+      ['Turbine Hall', 20, 14, 70],
+      ['Boiler', 4, 1, 25],
+    ]);
+  });
+
+  it('counts each nested pipeline of a vendor row when grouping per pipeline', () => {
+    const progress = toProgress(
+      [
+        {
+          vendor_id: 'v1',
+          pipelines: [
+            { id: 'p1', name: 'A', tasks: 2, completed: 2 },
+            { id: 'p2', name: 'B', tasks: 4, completed: 1 },
+          ],
+        },
+      ],
+      'pipeline',
+    );
+    expect(progress.map((p) => [p.id, p.name, p.percent])).toEqual([
+      ['p1', 'A', 100],
+      ['p2', 'B', 25],
+    ]);
   });
 });

@@ -3,11 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiRequest } from '@/lib/api/client';
-import { toDashboardKpis, toVendorProgress } from '@/features/dashboard/lib/summary';
+import { toDashboardKpis, toProgress } from '@/features/dashboard/lib/summary';
 
 /* The response shapes are not specified: they are mapped by the pure functions in lib/summary.js. */
 const kpiSchema = z.unknown().transform(toDashboardKpis);
-const progressSchema = z.unknown().transform(toVendorProgress);
 
 /** @typedef {{ date: string, site_id: string, vendor_id: string }} DashboardParams */
 
@@ -25,16 +24,21 @@ export function useDashboardKpis(params) {
   });
 }
 
-/** `GET /reports/daily?date=&site_id=&vendor_id=` → progress per vendor. @param {DashboardParams} params */
-export function useVendorProgress(params) {
+/**
+ * `GET /reports/daily?date=&site_id=&vendor_id=` → progress per vendor, or per pipeline for a
+ * vendor's own user.
+ * @param {DashboardParams} params
+ * @param {import('@/features/dashboard/lib/summary').ProgressGroup} groupBy
+ */
+export function useProgress(params, groupBy) {
   return useQuery({
-    queryKey: ['dashboard', 'daily', params],
+    queryKey: ['dashboard', 'daily', groupBy, params],
     queryFn: () =>
       apiRequest({
         method: 'get',
         path: 'v1/reports/daily',
         searchParams: params,
-        schema: progressSchema,
+        schema: z.unknown().transform((raw) => toProgress(raw, groupBy)),
       }),
   });
 }

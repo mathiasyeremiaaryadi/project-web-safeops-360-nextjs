@@ -76,7 +76,7 @@ export function MobileSiteSubtitle() {
   const [open, setOpen] = useState(false);
 
   if (!site.canSwitch) {
-    return <p className="truncate text-xs text-muted-foreground">{site.label}</p>;
+    return <p className="truncate text-xs text-muted-foreground">{site.shortLabel}</p>;
   }
   const options = [{ value: ALL, label: ALL_MY_SITES }, ...site.sites];
   const current = site.activeSiteId ?? ALL;

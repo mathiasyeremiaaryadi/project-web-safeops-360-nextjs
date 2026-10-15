@@ -14,10 +14,12 @@ import { useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
+import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatDateTime } from '@/lib/date';
 import { useInventoryReports } from '@/features/inventory-reports/api/queries';
 import { InventoryReportDetail } from '@/features/inventory-reports/components/inventory-report-detail';
 import {
+  INVENTORY_REPORT_STATUS,
   INVENTORY_REPORT_STATUS_BADGES,
   INVENTORY_REPORT_TABS,
   INVENTORY_REPORT_TYPE_LABELS,
@@ -27,7 +29,8 @@ import {
 /** @typedef {import('@/features/inventory-reports/api/schemas').InventoryReport} InventoryReport */
 
 const FILTERS = {
-  status: parseAsString.withDefault(''),
+  // No default here: the default tab depends on the user (below).
+  status: parseAsString,
   report_type: parseAsString.withDefault(''),
   site_id: parseAsString.withDefault(''),
   vendor_id: parseAsString.withDefault(''),
@@ -44,7 +47,10 @@ const statusBadge = (/** @type {InventoryReport} */ r) => (
 export function InventoryReportsList() {
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const site = useSiteContext();
-  const { page, status, report_type, vendor_id } = params;
+  // A vendor's own user handles new reports first; others start with every status.
+  const defaultStatus = site.mode === DATA_SCOPE.VENDOR ? INVENTORY_REPORT_STATUS.SUBMITTED : '';
+  const status = params.status ?? defaultStatus;
+  const { page, report_type, vendor_id } = params;
   const site_id = site.siteIdFor(params.site_id);
   const query = useInventoryReports({ page, limit, status, report_type, site_id, vendor_id });
   const users = useOptionLabels('users');
@@ -115,13 +121,14 @@ export function InventoryReportsList() {
       <StatusTabs
         label="Filter status laporan"
         options={INVENTORY_REPORT_TABS}
-        value={params.status}
-        onChange={(value) => setFilters({ status: value })}
+        value={status}
+        onChange={(value) => setFilters({ status: value === defaultStatus ? null : value })}
       />
       <ReportFilters
         params={{ ...params, site_id: site_id ?? '' }}
         onChange={setFilters}
-        showSite={!site.scoped}
+        showSite={site.showSiteFilter}
+        showVendor={site.showVendorFilter}
       >
         <NativeSelect
           aria-label="Filter jenis laporan"

@@ -9,6 +9,7 @@ import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { useSiteContext } from '@/hooks/use-site-context';
+import { useVendorField } from '@/hooks/use-vendor-field';
 import { getErrorMessage } from '@/lib/api/errors';
 import { useSavePolicy } from '@/features/policies/api/mutations';
 import { policyFormSchema, toPolicyFields } from '@/features/policies/api/schemas';
@@ -24,11 +25,12 @@ import { policyFormSchema, toPolicyFields } from '@/features/policies/api/schema
 export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
   const isNew = !policy;
   const site = useSiteContext();
+  const vendorField = useVendorField();
   const save = useSavePolicy();
   const form = useForm({
     resolver: zodResolver(policyFormSchema(isNew)),
     values: {
-      vendor: policy ? { value: policy.vendor_id, label: vendorName } : null,
+      vendor: policy ? { value: policy.vendor_id, label: vendorName } : vendorField.defaultValue,
       name: policy?.name ?? '',
       file: null,
     },
@@ -44,7 +46,13 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
 
   const onSubmit = form.handleSubmit((values) => {
     save.mutate(
-      { id: policy?.id, body: toPolicyFields(values, isNew) },
+      {
+        id: policy?.id,
+        // The vendor is only sent when uploading (see toPolicyFields).
+        body: isNew
+          ? vendorField.complete(toPolicyFields(values, isNew))
+          : toPolicyFields(values, isNew),
+      },
       {
         onSuccess: () => {
           toast.success('SOP berhasil disimpan.');
@@ -64,16 +72,18 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
       error={save.isError ? getErrorMessage(save.error, site.saveErrorOverrides) : null}
       submitLabel={isNew ? 'Upload SOP' : 'Simpan SOP'}
     >
-      <ComboboxField
-        control={form.control}
-        name="vendor"
-        id="policy-vendor"
-        label="Vendor"
-        lookup="vendors"
-        params={site.activeVendorParams}
-        placeholder="Pilih vendor"
-        disabled={!isNew}
-      />
+      {vendorField.show ? (
+        <ComboboxField
+          control={form.control}
+          name="vendor"
+          id="policy-vendor"
+          label="Vendor"
+          lookup="vendors"
+          params={site.activeVendorParams}
+          placeholder="Pilih vendor"
+          disabled={!isNew}
+        />
+      ) : null}
       <FormField id="policy-name" label="Nama SOP" error={errors.name?.message}>
         <Input
           {...form.register('name')}

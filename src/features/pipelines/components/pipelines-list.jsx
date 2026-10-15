@@ -36,6 +36,7 @@ const taskCount = (count) => (typeof count === 'number' ? `${count} task` : '—
 export function PipelinesList() {
   const router = useRouter();
   const { user } = useSession();
+  const canWritePipelines = can(user, 'PIPELINE_WRITE');
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const site = useSiteContext();
   const siteId = site.siteIdFor();
@@ -88,10 +89,15 @@ export function PipelinesList() {
   return (
     <>
       <PageHeader
-        title="Pipeline & task"
-        description="Alur pekerjaan vendor: urutan task yang dikerjakan worker."
+        // Without pipeline rights (Admin vendor) the page is about the tasks inside pipelines.
+        title={canWritePipelines ? 'Pipeline & task' : 'Pipeline item'}
+        description={
+          canWritePipelines
+            ? 'Alur pekerjaan vendor: urutan task yang dikerjakan worker.'
+            : 'Atur task di pipeline vendor Anda.'
+        }
         actions={
-          can(user, 'PIPELINE_WRITE') ? (
+          canWritePipelines ? (
             <Button
               type="button"
               className="h-11 px-5 text-base font-semibold"
@@ -111,14 +117,16 @@ export function PipelinesList() {
         searchPlaceholder="Cari nama pipeline atau vendor"
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,320px)_200px]">
-        <LookupFilter
-          lookup="vendors"
-          params={siteId ? { site_id: siteId } : undefined}
-          value={params.vendor_id}
-          onChange={(vendor_id) => setFilters({ vendor_id })}
-          placeholder="Semua vendor"
-          ariaLabel="Filter vendor"
-        />
+        {site.showVendorFilter ? (
+          <LookupFilter
+            lookup="vendors"
+            params={siteId ? { site_id: siteId } : undefined}
+            value={params.vendor_id}
+            onChange={(vendor_id) => setFilters({ vendor_id })}
+            placeholder="Semua vendor"
+            ariaLabel="Filter vendor"
+          />
+        ) : null}
         <NativeSelect
           aria-label="Filter status"
           className="w-full"

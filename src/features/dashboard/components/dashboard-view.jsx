@@ -7,11 +7,12 @@ import { ReportFilters } from '@/components/shared/report-filters';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { useSiteContext } from '@/hooks/use-site-context';
+import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatLongDate, todayInAppTimezone } from '@/lib/date';
 import { LatestInventoryReports } from '@/features/inventory-reports';
-import { useDashboardKpis, useVendorProgress } from '@/features/dashboard/api/queries';
+import { useDashboardKpis, useProgress } from '@/features/dashboard/api/queries';
 import { KpiCards } from '@/features/dashboard/components/kpi-cards';
-import { VendorProgress } from '@/features/dashboard/components/vendor-progress';
+import { ProgressList } from '@/features/dashboard/components/progress-list';
 
 const FILTERS = {
   date: parseAsString.withDefault(''),
@@ -32,8 +33,13 @@ export function DashboardView() {
   const siteId = site.siteIdFor(params.site_id);
   const filters = { date: params.date || today, site_id: siteId, vendor_id: params.vendor_id };
   const kpis = useDashboardKpis(filters);
-  const progress = useVendorProgress(filters);
-  const scope = !site.scoped && params.site_id ? sites.labelOf(params.site_id) : site.label;
+  // A vendor's own user follows their pipelines; everyone else compares vendors.
+  const groupBy = site.mode === DATA_SCOPE.VENDOR ? 'pipeline' : 'vendor';
+  const progress = useProgress(filters, groupBy);
+  const scope =
+    site.mode === DATA_SCOPE.ALL && params.site_id
+      ? sites.labelOf(params.site_id)
+      : site.shortLabel;
 
   return (
     <>
@@ -41,7 +47,8 @@ export function DashboardView() {
       <ReportFilters
         // The vendor filter only offers vendors of the chosen site.
         params={{ ...params, site_id: siteId ?? '' }}
-        showSite={!site.scoped}
+        showSite={site.showSiteFilter}
+        showVendor={site.showVendorFilter}
         // A new site may not be served by the selected vendor: clear it.
         onChange={(updates) =>
           setFilters('site_id' in updates ? { ...updates, vendor_id: '' } : updates)
@@ -60,7 +67,7 @@ export function DashboardView() {
         <KpiCards query={kpis} />
         <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
           <div className="lg:col-span-2">
-            <VendorProgress query={progress} />
+            <ProgressList query={progress} groupBy={groupBy} />
           </div>
           <LatestInventoryReports siteId={siteId ?? ''} vendorId={params.vendor_id} />
         </div>

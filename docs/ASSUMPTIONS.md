@@ -264,6 +264,23 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
   Site; master task mengirim `site_id` site aktif — **perlu konfirmasi** `GET /items` mendukungnya); CRUD pipeline, task pipeline, inventory, SOP;
   tanpa manajemen user dan audit log (halaman 403).
 
+## Role Admin vendor (ADMIN_WORKER)
+
+- **AV1.** Vendor Admin vendor = `scopes.vendor_ids[0]` dari `/auth/me` (FR-18: tepat satu
+  vendor), dibaca lewat `useCurrentVendorId()`. Nama vendor dari `/auth/me` bila dikirim, jika
+  tidak dari `GET /vendors` (sudah difilter backend).
+- **AV2.** Site yang dilayani vendor diambil dari `GET /sites` (difilter backend). Filter site
+  di halaman hanya tampil jika vendor melayani lebih dari satu site; tidak ada pemilih site global.
+- **AV3.** Form inventory, SOP, dan akun worker tidak menampilkan field vendor; `vendor_id` /
+  `vendor_ids` diisi `withOwnVendor` saat submit.
+- **AV4.** "Progres per pipeline" memakai `/reports/daily` yang dikelompokkan per pipeline
+  (`pipeline_id`/`pipeline_name`, atau `pipelines` bersarang). **Perlu konfirmasi** field-nya.
+- **AV5.** "Laporan terkait" di detail inventory **tidak dibuat**: belum ada bukti bahwa
+  `GET /inventory-reports` menerima filter `inventory_id`. **Perlu konfirmasi.**
+- **AV6.** Admin vendor membuat akun Worker dengan `POST /users` `{ roles: ["WORKER"],
+site_ids: [], vendor_ids: [<vendor sendiri>] }`. Ubah role/scope (`PUT /users/{id}/roles`) dan
+  "Cabut semua sesi" disembunyikan (BRD: hanya Super Admin).
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan

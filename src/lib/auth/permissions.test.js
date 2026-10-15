@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { can, describeAccess, getPrimaryRole } from '@/lib/auth/permissions';
+import {
+  can,
+  DATA_SCOPE,
+  describeAccess,
+  getDataScope,
+  getPrimaryRole,
+} from '@/lib/auth/permissions';
 import { ROLES } from '@/lib/constants';
 
 describe('permissions (BRD section 7)', () => {
@@ -62,5 +68,36 @@ describe('permissions of Admin (Admin Site)', () => {
   it('keeps inventory report review for Super Admin and Admin Worker', () => {
     expect(can({ roles: [ROLES.SUPER_ADMIN] }, 'INVENTORY_REPORT_REVIEW')).toBe(true);
     expect(can({ roles: [ROLES.ADMIN_WORKER] }, 'INVENTORY_REPORT_REVIEW')).toBe(true);
+  });
+});
+
+describe('permissions of Admin vendor (ADMIN_WORKER) next to Admin site', () => {
+  const adminVendor = { roles: [ROLES.ADMIN_WORKER] };
+  const adminSite = { roles: [ROLES.ADMIN] };
+
+  it.each([
+    // permission, Admin vendor, Admin site (already built, unchanged)
+    ['DASHBOARD_READ', true, true],
+    ['PIPELINE_REPORT_REVIEW', true, true],
+    ['INVENTORY_REPORT_REVIEW', true, false],
+    ['INVENTORY_POLICY_WRITE', true, true],
+    ['PIPELINE_WRITE', false, true],
+    ['PIPELINE_ITEM_WRITE', true, true],
+    ['ITEM_WRITE', false, false],
+    ['SITE_VENDOR_WRITE', false, false],
+    ['USER_MANAGE', true, false],
+    ['USER_ACCESS_ADMIN', false, false],
+    ['AUDIT_LOG_READ', false, false],
+    ['ALL_SITES_READ', false, false],
+  ])('%s → Admin vendor %s, Admin site %s', (permission, vendor, site) => {
+    expect(can(adminVendor, /** @type {any} */ (permission))).toBe(vendor);
+    expect(can(adminSite, /** @type {any} */ (permission))).toBe(site);
+  });
+
+  it('gives each role its data scope', () => {
+    expect(getDataScope({ roles: [ROLES.SUPER_ADMIN] })).toBe(DATA_SCOPE.ALL);
+    expect(getDataScope(adminSite)).toBe(DATA_SCOPE.SITE);
+    expect(getDataScope(adminVendor)).toBe(DATA_SCOPE.VENDOR);
+    expect(getDataScope({ roles: [ROLES.WORKER] })).toBe(DATA_SCOPE.VENDOR);
   });
 });

@@ -65,12 +65,31 @@ function toSiteScope(user) {
   );
 }
 
-/** Vendor ids from `scopes.vendor_ids`, `vendor_ids`, `vendors` or `scopes: [{ vendor_id }]`. */
-function toVendorIds(/** @type {any} */ user) {
+/**
+ * The user's vendors `{ id, name? }` (one for Admin vendor / Worker), from `scopes.vendors` /
+ * `vendors` as objects or ids, `scopes.vendor_ids` / `vendor_ids`, or `scopes` rows
+ * `{ vendor_id, vendor_name }`.
+ * @param {any} user
+ * @returns {{ id: unknown, name?: unknown }[]}
+ */
+function toVendorScope(user) {
   if (Array.isArray(user.scopes)) {
-    return user.scopes.filter((row) => row?.vendor_id).map((row) => row.vendor_id);
+    return user.scopes
+      .filter((row) => row?.vendor_id ?? row?.vendor?.id)
+      .map((row) => ({
+        id: row.vendor_id ?? row.vendor.id,
+        name: row.vendor_name ?? row.vendor?.name,
+      }));
   }
-  return user.scopes?.vendor_ids ?? user.vendor_ids ?? user.vendors ?? [];
+  const list =
+    [user.scopes?.vendors, user.vendors, user.scopes?.vendor_ids, user.vendor_ids].find(
+      Array.isArray,
+    ) ?? [];
+  return list.map((entry) =>
+    entry && typeof entry === 'object'
+      ? { id: entry.id ?? entry.vendor_id, name: entry.name ?? entry.vendor_name }
+      : { id: entry },
+  );
 }
 
 const siteScopeSchema = z.array(
@@ -90,12 +109,19 @@ export const meResponseSchema = z.preprocess(
     const body = /** @type {any} */ (raw);
     const user = body?.data?.user ?? body?.data ?? body?.user ?? body;
     if (!user || typeof user !== 'object') return user;
-    const sites = toSiteScope(user).filter((site) => site.id !== undefined && site.id !== null);
+    const hasId = (/** @type {{ id: unknown }} */ entry) =>
+      entry.id !== undefined && entry.id !== null;
+    const sites = toSiteScope(user).filter(hasId);
+    const vendors = toVendorScope(user).filter(hasId);
     return {
       ...user,
       roles: toRoleCodes(user.roles ?? user.role),
       sites,
-      scopes: { site_ids: sites.map((site) => site.id), vendor_ids: toVendorIds(user) },
+      vendors,
+      scopes: {
+        site_ids: sites.map((site) => site.id),
+        vendor_ids: vendors.map((vendor) => vendor.id),
+      },
     };
   },
   z.object({
@@ -109,6 +135,8 @@ export const meResponseSchema = z.preprocess(
     scopes: z.object({ site_ids: idList, vendor_ids: idList }),
     /** The user's sites, with their names when `/auth/me` sends them. */
     sites: siteScopeSchema.catch([]),
+    /** The user's vendor(s), with their names when `/auth/me` sends them. */
+    vendors: siteScopeSchema.catch([]),
   }),
 );
 

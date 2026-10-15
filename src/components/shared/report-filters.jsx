@@ -11,9 +11,17 @@ import { LookupFilter } from '@/components/shared/lookup-filter';
  * @param {(updates: Record<string, string>) => void} props.onChange
  * @param {boolean} [props.dateRange]
  * @param {boolean} [props.showSite] Hidden for users whose data is limited to their own sites.
+ * @param {boolean} [props.showVendor] Hidden for a vendor's own users.
  * @param {import('react').ReactNode} [props.children] Extra filter controls, shown first.
  */
-export function ReportFilters({ params, onChange, dateRange = false, showSite = true, children }) {
+export function ReportFilters({
+  params,
+  onChange,
+  dateRange = false,
+  showSite = true,
+  showVendor = true,
+  children,
+}) {
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {children}
@@ -44,14 +52,16 @@ export function ReportFilters({ params, onChange, dateRange = false, showSite = 
           ariaLabel="Filter site"
         />
       ) : null}
-      <LookupFilter
-        lookup="vendors"
-        params={params.site_id ? { site_id: params.site_id } : undefined}
-        value={params.vendor_id}
-        onChange={(vendor_id) => onChange({ vendor_id })}
-        placeholder="Semua vendor"
-        ariaLabel="Filter vendor"
-      />
+      {showVendor ? (
+        <LookupFilter
+          lookup="vendors"
+          params={params.site_id ? { site_id: params.site_id } : undefined}
+          value={params.vendor_id}
+          onChange={(vendor_id) => onChange({ vendor_id })}
+          placeholder="Semua vendor"
+          ariaLabel="Filter vendor"
+        />
+      ) : null}
     </div>
   );
 }

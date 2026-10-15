@@ -113,7 +113,7 @@ export function InventoriesList() {
         searchPlaceholder="Cari item, jenis, atau vendor"
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
-        {site.scoped ? null : (
+        {site.showSiteFilter ? (
           <LookupFilter
             lookup="sites"
             value={params.site_id}
@@ -121,17 +121,21 @@ export function InventoriesList() {
             placeholder="Semua site"
             ariaLabel="Filter site"
           />
-        )}
-        <LookupFilter
-          lookup="vendors"
-          params={
-            site.siteIdFor(params.site_id) ? { site_id: site.siteIdFor(params.site_id) } : undefined
-          }
-          value={params.vendor_id}
-          onChange={(vendor_id) => setFilters({ vendor_id })}
-          placeholder="Semua vendor"
-          ariaLabel="Filter vendor"
-        />
+        ) : null}
+        {site.showVendorFilter ? (
+          <LookupFilter
+            lookup="vendors"
+            params={
+              site.siteIdFor(params.site_id)
+                ? { site_id: site.siteIdFor(params.site_id) }
+                : undefined
+            }
+            value={params.vendor_id}
+            onChange={(vendor_id) => setFilters({ vendor_id })}
+            placeholder="Semua vendor"
+            ariaLabel="Filter vendor"
+          />
+        ) : null}
       </div>
 
       <QueryList

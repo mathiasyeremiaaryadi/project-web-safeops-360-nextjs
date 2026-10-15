@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
 import { useOptionLabels } from '@/hooks/use-option-labels';
+import { can } from '@/lib/auth/permissions';
 import { useSession } from '@/features/auth';
 import { useUser } from '@/features/users/api/queries';
 import { UserAccessCard } from '@/features/users/components/user-access-card';
@@ -52,7 +53,9 @@ export function UserDetail({ id }) {
           <UserProfileCard user={user} />
           <UserDangerZone user={user} isSelf={currentUser?.id === user.id} />
         </div>
-        <UserAccessCard user={user} siteName={sites.labelOf} vendorName={vendors.labelOf} />
+        {can(currentUser, 'USER_ACCESS_ADMIN') ? (
+          <UserAccessCard user={user} siteName={sites.labelOf} vendorName={vendors.labelOf} />
+        ) : null}
       </div>
     </>
   );

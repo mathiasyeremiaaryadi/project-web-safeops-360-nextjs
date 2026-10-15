@@ -62,20 +62,20 @@ export const NAV_ITEMS = Object.freeze([
     shortLabel: 'Safety',
     href: '/safety-notes',
     icon: ShieldAlert,
-    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
+    roles: [SUPER_ADMIN, ADMIN],
     bottomNavRoles: [SUPER_ADMIN, ADMIN],
     // GET /pipeline-reports has no note-category filter yet (docs/ASSUMPTIONS.md G1).
     disabledReason: 'Menunggu dukungan API',
   },
   {
-    // Admin: at the top, like the mockup (the Super Admin item is under "Data master").
-    key: 'reports-inventory-site',
+    // Admin and Admin vendor: at the top, like the mockups (Super Admin: under "Data master").
+    key: 'reports-inventory-top',
     label: 'Laporan inventory',
     shortLabel: 'Lap. inv.',
     href: '/reports/inventory',
     icon: PackageX,
-    roles: [ADMIN],
-    bottomNavRoles: [ADMIN],
+    roles: [ADMIN, ADMIN_WORKER],
+    bottomNavRoles: [ADMIN, ADMIN_WORKER],
   },
   {
     key: 'master',
@@ -92,16 +92,18 @@ export const NAV_ITEMS = Object.freeze([
     label: 'Pipeline & task',
     href: '/pipelines',
     icon: Workflow,
-    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
+    roles: [SUPER_ADMIN, ADMIN],
     section: 'Data master',
   },
   {
     key: 'inventories',
     label: 'Inventory',
+    shortLabel: 'Inventory',
     href: '/inventories',
     icon: Package,
     roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
     section: 'Data master',
+    bottomNavRoles: [ADMIN_WORKER],
   },
   {
     key: 'policies',
@@ -112,18 +114,28 @@ export const NAV_ITEMS = Object.freeze([
     section: 'Data master',
   },
   {
+    // Admin vendor: the pipelines of their vendor, where they manage the tasks (not the header).
+    key: 'pipeline-items',
+    label: 'Pipeline item',
+    href: '/pipelines',
+    icon: Workflow,
+    roles: [ADMIN_WORKER],
+    section: 'Data master',
+  },
+  {
     key: 'reports-inventory',
     label: 'Laporan inventory',
     shortLabel: 'Lap. inv.',
     href: '/reports/inventory',
     icon: PackageX,
-    roles: [SUPER_ADMIN, ADMIN_WORKER, WORKER],
+    roles: [SUPER_ADMIN, WORKER],
     section: 'Data master',
-    bottomNavRoles: [ADMIN_WORKER, WORKER],
+    bottomNavRoles: [WORKER],
   },
   {
     key: 'users',
     label: 'Manajemen user',
+    labelByRole: { [ADMIN_WORKER]: 'Akun worker' },
     shortLabel: 'User',
     href: '/users',
     icon: Users,
@@ -174,6 +186,7 @@ export const NAV_ITEMS = Object.freeze([
 /** Section titles that read differently for a role (an Admin manages "their" sites). */
 const SECTION_LABELS_BY_ROLE = Object.freeze({
   [ADMIN]: { 'Data master': 'Data site' },
+  [ADMIN_WORKER]: { 'Data master': 'Data vendor', Administrasi: 'Akun' },
 });
 
 /**

@@ -228,3 +228,18 @@ dicek setelah sesi; respons BFF diberi CSP `sandbox`; cookie sesi dengan nama la
 - Admin dengan satu site melihat nama site sebagai label tanpa dropdown.
 - Untuk Admin, `/master` bernama "Vendor" (`labelByRole` di `navigation.js`) dan hanya
   menampilkan tab yang izinnya dimiliki (`read` per tab: tab Site butuh `ALL_SITES_READ`).
+
+## D19. Role Admin vendor memakai halaman yang sama
+
+- Perbedaan hanya lewat `navigation.js` (item "Pipeline item", label "Akun worker", section
+  "Data vendor"/"Akun", bottom nav), `can()` (matriks BRD yang sudah ada), dan konteks vendor.
+- `getDataScope(user)` (`lib/auth/permissions.js`) memetakan role ke cakupan data: ALL (Super
+  Admin), SITE (Admin), VENDOR (Admin vendor, Worker). `useSiteContext()` memakainya untuk label,
+  pemilih site (hanya SITE), filter site (ALL, atau VENDOR dengan >1 site), dan filter vendor
+  (bukan VENDOR). Tidak ada `role === …` di komponen.
+- Field vendor di form: `useVendorField()` (dipakai 3 form) menyembunyikan field dan mengisi
+  vendor sendiri lewat `withOwnVendor`.
+- Progres dashboard: satu fungsi murni `toProgress(raw, groupBy)` untuk per vendor dan per
+  pipeline.
+- Hak Admin site **tidak diubah** di fase ini (keputusan user, 15 Okt 2026), walaupun tabel prompt
+  Admin vendor menulis Admin site "baca saja" untuk review laporan task, inventory, dan SOP.

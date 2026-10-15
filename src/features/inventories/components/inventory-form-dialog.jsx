@@ -10,6 +10,7 @@ import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { useSiteContext } from '@/hooks/use-site-context';
+import { useVendorField } from '@/hooks/use-vendor-field';
 import { getErrorMessage } from '@/lib/api/errors';
 import { useSaveInventory } from '@/features/inventories/api/mutations';
 import { inventoryFormSchema, toInventoryFields } from '@/features/inventories/api/schemas';
@@ -25,11 +26,14 @@ import { INVENTORY_CONDITION_BADGES } from '@/features/inventories/lib/constants
  */
 export function InventoryFormDialog({ open, inventory, vendorName = '', onClose }) {
   const site = useSiteContext();
+  const vendorField = useVendorField();
   const save = useSaveInventory();
   const form = useForm({
     resolver: zodResolver(inventoryFormSchema),
     values: {
-      vendor: inventory ? { value: inventory.vendor_id, label: vendorName } : null,
+      vendor: inventory
+        ? { value: inventory.vendor_id, label: vendorName }
+        : vendorField.defaultValue,
       item: inventory?.item ?? '',
       jenis_item: inventory?.jenis_item ?? '',
       qty: inventory ? String(inventory.qty) : '',
@@ -48,7 +52,7 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
 
   const onSubmit = form.handleSubmit((values) => {
     save.mutate(
-      { id: inventory?.id, body: toInventoryFields(values) },
+      { id: inventory?.id, body: vendorField.complete(toInventoryFields(values)) },
       {
         onSuccess: () => {
           toast.success('Inventory berhasil disimpan.');
@@ -68,15 +72,17 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
       error={save.isError ? getErrorMessage(save.error, site.saveErrorOverrides) : null}
       submitLabel="Simpan inventory"
     >
-      <ComboboxField
-        control={form.control}
-        name="vendor"
-        id="inventory-vendor"
-        label="Vendor"
-        lookup="vendors"
-        params={site.activeVendorParams}
-        placeholder="Pilih vendor"
-      />
+      {vendorField.show ? (
+        <ComboboxField
+          control={form.control}
+          name="vendor"
+          id="inventory-vendor"
+          label="Vendor"
+          lookup="vendors"
+          params={site.activeVendorParams}
+          placeholder="Pilih vendor"
+        />
+      ) : null}
       <FormField id="inventory-item" label="Nama item" error={errors.item?.message}>
         <Input
           {...form.register('item')}

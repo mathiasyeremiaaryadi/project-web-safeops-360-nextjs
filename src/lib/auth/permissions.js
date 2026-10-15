@@ -64,6 +64,27 @@ export function getPrimaryRole(roles) {
   return ROLE_PRIORITY.find((role) => roles?.includes(role)) ?? null;
 }
 
+/** Which records a user works on: every site, their sites, or their one vendor. */
+export const DATA_SCOPE = Object.freeze({ ALL: 'ALL', SITE: 'SITE', VENDOR: 'VENDOR' });
+
+const DATA_SCOPE_BY_ROLE = Object.freeze({
+  [SUPER_ADMIN]: DATA_SCOPE.ALL,
+  [ADMIN]: DATA_SCOPE.SITE,
+  [ADMIN_WORKER]: DATA_SCOPE.VENDOR,
+  [WORKER]: DATA_SCOPE.VENDOR,
+});
+
+/**
+ * Data scope of a user (primary role), from the BRD: Super Admin global, Admin per site,
+ * Admin Worker and Worker per vendor. The backend filters the data; the UI uses this to show
+ * the right context (site switcher, vendor label) and to hide filters that make no sense.
+ * @param {{ roles?: readonly string[] } | null | undefined} user
+ */
+export function getDataScope(user) {
+  const role = getPrimaryRole(user?.roles);
+  return role ? DATA_SCOPE_BY_ROLE[role] : DATA_SCOPE.VENDOR;
+}
+
 /**
  * Splits the permission labels into what the given roles can and cannot do.
  * @param {readonly string[]} roles

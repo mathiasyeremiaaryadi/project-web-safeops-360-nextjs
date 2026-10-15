@@ -12,6 +12,7 @@ import { neighbourId, useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
+import { DATA_SCOPE } from '@/lib/auth/permissions';
 import { formatDateTime } from '@/lib/date';
 import { useTaskReports } from '@/features/pipeline-reports/api/queries';
 import { ReportBadges, shiftLabel } from '@/features/pipeline-reports/components/report-badges';
@@ -106,7 +107,11 @@ export function TaskReportsList() {
     <>
       <PageHeader
         title="Review laporan"
-        description="Laporan task dari worker yang perlu diperiksa."
+        description={
+          site.mode === DATA_SCOPE.VENDOR
+            ? `Laporan dari worker ${site.shortLabel}.`
+            : 'Laporan task dari worker yang perlu diperiksa.'
+        }
       />
       <StatusTabs
         label="Filter status laporan"
@@ -117,7 +122,8 @@ export function TaskReportsList() {
       <ReportFilters
         params={{ ...params, site_id: site_id ?? '' }}
         onChange={setFilters}
-        showSite={!site.scoped}
+        showSite={site.showSiteFilter}
+        showVendor={site.showVendorFilter}
         dateRange
       />
 

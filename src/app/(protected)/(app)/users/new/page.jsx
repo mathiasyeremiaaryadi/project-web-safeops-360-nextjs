@@ -1,5 +1,4 @@
-import { PageHeader } from '@/components/layout/page-header';
-import { CreateUserForm } from '@/features/users';
+import { CreateUserForm, NewUserPageHeader } from '@/features/users';
 
 export const metadata = { title: 'Tambah user' };
 
@@ -7,10 +6,7 @@ export const metadata = { title: 'Tambah user' };
 export default function NewUserPage() {
   return (
     <>
-      <PageHeader
-        title="Tambah user"
-        description="Akun baru wajib mengganti password saat login pertama."
-      />
+      <NewUserPageHeader />
       <CreateUserForm />
     </>
   );

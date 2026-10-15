@@ -32,12 +32,39 @@ export const ADMIN_TWO_SITES = {
   must_change_password: false,
 };
 
+/** Admin vendor of PT Bersih Jaya (`v1`), which serves PLTU Paiton and PLTU Pacitan. */
+export const ADMIN_VENDOR_TWO_SITES = {
+  id: 'aw1',
+  username: 'rina.wulandari',
+  full_name: 'Rina Wulandari',
+  roles: ['ADMIN_WORKER'],
+  scopes: { vendor_ids: ['v1'] },
+  must_change_password: false,
+};
+
+/** Admin vendor of PT Karya Aman (`v2`), which serves one site (PLTGU Grati). */
+export const ADMIN_VENDOR_ONE_SITE = {
+  id: 'aw2',
+  username: 'dimas.prakoso',
+  full_name: 'Dimas Prakoso',
+  roles: ['ADMIN_WORKER'],
+  scopes: { vendor_ids: ['v2'] },
+  must_change_password: false,
+};
+
+/** Backend scope of each Admin vendor fixture (what `GET /sites` and the lists return). */
+export const VENDOR_SCOPES = {
+  v1: { vendorId: 'v1', siteIds: ['s1', 's4'] },
+  v2: { vendorId: 'v2', siteIds: ['s2'] },
+};
+
 export function createFixtures() {
   return {
     sites: [
       { id: 's1', code: 'PTN', name: 'PLTU Paiton', site_type: 'PLTU', is_active: true },
       { id: 's2', code: 'GRT', name: 'PLTGU Grati', site_type: 'PLTGU', is_active: true },
       { id: 's3', code: 'SRL', name: 'PLTU Suralaya', site_type: 'PLTU', is_active: true },
+      { id: 's4', code: 'PCT', name: 'PLTU Pacitan', site_type: 'PLTU', is_active: true },
     ],
     vendors: [
       { id: 'v1', code: 'BJ', name: 'PT Bersih Jaya', status: 'ACTIVE', site_ids: ['s1'] },
@@ -211,13 +238,25 @@ export function createFixtures() {
     },
     daily: {
       data: [
+        // PT Bersih Jaya, per pipeline (20 task · 14 selesai · 3 review · 1 revisi in total).
         {
           vendor_id: 'v1',
           vendor_name: 'PT Bersih Jaya',
-          total_tasks: 20,
-          completed: 14,
-          submitted: 3,
+          pipeline_id: 'p1',
+          pipeline_name: 'Cleaning Turbine Hall',
+          total_tasks: 12,
+          completed: 8,
+          submitted: 2,
           revision_requested: 1,
+        },
+        {
+          vendor_id: 'v1',
+          vendor_name: 'PT Bersih Jaya',
+          pipeline_id: 'p3',
+          pipeline_name: 'Cleaning Admin Building',
+          total_tasks: 8,
+          completed: 6,
+          submitted: 1,
         },
         {
           vendor_id: 'v2',

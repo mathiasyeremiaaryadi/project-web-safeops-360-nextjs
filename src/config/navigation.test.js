@@ -108,4 +108,31 @@ describe('navigation config', () => {
     expect(canAccessPath('/reports/inventory/9', admin)).toBe(true);
     expect(getHomeRoute(admin)).toBe('/dashboard');
   });
+
+  it('gives Admin vendor the 8 vendor menu items, without master, safety notes and audit log', () => {
+    const vendor = [ROLES.ADMIN_WORKER];
+    expect(getNavItems(vendor).map((item) => [item.section ?? '', item.label])).toEqual([
+      ['', 'Beranda'],
+      ['', 'Review laporan'],
+      ['', 'Laporan inventory'],
+      ['Data vendor', 'Inventory'],
+      ['Data vendor', 'SOP'],
+      ['Data vendor', 'Pipeline item'],
+      ['Akun', 'Akun worker'],
+      ['Akun', 'Profil & sesi'],
+    ]);
+    expect(getBottomNavItems(vendor).map((item) => item.shortLabel)).toEqual([
+      'Beranda',
+      'Review',
+      'Lap. inv.',
+      'Inventory',
+      'Profil',
+    ]);
+    for (const path of ['/master', '/safety-notes', '/audit-logs']) {
+      expect(canAccessPath(path, vendor)).toBe(false);
+    }
+    expect(canAccessPath('/pipelines/p1', vendor)).toBe(true);
+    expect(canAccessPath('/users/new', vendor)).toBe(true);
+    expect(getHomeRoute(vendor)).toBe('/dashboard');
+  });
 });

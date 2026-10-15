@@ -8,6 +8,8 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { FilterBar } from '@/components/shared/filter-bar';
 import { QueryList } from '@/components/shared/query-list';
 import { useListParams } from '@/hooks/use-list-params';
+import { can } from '@/lib/auth/permissions';
+import { useSession } from '@/features/auth';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
 import { searchRows } from '@/lib/search';
@@ -29,6 +31,9 @@ const FILTERS = { role: parseAsString.withDefault(''), status: parseAsString.wit
 export function UsersList() {
   const router = useRouter();
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
+  const { user: currentUser } = useSession();
+  // Super Admin sees every role; an Admin vendor only manages Worker accounts of their vendor.
+  const manageAccess = can(currentUser, 'USER_ACCESS_ADMIN');
   const query = useUsers({ ...params, limit });
   const sites = useOptionLabels('sites');
   const vendors = useOptionLabels('vendors');
@@ -89,7 +94,7 @@ export function UsersList() {
       meta: { hideBelow: 'xl', sortValue: (/** @type {any} */ user) => user.last_login_at },
       cell: ({ row }) => formatDateTime(row.original.last_login_at),
     },
-  ];
+  ].filter((column) => manageAccess || column.id !== 'scope');
 
   return (
     <>
@@ -98,17 +103,19 @@ export function UsersList() {
         onSearchChange={(q) => setFilters({ q })}
         searchPlaceholder="Cari nama, username, email, role, atau scope"
       >
-        <NativeSelect
-          aria-label="Filter role"
-          value={params.role}
-          onChange={(e) => setFilters({ role: e.target.value })}
-        >
-          {USER_ROLE_FILTERS.map((option) => (
-            <NativeSelectOption key={option.value} value={option.value}>
-              {option.label}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        {manageAccess ? (
+          <NativeSelect
+            aria-label="Filter role"
+            value={params.role}
+            onChange={(e) => setFilters({ role: e.target.value })}
+          >
+            {USER_ROLE_FILTERS.map((option) => (
+              <NativeSelectOption key={option.value} value={option.value}>
+                {option.label}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        ) : null}
         <NativeSelect
           aria-label="Filter status"
           value={params.status}
