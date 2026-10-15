@@ -5,6 +5,18 @@ import { useRouter } from 'next/navigation';
 import { logout, logoutAll } from '@/features/auth/api/auth-api';
 import { useSessionStore } from '@/features/auth/stores/session-store';
 import { ROUTES } from '@/lib/constants';
+import { clearOfflineData } from '@/features/offline';
+
+/** Removes the Worker's queued photos and saved tasks of this device (prompt section 7.3). */
+async function clearDeviceData() {
+  const userId = useSessionStore.getState().user?.id;
+  if (!userId) return;
+  try {
+    await clearOfflineData(userId);
+  } catch {
+    // IndexedDB unavailable (private mode): nothing was stored.
+  }
+}
 
 /**
  * Ends the local session and returns to the login page.
@@ -32,6 +44,7 @@ export function useLogout() {
       } catch {
         // Ignore: the session is cleared locally regardless.
       }
+      await clearDeviceData();
     },
     onSettled: () => endLocalSession(router, queryClient),
   });
@@ -43,7 +56,10 @@ export function useLogoutAll() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: logoutAll,
+    mutationFn: async () => {
+      await logoutAll();
+      await clearDeviceData();
+    },
     onSuccess: () => endLocalSession(router, queryClient),
   });
 }

@@ -5,7 +5,8 @@ import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { useLogout, useLogoutAll } from '@/features/auth';
+import { useLogout, useLogoutAll, useSession } from '@/features/auth';
+import { countPendingUploads } from '@/features/offline';
 
 /**
  * Sign-out actions. The list of active sessions is not shown: the backend has no endpoint to
@@ -15,6 +16,15 @@ export function SessionActions() {
   const logoutMutation = useLogout();
   const logoutAllMutation = useLogoutAll();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { user } = useSession();
+  // Photos still queued on this device (Worker): logging out deletes them, so ask first.
+  const [pendingUploads, setPendingUploads] = useState(0);
+
+  const startLogout = async () => {
+    const pending = user ? await countPendingUploads(user.id).catch(() => 0) : 0;
+    if (pending > 0) setPendingUploads(pending);
+    else logoutMutation.mutate();
+  };
 
   const logoutEverywhere = () => {
     logoutAllMutation.mutate(undefined, {
@@ -36,7 +46,7 @@ export function SessionActions() {
           variant="outline"
           className="h-11 bg-card text-base"
           disabled={logoutMutation.isPending}
-          onClick={() => logoutMutation.mutate()}
+          onClick={startLogout}
         >
           <LogOut aria-hidden="true" className="size-4" />
           Keluar
@@ -59,6 +69,18 @@ export function SessionActions() {
         tone="destructive"
         pending={logoutAllMutation.isPending}
         onConfirm={logoutEverywhere}
+      />
+      <ConfirmDialog
+        open={pendingUploads > 0}
+        onOpenChange={(open) => {
+          if (!open) setPendingUploads(0);
+        }}
+        title="Foto belum terkirim"
+        description={`${pendingUploads} foto belum terkirim dan akan dihapus jika Anda keluar. Tetap keluar?`}
+        confirmLabel="Tetap keluar"
+        tone="destructive"
+        pending={logoutMutation.isPending}
+        onConfirm={() => logoutMutation.mutate()}
       />
     </section>
   );

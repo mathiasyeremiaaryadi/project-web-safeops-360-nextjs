@@ -66,3 +66,23 @@ export function dayBoundaryIso(isoDate, edge) {
   if (edge === 'end') zoned.setHours(23, 59, 59, 999);
   return new Date(zoned.getTime()).toISOString();
 }
+
+/**
+ * `YYYY-MM-DD` shifted by whole days (calendar arithmetic, no time zone involved).
+ * @param {string} isoDate
+ * @param {number} days
+ */
+export function addDays(isoDate, days) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * "07.42" in APP_TIMEZONE.
+ * @param {string | null | undefined} value
+ */
+export function formatTime(value) {
+  const date = toZoned(value);
+  return date ? format(date, 'HH.mm', { locale: localeId }) : '—';
+}

@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/layout/user-avatar';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useSession } from '@/features/auth';
-import { formatDateTime } from '@/lib/date';
+import { formatDateTime, todayInAppTimezone } from '@/lib/date';
 import { can, DATA_SCOPE } from '@/lib/auth/permissions';
 import { ROLE_LABELS } from '@/lib/constants';
+import { shiftOf, useMyTasks } from '@/features/my-tasks';
 
 /**
  * Scope summary of the signed-in user.
@@ -34,6 +35,10 @@ function Row({ label, children }) {
 export function ProfileCard() {
   const { user } = useSession();
   const site = useSiteContext();
+  // A Worker's shift comes from today's assignments (none on a day off).
+  const worker = can(user, 'TASK_REPORT_WRITE');
+  const todayTasks = useMyTasks(todayInAppTimezone(), { enabled: worker });
+  const shift = worker ? shiftOf(todayTasks.data?.data ?? []) : null;
   if (!user) return null;
   const name = user.full_name ?? user.username;
 
@@ -59,6 +64,9 @@ export function ProfileCard() {
           </span>
         </Row>
         {site.mode === DATA_SCOPE.VENDOR ? <Row label="Vendor">{site.shortLabel}</Row> : null}
+        {worker ? (
+          <Row label="Shift hari ini">{shift?.label ?? 'Tidak ada tugas hari ini'}</Row>
+        ) : null}
         <Row label="Scope">
           {site.mode !== DATA_SCOPE.ALL && site.sites.length > 0 ? (
             <span className="flex flex-wrap gap-1.5" aria-label="Site yang dikelola">

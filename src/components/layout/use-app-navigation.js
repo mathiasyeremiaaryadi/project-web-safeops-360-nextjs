@@ -3,9 +3,11 @@
 import { usePathname } from 'next/navigation';
 import { findNavItem, getBottomNavItems, getNavItems } from '@/config/navigation';
 import { useSiteContext } from '@/hooks/use-site-context';
-import { getPrimaryRole } from '@/lib/auth/permissions';
+import { can, getPrimaryRole } from '@/lib/auth/permissions';
+import { todayInAppTimezone } from '@/lib/date';
 import { ROLE_LABELS } from '@/lib/constants';
 import { useSession } from '@/features/auth/hooks/use-session';
+import { shiftOf, useMyTasks } from '@/features/my-tasks';
 
 /**
  * Everything the shell needs about the current user and route, derived from
@@ -17,7 +19,12 @@ export function useAppNavigation() {
   const items = getNavItems(user?.roles);
   const activeItem = findNavItem(pathname, items);
   const primaryRole = getPrimaryRole(user?.roles);
-  const contextLabel = useSiteContext().label;
+  const site = useSiteContext();
+  // A Worker's context is their vendor and today's shift (from their assignments).
+  const worker = can(user, 'TASK_REPORT_WRITE');
+  const todayTasks = useMyTasks(todayInAppTimezone(), { enabled: worker });
+  const shift = worker ? shiftOf(todayTasks.data?.data ?? [])?.name : null;
+  const shiftLabel = shift ? `Shift ${shift}` : null;
 
   return {
     pathname,
@@ -26,9 +33,16 @@ export function useAppNavigation() {
     bottomItems: getBottomNavItems(user?.roles),
     activeItem,
     roleLabel: primaryRole ? ROLE_LABELS[primaryRole] : '',
-    /** "Semua site" (Super Admin) or the names of the user's sites. */
-    contextLabel,
-    /** Form and detail pages (sub-routes) hide the bottom nav and use a sticky action bar. */
+    /** Sidebar / breadcrumb: "Semua site", site names, "{vendor} · {sites}" or "{vendor} · Shift". */
+    contextLabel: worker ? [site.shortLabel, shiftLabel].filter(Boolean).join(' · ') : site.label,
+    /** Mobile top bar subtitle. */
+    contextShortLabel: worker
+      ? [shiftLabel, site.shortLabel].filter(Boolean).join(' · ')
+      : site.shortLabel,
+    /** Detail and form pages under a menu item: the header shows a back button. */
     isSubPage: Boolean(activeItem) && pathname !== activeItem?.href,
+    /** Sub-pages and form pages hide the bottom nav on mobile and use a sticky action bar. */
+    isFormPage:
+      (Boolean(activeItem) && pathname !== activeItem?.href) || Boolean(activeItem?.formPage),
   };
 }

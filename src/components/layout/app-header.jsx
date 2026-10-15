@@ -13,7 +13,7 @@ import { useAppNavigation } from '@/components/layout/use-app-navigation';
  * There is no notification button: the backend has no notification API.
  */
 export function AppHeader() {
-  const { activeItem, contextLabel, isSubPage } = useAppNavigation();
+  const { activeItem, contextLabel, contextShortLabel, isSubPage } = useAppNavigation();
   const pageTitle = usePageTitle();
   const sectionLabel = activeItem?.label ?? 'SafeOps 360';
   const title = pageTitle ?? sectionLabel;
@@ -35,7 +35,7 @@ export function AppHeader() {
         )}
         <div className="min-w-0 leading-tight">
           <p className="truncate text-lg font-bold text-foreground">{title}</p>
-          <MobileSiteSubtitle />
+          <MobileSiteSubtitle label={contextShortLabel} />
         </div>
       </div>
 

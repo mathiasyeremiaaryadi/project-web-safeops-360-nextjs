@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppHeader } from '@/components/layout/app-header';
 import { BottomNav } from '@/components/layout/bottom-nav';
@@ -9,7 +10,15 @@ import { PageTitleProvider } from '@/components/layout/page-title';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useAppNavigation } from '@/components/layout/use-app-navigation';
 import { canAccessPath } from '@/config/navigation';
+import { can } from '@/lib/auth/permissions';
 import { cn } from '@/lib/utils';
+import { OfflineBanner } from '@/features/offline';
+
+// Workers only: loaded on demand so the other roles do not ship the IndexedDB code.
+const WorkerOfflineSync = dynamic(
+  () => import('@/features/task-report').then((m) => m.WorkerOfflineSync),
+  { ssr: false },
+);
 
 /**
  * Signed-in layout: bottom nav (< 768), icon rail (768–1023) or sidebar (≥ 1024), header,
@@ -17,7 +26,7 @@ import { cn } from '@/lib/utils';
  * @param {{ children: import('react').ReactNode }} props
  */
 export function AppShell({ children }) {
-  const { pathname, user, isSubPage } = useAppNavigation();
+  const { pathname, user, isFormPage } = useAppNavigation();
   const allowed = canAccessPath(pathname, user?.roles);
 
   return (
@@ -27,16 +36,18 @@ export function AppShell({ children }) {
           <Sidebar />
           <NavRail />
           <AppHeader />
+          <OfflineBanner />
           <main
             id="main"
             className={cn(
               'flex-1 px-4 pt-5 md:px-6 md:pt-6 md:pb-10 lg:px-8',
-              isSubPage ? 'pb-28' : 'pb-[100px]',
+              isFormPage ? 'pb-28' : 'pb-[100px]',
             )}
           >
             {allowed ? children : <Forbidden />}
           </main>
-          {isSubPage ? null : <BottomNav />}
+          {isFormPage ? null : <BottomNav />}
+          {can(user, 'TASK_REPORT_WRITE') ? <WorkerOfflineSync /> : null}
         </div>
       </PageTitleProvider>
     </TooltipProvider>

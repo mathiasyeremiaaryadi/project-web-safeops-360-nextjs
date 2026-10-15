@@ -7,6 +7,7 @@ import { authKeys } from '@/features/auth/api/keys';
 import { useSessionStore } from '@/features/auth/stores/session-store';
 import { getSafeRedirect } from '@/features/auth/lib/redirect';
 import { ROUTES } from '@/lib/constants';
+import { clearOtherUsersOfflineData } from '@/features/offline';
 
 /**
  * Login flow: the BFF creates the session cookie and returns the profile; then redirect to
@@ -23,6 +24,8 @@ export function useLogin({ next = null } = {}) {
     onSuccess: (user) => {
       queryClient.setQueryData(authKeys.me(), user);
       useSessionStore.getState().setUser(user);
+      // Another user's offline data must not stay on a shared device.
+      clearOtherUsersOfflineData(user.id).catch(() => {});
       router.replace(user.must_change_password ? ROUTES.CHANGE_PASSWORD : getSafeRedirect(next));
     },
   });

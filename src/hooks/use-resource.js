@@ -1,6 +1,12 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
 import { toFormData, UPLOAD_TIMEOUT_MS } from '@/lib/api/form-data';
 
@@ -31,6 +37,38 @@ export function useListQuery({ keys, path, params, schema }) {
         schema,
       }),
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Growing list for "Muat lebih banyak" (`GET <path>?page=1,2,…&limit=`): the Worker pages,
+ * which show cards instead of a paged table. Lives under `keys.lists()`, so saving refreshes it.
+ * @template {import('zod').ZodType<{ data: unknown[], total?: number }>} T
+ * @param {{ keys: ResourceKeys, path: string, params: Record<string, unknown>, schema: T, limit?: number, enabled?: boolean }} options
+ */
+export function useInfiniteListQuery({ keys, path, params, schema, limit = 20, enabled = true }) {
+  return useInfiniteQuery({
+    queryKey: [...keys.list({ ...params, limit }), 'infinite'],
+    queryFn: ({ pageParam }) =>
+      apiRequest({
+        method: 'get',
+        path,
+        searchParams: /** @type {Record<string, string | number>} */ ({
+          ...params,
+          page: pageParam,
+          limit,
+        }),
+        schema,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((count, page) => count + page.data.length, 0);
+      if (last.data.length < limit || (last.total !== undefined && loaded >= last.total)) {
+        return undefined;
+      }
+      return pages.length + 1;
+    },
+    enabled,
   });
 }
 

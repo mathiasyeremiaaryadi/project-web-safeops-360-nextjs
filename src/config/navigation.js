@@ -1,12 +1,13 @@
 import {
-  Boxes,
   ClipboardList,
   Database,
   FileText,
+  History,
   Home,
   Inbox,
   ListChecks,
   Package,
+  PackagePlus,
   PackageX,
   ShieldAlert,
   UserRound,
@@ -33,6 +34,8 @@ const { SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER } = ROLES;
  * @property {string[]} [bottomNavRoles] Roles that get this item in the mobile bottom nav.
  * @property {string} [disabledReason] Item is shown but not usable (e.g. backend gap).
  * @property {Record<string, string>} [labelByRole] Label for a role, when it differs.
+ * @property {boolean} [formPage] A form page: on mobile it hides the bottom nav and uses a
+ *   sticky action bar (like sub-pages do).
  */
 
 /** @type {readonly NavItem[]} */
@@ -110,7 +113,7 @@ export const NAV_ITEMS = Object.freeze([
     label: 'SOP',
     href: '/policies',
     icon: FileText,
-    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER],
+    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
     section: 'Data master',
   },
   {
@@ -128,9 +131,8 @@ export const NAV_ITEMS = Object.freeze([
     shortLabel: 'Lap. inv.',
     href: '/reports/inventory',
     icon: PackageX,
-    roles: [SUPER_ADMIN, WORKER],
+    roles: [SUPER_ADMIN],
     section: 'Data master',
-    bottomNavRoles: [WORKER],
   },
   {
     key: 'users',
@@ -151,22 +153,41 @@ export const NAV_ITEMS = Object.freeze([
     roles: [SUPER_ADMIN],
     section: 'Administrasi',
   },
-  // ---- Worker (pages come in a later phase) ----
+  // ---- Worker: their own work, in the order of the mockup ----
   {
     key: 'my-tasks',
-    label: 'Tugas saya',
+    label: 'Tugas hari ini',
     shortLabel: 'Tugas',
-    href: '/my-tasks',
+    href: '/tasks',
     icon: ListChecks,
     roles: [WORKER],
     bottomNavRoles: [WORKER],
   },
   {
-    key: 'inventory-catalog',
-    label: 'Inventory vendor',
-    shortLabel: 'Inventory',
-    href: '/inventories',
-    icon: Boxes,
+    key: 'history',
+    label: 'Riwayat laporan',
+    shortLabel: 'Riwayat',
+    href: '/history',
+    icon: History,
+    roles: [WORKER],
+    bottomNavRoles: [WORKER],
+  },
+  {
+    key: 'inventory-report-new',
+    label: 'Lapor inventory',
+    shortLabel: 'Lapor',
+    href: '/inventory-reports/new',
+    icon: PackagePlus,
+    roles: [WORKER],
+    bottomNavRoles: [WORKER],
+    formPage: true,
+  },
+  {
+    key: 'worker-policies',
+    label: 'SOP',
+    shortLabel: 'SOP',
+    href: '/policies',
+    icon: FileText,
     roles: [WORKER],
     bottomNavRoles: [WORKER],
   },

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
  * @param {{ onNavigate?: () => void }} props
  */
 export function SidebarContent({ onNavigate }) {
-  const { items, activeItem, user, roleLabel } = useAppNavigation();
+  const { items, activeItem, user, roleLabel, contextLabel } = useAppNavigation();
 
   return (
     <div className="flex h-full flex-col gap-5 px-3 py-5 text-brand-dark-foreground">
@@ -25,7 +25,7 @@ export function SidebarContent({ onNavigate }) {
         </div>
       </div>
 
-      <SidebarSiteSwitcher />
+      <SidebarSiteSwitcher label={contextLabel} />
 
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
         <SidebarNav items={items} activeItem={activeItem} onNavigate={onNavigate} />

@@ -66,7 +66,7 @@ describe('navigation config', () => {
   it('guards sub-routes with the owning menu item', () => {
     expect(canAccessPath('/users/123', SA)).toBe(true);
     expect(canAccessPath('/users/new', [ROLES.WORKER])).toBe(false);
-    expect(canAccessPath('/reports/inventory/9', [ROLES.WORKER])).toBe(true);
+    expect(canAccessPath('/tasks/report/9', [ROLES.WORKER])).toBe(true);
     expect(findNavItem('/reports/tasks/42')?.key).toBe('reports-tasks');
   });
 
@@ -134,5 +134,44 @@ describe('navigation config', () => {
     expect(canAccessPath('/pipelines/p1', vendor)).toBe(true);
     expect(canAccessPath('/users/new', vendor)).toBe(true);
     expect(getHomeRoute(vendor)).toBe('/dashboard');
+  });
+
+  it('gives Worker the 5 work items, the bottom nav and /tasks as home', () => {
+    const worker = [ROLES.WORKER];
+    expect(getNavItems(worker).map((item) => [item.section ?? '', item.label])).toEqual([
+      ['', 'Tugas hari ini'],
+      ['', 'Riwayat laporan'],
+      ['', 'Lapor inventory'],
+      ['', 'SOP'],
+      ['Akun', 'Profil & sesi'],
+    ]);
+    expect(getBottomNavItems(worker).map((item) => item.shortLabel)).toEqual([
+      'Tugas',
+      'Riwayat',
+      'Lapor',
+      'SOP',
+      'Profil',
+    ]);
+    expect(getHomeRoute(worker)).toBe('/tasks');
+    for (const path of [
+      '/dashboard',
+      '/reports/tasks',
+      '/master',
+      '/pipelines',
+      '/inventories',
+      '/users',
+      '/audit-logs',
+    ]) {
+      expect(canAccessPath(path, worker), path).toBe(false);
+    }
+    for (const path of [
+      '/tasks',
+      '/tasks/report/r1',
+      '/history',
+      '/inventory-reports/new',
+      '/policies',
+    ]) {
+      expect(canAccessPath(path, worker), path).toBe(true);
+    }
   });
 });

@@ -1,8 +1,8 @@
-import { PoliciesList } from '@/features/policies';
+import { PoliciesView } from '@/features/policies';
 
 export const metadata = { title: 'SOP' };
 
-/** `/policies` */
+/** `/policies` — table for managers, cards for workers. */
 export default function PoliciesPage() {
-  return <PoliciesList />;
+  return <PoliciesView />;
 }

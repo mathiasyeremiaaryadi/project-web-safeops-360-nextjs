@@ -31,7 +31,8 @@ export const PERMISSIONS = Object.freeze({
     label: 'Mereview laporan inventory',
     roles: [SUPER_ADMIN, ADMIN_WORKER],
   },
-  DASHBOARD_READ: { label: 'Melihat rekap harian', roles: ALL_ROLES },
+  DASHBOARD_READ: { label: 'Melihat rekap harian', roles: MANAGERS },
+  TASK_REPORT_WRITE: { label: 'Mengerjakan task dan mengisi laporan sendiri', roles: [WORKER] },
   AUDIT_LOG_READ: { label: 'Melihat audit log', roles: [SUPER_ADMIN] },
 });
 

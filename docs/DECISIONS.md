@@ -243,3 +243,26 @@ dicek setelah sesi; respons BFF diberi CSP `sandbox`; cookie sesi dengan nama la
   pipeline.
 - Hak Admin site **tidak diubah** di fase ini (keputusan user, 15 Okt 2026), walaupun tabel prompt
   Admin vendor menulis Admin site "baca saja" untuk review laporan task, inventory, dan SOP.
+
+## D20. Role Worker
+
+- Halaman Worker: `/tasks`, `/tasks/report/[reportId]`, `/history`, `/inventory-reports/new`,
+  `/policies` (kartu), `/profile`. Fitur baru: `my-tasks`, `task-report`, `my-inventory-reports`,
+  `offline`. Tampilan Worker dipilih dengan `can(user, 'TASK_REPORT_WRITE')`, bukan `role === …`.
+- **Tanggal task:** hanya hari ini dan kemarin (shift malam bisa lewat tengah malam).
+- **Tanpa tabel admin di bundle Worker:** `package.json` `"sideEffects": ["**/*.css"]` agar
+  ekspor barrel yang tidak dipakai ikut dibuang; tabel SOP admin dimuat `next/dynamic` hanya
+  untuk non-Worker; library kompresi foto dimuat saat dibutuhkan (dan di-preload di halaman
+  laporan supaya tetap bisa dipakai saat sinyal hilang). First Load JS (gzip): `/tasks` ±166 KB,
+  `/tasks/report/[reportId]` ±196 KB.
+- **Kirim laporan:** `getSubmitBlocker(report, local)` (fungsi murni) — kedua foto harus sudah
+  ada di server dan tidak ada foto yang masih antre; catatan yang belum disimpan disimpan dulu
+  lalu dikirim berurutan. Tanpa autosave.
+- **Offline (bagian 7, tidak lebih):** cache `my-tasks` di IndexedDB (idb-keyval, kunci berisi
+  user id, maks. 24 jam) dan antrean foto Dexie `safeops-offline.pendingUploads` (FIFO, maks.
+  5 percobaan, foto ulang menggantikan yang lama). `WorkerOfflineSync` dimuat di app shell hanya
+  untuk Worker. Logout menghapus data offline user itu (konfirmasi bila ada foto antre); login
+  user lain menghapus data user sebelumnya. Mulai task, kirim laporan, dan lapor inventory tidak
+  diantrekan.
+- Daftar kartu Worker memakai `useInfiniteListQuery` + `LoadMore` ("Muat lebih banyak", 20 per
+  halaman).

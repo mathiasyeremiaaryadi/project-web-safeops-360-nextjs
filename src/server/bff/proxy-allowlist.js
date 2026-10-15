@@ -19,4 +19,6 @@ export const API_PROXY_ALLOWLIST = Object.freeze([
   'inventory-reports',
   'dashboard',
   'reports',
+  // Worker: own tasks of the day (`GET /me/tasks`).
+  'me',
 ]);

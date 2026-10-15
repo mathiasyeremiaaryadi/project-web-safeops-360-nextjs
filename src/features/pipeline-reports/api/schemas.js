@@ -35,8 +35,8 @@ const normalise = (r) => ({
   submitted_at: firstValue(r.submitted_at, r.updated_at, r.created_at),
   before_url: firstValue(r.evidence_before_url, r.before_url, r.evidence_before, r.photo_before),
   after_url: firstValue(r.evidence_after_url, r.after_url, r.evidence_after, r.photo_after),
-  opened_at: firstValue(r.opened_at, r.open_at, r.open_time, r.started_at),
-  closed_at: firstValue(r.closed_at, r.close_at, r.close_time, r.finished_at),
+  opened_at: firstValue(r.opened_at, r.open_date, r.open_at, r.open_time, r.started_at),
+  closed_at: firstValue(r.closed_at, r.closed_date, r.close_at, r.close_time, r.finished_at),
   note_category: firstValue(r.note_category, r.category),
   note: firstValue(r.note, r.notes, r.note_text),
   reason: firstValue(r.reason, r.review_reason, r.revision_reason),
@@ -97,3 +97,6 @@ export const taskReportDetailSchema = entityResponseSchema(taskReportSchema, [
   'pipeline_report',
   'report',
 ]);
+
+/** `GET /pipeline-reports/{id}/history` (PRD 1.2 — not in the BRD yet): a list of status changes. */
+export const taskReportHistorySchema = listResponseSchema(historyEntrySchema);

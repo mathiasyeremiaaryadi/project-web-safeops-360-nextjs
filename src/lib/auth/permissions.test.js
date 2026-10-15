@@ -38,7 +38,7 @@ describe('permissions (BRD section 7)', () => {
     const { allowed, denied } = describeAccess([ROLES.WORKER]);
     expect(allowed).toContain('Membuat laporan inventory');
     expect(denied).toContain('Melihat audit log');
-    expect(allowed.length + denied.length).toBe(16);
+    expect(allowed.length + denied.length).toBe(17);
   });
 });
 
@@ -99,5 +99,34 @@ describe('permissions of Admin vendor (ADMIN_WORKER) next to Admin site', () => 
     expect(getDataScope(adminSite)).toBe(DATA_SCOPE.SITE);
     expect(getDataScope(adminVendor)).toBe(DATA_SCOPE.VENDOR);
     expect(getDataScope({ roles: [ROLES.WORKER] })).toBe(DATA_SCOPE.VENDOR);
+  });
+});
+
+describe('permissions of Worker', () => {
+  const worker = { roles: [ROLES.WORKER] };
+
+  it.each([
+    ['TASK_REPORT_WRITE', true],
+    ['PIPELINE_REPORT_READ', true],
+    ['INVENTORY_REPORT_CREATE', true],
+    ['INVENTORY_POLICY_READ', true],
+    ['INVENTORY_POLICY_WRITE', false],
+    ['PIPELINE_REPORT_REVIEW', false],
+    ['INVENTORY_REPORT_REVIEW', false],
+    ['PIPELINE_WRITE', false],
+    ['PIPELINE_ITEM_WRITE', false],
+    ['SITE_VENDOR_WRITE', false],
+    ['ITEM_WRITE', false],
+    ['USER_MANAGE', false],
+    ['DASHBOARD_READ', false],
+    ['AUDIT_LOG_READ', false],
+  ])('%s → %s', (permission, allowed) => {
+    expect(can(worker, /** @type {any} */ (permission))).toBe(allowed);
+  });
+
+  it('only Workers fill in task reports', () => {
+    for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER]) {
+      expect(can({ roles: [role] }, 'TASK_REPORT_WRITE')).toBe(false);
+    }
   });
 });

@@ -23,15 +23,16 @@ const choose = (site, value) => site.setActiveSiteId(value === ALL ? null : valu
  * Site context in the sidebar (and the mobile drawer): a dropdown for a user with several sites,
  * a read-only label otherwise ("Semua site" for Super Admin, the site name for a one-site Admin).
  */
-export function SidebarSiteSwitcher() {
+/** @param {{ label: string }} props `label`: read-only context shown when there is no choice. */
+export function SidebarSiteSwitcher({ label }) {
   const site = useSiteContext();
   const boxClass =
     'mx-1 flex min-h-11 items-center justify-between gap-2 rounded-lg border border-brand-dark-foreground/15 bg-brand-dark-active/60 px-3 py-2.5 text-left text-sm';
 
   if (!site.canSwitch) {
     return (
-      <p className={boxClass} aria-label={`Konteks data: ${site.label}`}>
-        {site.label}
+      <p className={boxClass} aria-label={`Konteks data: ${label}`}>
+        {label}
       </p>
     );
   }
@@ -71,12 +72,13 @@ export function HeaderSiteSwitcher() {
  * Subtitle of the mobile top bar: the site name; with several sites, tapping it opens a sheet
  * to choose the site.
  */
-export function MobileSiteSubtitle() {
+/** @param {{ label: string }} props `label`: read-only subtitle shown when there is no choice. */
+export function MobileSiteSubtitle({ label }) {
   const site = useSiteContext();
   const [open, setOpen] = useState(false);
 
   if (!site.canSwitch) {
-    return <p className="truncate text-xs text-muted-foreground">{site.shortLabel}</p>;
+    return <p className="truncate text-xs text-muted-foreground">{label}</p>;
   }
   const options = [{ value: ALL, label: ALL_MY_SITES }, ...site.sites];
   const current = site.activeSiteId ?? ALL;

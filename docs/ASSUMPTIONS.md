@@ -281,6 +281,38 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
 site_ids: [], vendor_ids: [<vendor sendiri>] }`. Ubah role/scope (`PUT /users/{id}/roles`) dan
   "Cabut semua sesi" disembunyikan (BRD: hanya Super Admin).
 
+## Role Worker
+
+Postman tidak memuat endpoint Worker. Endpoint bertanda ⚠ mengikuti kontrak target PRD 1.2 dan
+**belum ada di backend**; masing-masing terisolasi di satu fungsi agar mudah diganti.
+
+- **W1.** `GET /me/tasks?date=YYYY-MM-DD`: satu baris = satu task (pipeline item) dalam satu
+  shift, dengan laporan tanggal itu (bila ada). Nama field dibaca dari beberapa kemungkinan
+  (`features/my-tasks/api/schemas.js`). Task tanpa laporan dianggap `PENDING`. Parameter `shift`
+  tidak dikirim. Segmen `me` ditambahkan ke allowlist proxy BFF.
+- **W2.** Jam shift ditampilkan hanya bila response menyertakan `start_time`/`end_time`; jika
+  tidak, hanya nama shift. Jam mulai/selesai laporan dibaca dari `opened_at`/`open_date` dan
+  `closed_at`/`closed_date`; klien tidak mengirimnya.
+- **W3. ⚠ Unggah foto:** `POST /pipeline-reports/{id}/evidence` multipart `file` + `type=before|after`
+  → `uploadEvidence()` di `features/task-report/api/report-api.js`. 404/405 → "Unggah foto belum
+  didukung server. Hubungi admin." (BRD hanya menerima object key.)
+- **W4. ⚠ Kirim laporan:** `POST /pipeline-reports/{id}/submit` → `submitReport()` di file yang
+  sama. 422 → "Foto sebelum dan sesudah wajib ada." (BRD: lewat `PATCH` status.)
+- **W5. ⚠ Riwayat status:** `GET /pipeline-reports/{id}/history` → `fetchReportHistory()` di file
+  yang sama. 404/405 → bagian "Riwayat status" disembunyikan.
+- **W6. Lapor inventory:** `POST /inventory-reports` dikirim sebagai **JSON** sesuai BRD
+  (`vendor_id`, `report_type`, `description`, `inventory_id` opsional) lewat
+  `createInventoryReport()` di `features/my-inventory-reports/api/inventory-report-api.js`.
+  Kontrak multipart PRD 1.2 ditolak backend (400), dan backend belum punya unggah evidence, jadi
+  **foto evidence belum bisa dilampirkan** (form menampilkan catatannya).
+- **W7.** Catatan disimpan dengan `PATCH /pipeline-reports/{id}` `{ notes, note_category }`;
+  "Tidak ada" dikirim `null`. 403 pada laporan → "Laporan sudah disetujui dan tidak bisa diubah."
+- **W8.** `GET /pipeline-reports`, `GET /inventory-reports`, dan `GET /pipeline-reports/{id}`
+  sudah dibatasi backend ke milik Worker sendiri (laporan Worker lain → 404). Riwayat laporan
+  mengirim `from`/`to`/`status`/`revision_status`; "Revisi diminta" = `revision_status=REQUESTED`.
+- **W9.** Pilihan inventory: `GET /inventories?vendor_id=&status=ACTIVE` (juga difilter `ACTIVE`
+  di klien bila backend mengabaikan `status`).
+
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
 - **G1. Catatan safety:** `GET /pipeline-reports` belum punya filter kategori temuan
