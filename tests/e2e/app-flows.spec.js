@@ -6,6 +6,17 @@ import { mockApi } from './support/mock-api.js';
  * shows and exactly what it sends. No request reaches the Go backend.
  */
 
+test('Super Admin keeps "Site & vendor" with the Site, Vendor and Master task tabs', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/master');
+  await expect(page.getByRole('heading', { name: 'Site & vendor', level: 1 })).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveText(['Site', 'Vendor', 'Master task']);
+  await expect(page.getByRole('button', { name: 'Tambah site' })).toBeVisible();
+});
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
 });
@@ -19,22 +30,29 @@ test('Beranda shows total / in progress / completed and the progress per vendor'
   await mockApi(page);
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: 'Rekap harian' })).toBeVisible();
-  // Exactly three count panels: total, in progress, completed.
+  // Count panels, left to right: total, in progress, pending, completed.
   for (const [label, value] of [
     ['Total task', '48'],
     ['Dikerjakan', '4'],
+    ['Pending', '6'],
     ['Selesai', '29'],
   ]) {
     await expect(page.getByText(label, { exact: true }).locator('..')).toHaveText(
       `${label}${value}`,
     );
   }
+  await expect(
+    page.locator('main').getByText(/^(Total task|Dikerjakan|Pending|Selesai)$/),
+  ).toHaveText(['Total task', 'Dikerjakan', 'Pending', 'Selesai']);
   await expect(page.getByText('Menunggu review', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Revisi diminta', { exact: true })).toHaveCount(0);
   await expect(
     page.getByText('20 task · 14 selesai · 3 menunggu review · 1 revisi · 2 belum dikerjakan'),
   ).toBeVisible();
   await expect(page.getByText('Selang APAR retak.')).toBeVisible();
+  // Super Admin keeps the site filter (an Admin does not have it).
+  await expect(page.getByRole('combobox', { name: 'Filter site' })).toBeVisible();
+  await expect(page.getByLabel('Konteks data: Semua site')).toBeVisible();
 });
 
 test('create a Worker with a vendor, then reset the password (shown once)', async ({ page }) => {

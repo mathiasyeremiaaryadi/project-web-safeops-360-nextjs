@@ -51,11 +51,12 @@ export function toStatusCounts(value) {
  * @typedef {object} DashboardKpis
  * @property {number} total Task reports of the day (all statuses).
  * @property {number} inProgress `IN_PROGRESS`.
+ * @property {number} pending `PENDING` (not started yet).
  * @property {number} completed `COMPLETED`.
  */
 
 /**
- * KPI cards from `/dashboard/report`: total, in progress, completed.
+ * KPI cards from `/dashboard/report`: total, in progress, pending, completed.
  * @param {unknown} raw
  * @returns {DashboardKpis}
  */
@@ -69,6 +70,7 @@ export function toDashboardKpis(raw) {
   return {
     total: toNumber(firstValue(TOTAL, body.total_tasks, body.total)) ?? sum,
     inProgress: tasks.IN_PROGRESS ?? 0,
+    pending: tasks.PENDING ?? 0,
     completed: tasks.COMPLETED ?? 0,
   };
 }

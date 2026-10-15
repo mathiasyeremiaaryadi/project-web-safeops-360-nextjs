@@ -27,14 +27,14 @@ function KpiCard({ label, value, valueClassName }) {
 }
 
 /**
- * Total task · Dikerjakan · Selesai, in three columns.
+ * Total task · Dikerjakan · Pending · Selesai: 2×2 below 768px, four columns from 768px.
  * @param {{ query: import('@tanstack/react-query').UseQueryResult<import('@/features/dashboard/lib/summary').DashboardKpis> }} props
  */
 export function KpiCards({ query }) {
   if (query.isPending) {
     return (
-      <div className="grid grid-cols-3 gap-3">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-24 rounded-2xl sm:h-28" />
         ))}
       </div>
@@ -44,9 +44,10 @@ export function KpiCards({ query }) {
 
   const kpis = query.data;
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <KpiCard label="Total task" value={kpis.total} />
       <KpiCard label="Dikerjakan" value={kpis.inProgress} valueClassName="text-info" />
+      <KpiCard label="Pending" value={kpis.pending} valueClassName="text-warning" />
       <KpiCard label="Selesai" value={kpis.completed} valueClassName="text-success" />
     </div>
   );

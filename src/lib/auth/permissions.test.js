@@ -32,6 +32,35 @@ describe('permissions (BRD section 7)', () => {
     const { allowed, denied } = describeAccess([ROLES.WORKER]);
     expect(allowed).toContain('Membuat laporan inventory');
     expect(denied).toContain('Melihat audit log');
-    expect(allowed.length + denied.length).toBe(15);
+    expect(allowed.length + denied.length).toBe(16);
+  });
+});
+
+describe('permissions of Admin (Admin Site)', () => {
+  const admin = { roles: [ROLES.ADMIN] };
+
+  it.each([
+    ['DASHBOARD_READ', true],
+    ['PIPELINE_REPORT_READ', true],
+    ['PIPELINE_REPORT_REVIEW', true],
+    ['INVENTORY_REPORT_REVIEW', false],
+    ['SITE_VENDOR_READ', true],
+    ['SITE_VENDOR_WRITE', false],
+    ['ITEM_WRITE', false],
+    ['PIPELINE_WRITE', true],
+    ['PIPELINE_ITEM_WRITE', true],
+    ['INVENTORY_POLICY_READ', true],
+    ['INVENTORY_POLICY_WRITE', true],
+    ['USER_MANAGE', false],
+    ['USER_ACCESS_ADMIN', false],
+    ['AUDIT_LOG_READ', false],
+    ['ALL_SITES_READ', false],
+  ])('%s → %s', (permission, allowed) => {
+    expect(can(admin, /** @type {any} */ (permission))).toBe(allowed);
+  });
+
+  it('keeps inventory report review for Super Admin and Admin Worker', () => {
+    expect(can({ roles: [ROLES.SUPER_ADMIN] }, 'INVENTORY_REPORT_REVIEW')).toBe(true);
+    expect(can({ roles: [ROLES.ADMIN_WORKER] }, 'INVENTORY_REPORT_REVIEW')).toBe(true);
   });
 });

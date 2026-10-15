@@ -8,6 +8,7 @@ import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
@@ -38,11 +39,18 @@ function SiteChips({ ids, siteName }) {
 
 /**
  * "Vendor" tab of /master.
- * @param {{ createOpen: boolean, onCreateClose: () => void }} props
+ * @param {{ canEdit: boolean, createOpen: boolean, onCreateClose: () => void }} props
+ *   `canEdit`: show add/edit/deactivate (an Admin only reads).
  */
-export function VendorsList({ createOpen, onCreateClose }) {
+export function VendorsList({ canEdit, createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
-  const query = useVendors({ page: params.page, q: params.q, limit });
+  const site = useSiteContext();
+  const query = useVendors({
+    page: params.page,
+    q: params.q,
+    site_id: site.siteIdFor(),
+    limit,
+  });
   const sites = useOptionLabels('sites');
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
@@ -56,14 +64,15 @@ export function VendorsList({ createOpen, onCreateClose }) {
   const [editing, setEditing] = useState(/** @type {Vendor | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Vendor | null} */ (null));
 
-  const actions = (/** @type {Vendor} */ vendor) => (
-    <MasterRowActions
-      status={vendor.status}
-      name={vendor.name}
-      onEdit={() => setEditing(vendor)}
-      onToggleStatus={() => setToggling(vendor)}
-    />
-  );
+  const actions = (/** @type {Vendor} */ vendor) =>
+    canEdit ? (
+      <MasterRowActions
+        status={vendor.status}
+        name={vendor.name}
+        onEdit={() => setEditing(vendor)}
+        onToggleStatus={() => setToggling(vendor)}
+      />
+    ) : null;
   const badge = (/** @type {Vendor} */ vendor) => (
     <StatusBadge status={MASTER_STATUS_BADGES[vendor.status]} />
   );
@@ -100,7 +109,7 @@ export function VendorsList({ createOpen, onCreateClose }) {
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => actions(row.original),
     },
-  ];
+  ].filter((column) => canEdit || column.id !== 'actions');
 
   return (
     <>

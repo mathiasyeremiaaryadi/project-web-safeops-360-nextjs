@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ComboboxField } from '@/components/shared/combobox-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { useSavePipeline } from '@/features/pipelines/api/mutations';
 import { pipelineFormSchema, toPipelinePayload } from '@/features/pipelines/api/schemas';
@@ -21,6 +22,7 @@ import { pipelineFormSchema, toPipelinePayload } from '@/features/pipelines/api/
  * @param {() => void} props.onClose
  */
 export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose }) {
+  const site = useSiteContext();
   const savePipeline = useSavePipeline();
   const form = useForm({
     resolver: zodResolver(pipelineFormSchema),
@@ -58,7 +60,9 @@ export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose })
       title={pipeline ? 'Edit pipeline' : 'Buat pipeline'}
       onSubmit={onSubmit}
       pending={savePipeline.isPending}
-      error={savePipeline.isError ? getErrorMessage(savePipeline.error) : null}
+      error={
+        savePipeline.isError ? getErrorMessage(savePipeline.error, site.saveErrorOverrides) : null
+      }
       submitLabel="Simpan pipeline"
     >
       <ComboboxField
@@ -67,7 +71,7 @@ export function PipelineFormDialog({ open, pipeline, vendorName = '', onClose })
         id="pipeline-vendor"
         label="Vendor"
         lookup="vendors"
-        params={{ status: 'ACTIVE' }}
+        params={site.activeVendorParams}
         placeholder="Pilih vendor"
         disabled={Boolean(pipeline)}
       />

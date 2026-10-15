@@ -9,6 +9,7 @@ import { ComboboxField } from '@/components/shared/combobox-field';
 import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { useSaveInventory } from '@/features/inventories/api/mutations';
 import { inventoryFormSchema, toInventoryFields } from '@/features/inventories/api/schemas';
@@ -23,6 +24,7 @@ import { INVENTORY_CONDITION_BADGES } from '@/features/inventories/lib/constants
  * @param {() => void} props.onClose
  */
 export function InventoryFormDialog({ open, inventory, vendorName = '', onClose }) {
+  const site = useSiteContext();
   const save = useSaveInventory();
   const form = useForm({
     resolver: zodResolver(inventoryFormSchema),
@@ -63,7 +65,7 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
       title={inventory ? 'Edit inventory' : 'Tambah inventory'}
       onSubmit={onSubmit}
       pending={save.isPending}
-      error={save.isError ? getErrorMessage(save.error) : null}
+      error={save.isError ? getErrorMessage(save.error, site.saveErrorOverrides) : null}
       submitLabel="Simpan inventory"
     >
       <ComboboxField
@@ -72,7 +74,7 @@ export function InventoryFormDialog({ open, inventory, vendorName = '', onClose 
         id="inventory-vendor"
         label="Vendor"
         lookup="vendors"
-        params={{ status: 'ACTIVE' }}
+        params={site.activeVendorParams}
         placeholder="Pilih vendor"
       />
       <FormField id="inventory-item" label="Nama item" error={errors.item?.message}>

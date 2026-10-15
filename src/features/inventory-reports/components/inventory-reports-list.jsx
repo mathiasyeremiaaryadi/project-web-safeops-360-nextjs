@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
 import { useInventoryReports } from '@/features/inventory-reports/api/queries';
@@ -42,7 +43,9 @@ const statusBadge = (/** @type {InventoryReport} */ r) => (
 /** `/reports/inventory` — status tabs, type/site/vendor filters, list + 2XL panel. */
 export function InventoryReportsList() {
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
-  const { page, status, report_type, site_id, vendor_id } = params;
+  const site = useSiteContext();
+  const { page, status, report_type, vendor_id } = params;
+  const site_id = site.siteIdFor(params.site_id);
   const query = useInventoryReports({ page, limit, status, report_type, site_id, vendor_id });
   const users = useOptionLabels('users');
   const vendors = useOptionLabels('vendors');
@@ -115,7 +118,11 @@ export function InventoryReportsList() {
         value={params.status}
         onChange={(value) => setFilters({ status: value })}
       />
-      <ReportFilters params={params} onChange={setFilters}>
+      <ReportFilters
+        params={{ ...params, site_id: site_id ?? '' }}
+        onChange={setFilters}
+        showSite={!site.scoped}
+      >
         <NativeSelect
           aria-label="Filter jenis laporan"
           className="w-full"

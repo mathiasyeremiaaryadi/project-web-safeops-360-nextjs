@@ -2,17 +2,18 @@
 
 import { AppLogo } from '@/components/shared/app-logo';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
+import { SidebarSiteSwitcher } from '@/components/layout/site-switcher';
 import { UserAvatar } from '@/components/layout/user-avatar';
 import { useAppNavigation } from '@/components/layout/use-app-navigation';
 import { cn } from '@/lib/utils';
 
 /**
- * Sidebar content: logo, read-only site context, menu and user card.
+ * Sidebar content: logo, site context (switcher for a user with several sites), menu and user card.
  * Used by the desktop sidebar and the mobile drawer.
  * @param {{ onNavigate?: () => void }} props
  */
 export function SidebarContent({ onNavigate }) {
-  const { items, activeItem, user, roleLabel, contextLabel } = useAppNavigation();
+  const { items, activeItem, user, roleLabel } = useAppNavigation();
 
   return (
     <div className="flex h-full flex-col gap-5 px-3 py-5 text-brand-dark-foreground">
@@ -24,12 +25,7 @@ export function SidebarContent({ onNavigate }) {
         </div>
       </div>
 
-      <p
-        className="mx-1 rounded-lg border border-brand-dark-foreground/15 bg-brand-dark-active/60 px-3 py-2.5 text-sm"
-        aria-label={`Konteks data: ${contextLabel}`}
-      >
-        {contextLabel}
-      </p>
+      <SidebarSiteSwitcher />
 
       <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
         <SidebarNav items={items} activeItem={activeItem} onNavigate={onNavigate} />

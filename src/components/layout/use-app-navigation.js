@@ -2,8 +2,9 @@
 
 import { usePathname } from 'next/navigation';
 import { findNavItem, getBottomNavItems, getNavItems } from '@/config/navigation';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { getPrimaryRole } from '@/lib/auth/permissions';
-import { ROLE_LABELS, ROLES } from '@/lib/constants';
+import { ROLE_LABELS } from '@/lib/constants';
 import { useSession } from '@/features/auth/hooks/use-session';
 
 /**
@@ -16,6 +17,7 @@ export function useAppNavigation() {
   const items = getNavItems(user?.roles);
   const activeItem = findNavItem(pathname, items);
   const primaryRole = getPrimaryRole(user?.roles);
+  const contextLabel = useSiteContext().label;
 
   return {
     pathname,
@@ -24,8 +26,8 @@ export function useAppNavigation() {
     bottomItems: getBottomNavItems(user?.roles),
     activeItem,
     roleLabel: primaryRole ? ROLE_LABELS[primaryRole] : '',
-    /** Super Admin works across every site; other roles are scoped. */
-    contextLabel: primaryRole === ROLES.SUPER_ADMIN ? 'Semua site' : 'Sesuai scope akun',
+    /** "Semua site" (Super Admin) or the names of the user's sites. */
+    contextLabel,
     /** Form and detail pages (sub-routes) hide the bottom nav and use a sticky action bar. */
     isSubPage: Boolean(activeItem) && pathname !== activeItem?.href,
   };

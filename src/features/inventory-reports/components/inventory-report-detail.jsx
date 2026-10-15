@@ -60,8 +60,8 @@ export function InventoryReportDetail({ id, variant, onReviewed }) {
   const report = query.data;
   const type = INVENTORY_REPORT_TYPE_LABELS[report.report_type] ?? report.report_type;
   const title = `${type || 'Laporan'} · ${report.inventory_name ?? vendors.labelOf(report.vendor_id)}`;
-  const canAct =
-    can(user, 'INVENTORY_REPORT_REVIEW') && (NEXT_ACTIONS[report.status]?.length ?? 0) > 0;
+  const hasNextStep = (NEXT_ACTIONS[report.status]?.length ?? 0) > 0;
+  const canAct = can(user, 'INVENTORY_REPORT_REVIEW') && hasNextStep;
   // Page: stay on the detail to continue the flow (Baru → Diperiksa → Disetujui → Selesai).
   const review = canAct ? <InventoryReportReview report={report} onReviewed={onReviewed} /> : null;
 
@@ -121,6 +121,14 @@ export function InventoryReportDetail({ id, variant, onReviewed }) {
                 inventoryId={report.inventory_id}
                 fallbackName={report.inventory_name}
               />
+            </section>
+          ) : null}
+          {hasNextStep && !canAct ? (
+            <section className="flex flex-col gap-2 border-t pt-4">
+              <h3 className="text-sm font-semibold text-foreground">Tindak lanjut</h3>
+              <p className="text-sm text-muted-foreground">
+                Status laporan diperbarui oleh Admin Worker vendor.
+              </p>
             </section>
           ) : null}
           {report.review_reason ? (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { MobileDrawer } from '@/components/layout/mobile-drawer';
 import { usePageTitle } from '@/components/layout/page-title';
+import { HeaderSiteSwitcher, MobileSiteSubtitle } from '@/components/layout/site-switcher';
 import { useAppNavigation } from '@/components/layout/use-app-navigation';
 
 /**
@@ -34,7 +35,7 @@ export function AppHeader() {
         )}
         <div className="min-w-0 leading-tight">
           <p className="truncate text-lg font-bold text-foreground">{title}</p>
-          <p className="truncate text-xs text-muted-foreground">{contextLabel}</p>
+          <MobileSiteSubtitle />
         </div>
       </div>
 
@@ -63,6 +64,7 @@ export function AppHeader() {
             {isSubPage ? title : sectionLabel}
           </li>
         </ol>
+        <HeaderSiteSwitcher />
       </nav>
     </header>
   );

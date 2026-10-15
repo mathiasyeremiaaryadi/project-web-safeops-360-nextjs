@@ -18,9 +18,11 @@ import { SiteFormDialog } from '@/features/sites/components/site-form-dialog';
 
 /**
  * "Site" tab of /master.
- * @param {{ createOpen: boolean, onCreateClose: () => void }} props The page's "Tambah site" button.
+ * @param {{ canEdit: boolean, createOpen: boolean, onCreateClose: () => void }} props
+ *   `canEdit`: show add/edit/deactivate (an Admin only reads); `createOpen`: the page's
+ *   "Tambah site" button was clicked.
  */
-export function SitesList({ createOpen, onCreateClose }) {
+export function SitesList({ canEdit, createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
   const query = useSites({ page: params.page, q: params.q, limit });
   // Server `?q=` + the same search here, in case the backend ignores `q`.
@@ -32,14 +34,15 @@ export function SitesList({ createOpen, onCreateClose }) {
   const [toggling, setToggling] = useState(/** @type {Site | null} */ (null));
 
   /** @param {Site} site */
-  const actions = (site) => (
-    <MasterRowActions
-      status={site.status}
-      name={site.name}
-      onEdit={() => setEditing(site)}
-      onToggleStatus={() => setToggling(site)}
-    />
-  );
+  const actions = (site) =>
+    canEdit ? (
+      <MasterRowActions
+        status={site.status}
+        name={site.name}
+        onEdit={() => setEditing(site)}
+        onToggleStatus={() => setToggling(site)}
+      />
+    ) : null;
   const badge = (/** @type {Site} */ site) => (
     <StatusBadge status={MASTER_STATUS_BADGES[site.status]} />
   );
@@ -76,7 +79,7 @@ export function SitesList({ createOpen, onCreateClose }) {
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => actions(row.original),
     },
-  ];
+  ].filter((column) => canEdit || column.id !== 'actions');
 
   return (
     <>

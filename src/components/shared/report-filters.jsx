@@ -10,9 +10,10 @@ import { LookupFilter } from '@/components/shared/lookup-filter';
  * @param {{ site_id: string, vendor_id: string, from?: string, to?: string }} props.params
  * @param {(updates: Record<string, string>) => void} props.onChange
  * @param {boolean} [props.dateRange]
+ * @param {boolean} [props.showSite] Hidden for users whose data is limited to their own sites.
  * @param {import('react').ReactNode} [props.children] Extra filter controls, shown first.
  */
-export function ReportFilters({ params, onChange, dateRange = false, children }) {
+export function ReportFilters({ params, onChange, dateRange = false, showSite = true, children }) {
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {children}
@@ -34,13 +35,15 @@ export function ReportFilters({ params, onChange, dateRange = false, children })
           />
         </>
       ) : null}
-      <LookupFilter
-        lookup="sites"
-        value={params.site_id}
-        onChange={(site_id) => onChange({ site_id })}
-        placeholder="Semua site"
-        ariaLabel="Filter site"
-      />
+      {showSite ? (
+        <LookupFilter
+          lookup="sites"
+          value={params.site_id}
+          onChange={(site_id) => onChange({ site_id })}
+          placeholder="Semua site"
+          ariaLabel="Filter site"
+        />
+      ) : null}
       <LookupFilter
         lookup="vendors"
         params={params.site_id ? { site_id: params.site_id } : undefined}

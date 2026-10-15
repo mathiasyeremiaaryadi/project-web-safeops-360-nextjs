@@ -32,11 +32,12 @@ const { SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER } = ROLES;
  * @property {string} [shortLabel] Label in the mobile bottom nav.
  * @property {string[]} [bottomNavRoles] Roles that get this item in the mobile bottom nav.
  * @property {string} [disabledReason] Item is shown but not usable (e.g. backend gap).
+ * @property {Record<string, string>} [labelByRole] Label for a role, when it differs.
  */
 
 /** @type {readonly NavItem[]} */
 export const NAV_ITEMS = Object.freeze([
-  // ---- Super Admin (pages built in this phase) ----
+  // ---- Super Admin and Admin ----
   {
     key: 'dashboard',
     label: 'Beranda',
@@ -67,11 +68,23 @@ export const NAV_ITEMS = Object.freeze([
     disabledReason: 'Menunggu dukungan API',
   },
   {
+    // Admin: at the top, like the mockup (the Super Admin item is under "Data master").
+    key: 'reports-inventory-site',
+    label: 'Laporan inventory',
+    shortLabel: 'Lap. inv.',
+    href: '/reports/inventory',
+    icon: PackageX,
+    roles: [ADMIN],
+    bottomNavRoles: [ADMIN],
+  },
+  {
     key: 'master',
     label: 'Site & vendor',
+    // An Admin cannot see other sites: the page only has the Vendor and Master task tabs.
+    labelByRole: { [ADMIN]: 'Vendor' },
     href: '/master',
     icon: Database,
-    roles: [SUPER_ADMIN],
+    roles: [SUPER_ADMIN, ADMIN],
     section: 'Data master',
   },
   {
@@ -104,7 +117,7 @@ export const NAV_ITEMS = Object.freeze([
     shortLabel: 'Lap. inv.',
     href: '/reports/inventory',
     icon: PackageX,
-    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER],
+    roles: [SUPER_ADMIN, ADMIN_WORKER, WORKER],
     section: 'Data master',
     bottomNavRoles: [ADMIN_WORKER, WORKER],
   },
@@ -158,6 +171,11 @@ export const NAV_ITEMS = Object.freeze([
   },
 ]);
 
+/** Section titles that read differently for a role (an Admin manages "their" sites). */
+const SECTION_LABELS_BY_ROLE = Object.freeze({
+  [ADMIN]: { 'Data master': 'Data site' },
+});
+
 /**
  * Menu items for a user, in display order (based on the user's primary role).
  * @param {readonly string[] | undefined} roles
@@ -165,7 +183,13 @@ export const NAV_ITEMS = Object.freeze([
  */
 export function getNavItems(roles) {
   const role = getPrimaryRole(roles);
-  return role ? NAV_ITEMS.filter((item) => item.roles.includes(role)) : [];
+  if (!role) return [];
+  const sectionLabels = SECTION_LABELS_BY_ROLE[role] ?? {};
+  return NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => ({
+    ...item,
+    label: item.labelByRole?.[role] ?? item.label,
+    section: (item.section && sectionLabels[item.section]) ?? item.section,
+  }));
 }
 
 /**

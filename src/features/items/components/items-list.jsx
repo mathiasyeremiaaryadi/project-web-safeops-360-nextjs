@@ -8,6 +8,7 @@ import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeItemStatus } from '@/features/items/api/mutations';
@@ -18,11 +19,13 @@ import { ItemFormDialog } from '@/features/items/components/item-form-dialog';
 
 /**
  * "Master task" tab of /master.
- * @param {{ createOpen: boolean, onCreateClose: () => void }} props
+ * @param {{ canEdit: boolean, createOpen: boolean, onCreateClose: () => void }} props
+ *   `canEdit`: show add/edit/deactivate (an Admin only reads).
  */
-export function ItemsList({ createOpen, onCreateClose }) {
+export function ItemsList({ canEdit, createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
-  const query = useItems({ page: params.page, q: params.q, limit });
+  const site = useSiteContext();
+  const query = useItems({ page: params.page, q: params.q, site_id: site.siteIdFor(), limit });
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
     ? searchRows(query.data.data, params.q, (item) => [item.name, item.description])
@@ -31,14 +34,15 @@ export function ItemsList({ createOpen, onCreateClose }) {
   const [editing, setEditing] = useState(/** @type {Item | null} */ (null));
   const [toggling, setToggling] = useState(/** @type {Item | null} */ (null));
 
-  const actions = (/** @type {Item} */ item) => (
-    <MasterRowActions
-      status={item.status}
-      name={item.name}
-      onEdit={() => setEditing(item)}
-      onToggleStatus={() => setToggling(item)}
-    />
-  );
+  const actions = (/** @type {Item} */ item) =>
+    canEdit ? (
+      <MasterRowActions
+        status={item.status}
+        name={item.name}
+        onEdit={() => setEditing(item)}
+        onToggleStatus={() => setToggling(item)}
+      />
+    ) : null;
   const badge = (/** @type {Item} */ item) => (
     <StatusBadge status={MASTER_STATUS_BADGES[item.status]} />
   );
@@ -69,7 +73,7 @@ export function ItemsList({ createOpen, onCreateClose }) {
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => actions(row.original),
     },
-  ];
+  ].filter((column) => canEdit || column.id !== 'actions');
 
   return (
     <>

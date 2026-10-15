@@ -82,8 +82,11 @@ export async function mockApi(page, { user = SUPER_ADMIN } = {}) {
       return json(applyWrite(data, { method, resource, id, sub, body }));
     }
 
-    if (resource === 'dashboard') return json(data.dashboard);
-    if (resource === 'reports' && id === 'daily') return json(data.daily);
+    const siteId = url.searchParams.get('site_id') ?? '';
+    if (resource === 'dashboard') return json(data.dashboardBySite[siteId] ?? data.dashboard);
+    if (resource === 'reports' && id === 'daily') {
+      return json(data.dailyBySite[siteId] ?? data.daily);
+    }
     if (resource === 'pipelines' && sub === 'items')
       return json({ pipeline_items: data.pipelineItems });
     if (resource === 'policies' && sub === 'file') {

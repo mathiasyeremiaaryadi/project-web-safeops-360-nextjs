@@ -2,16 +2,18 @@
 
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/layout/user-avatar';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useSession } from '@/features/auth';
 import { formatDateTime } from '@/lib/date';
-import { ROLE_LABELS, ROLES } from '@/lib/constants';
+import { can } from '@/lib/auth/permissions';
+import { ROLE_LABELS } from '@/lib/constants';
 
 /**
  * Scope summary of the signed-in user.
  * @param {{ roles: string[], scopes: { site_ids: string[], vendor_ids: string[] } }} user
  */
 function describeScope(user) {
-  if (user.roles.includes(ROLES.SUPER_ADMIN)) return 'Semua site dan vendor';
+  if (can(user, 'ALL_SITES_READ')) return 'Semua site dan vendor';
   const parts = [];
   if (user.scopes.site_ids.length) parts.push(`${user.scopes.site_ids.length} site`);
   if (user.scopes.vendor_ids.length) parts.push(`${user.scopes.vendor_ids.length} vendor`);
@@ -31,6 +33,7 @@ function Row({ label, children }) {
 /** Profile of the signed-in user (from `/auth/me`). */
 export function ProfileCard() {
   const { user } = useSession();
+  const site = useSiteContext();
   if (!user) return null;
   const name = user.full_name ?? user.username;
 
@@ -55,7 +58,19 @@ export function ProfileCard() {
             ))}
           </span>
         </Row>
-        <Row label="Scope">{describeScope(user)}</Row>
+        <Row label="Scope">
+          {site.scoped && site.sites.length > 0 ? (
+            <span className="flex flex-wrap gap-1.5" aria-label="Site yang dikelola">
+              {site.sites.map((option) => (
+                <Badge key={option.value} variant="info">
+                  {option.label}
+                </Badge>
+              ))}
+            </span>
+          ) : (
+            describeScope(user)
+          )}
+        </Row>
         <Row label="Email">{user.email || '—'}</Row>
         <Row label="Login terakhir">{formatDateTime(user.last_login_at)}</Row>
       </dl>

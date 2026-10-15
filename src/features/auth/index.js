@@ -5,3 +5,4 @@
 export { ChangePasswordForm } from '@/features/auth/components/change-password-form';
 export { useSession } from '@/features/auth/hooks/use-session';
 export { useLogout, useLogoutAll } from '@/features/auth/hooks/use-logout';
+export { useActiveSite } from '@/features/auth/hooks/use-active-site';

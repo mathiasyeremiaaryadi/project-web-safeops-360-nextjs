@@ -10,6 +10,7 @@ import { ReportFilters } from '@/components/shared/report-filters';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { neighbourId, useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
 import { useTaskReports } from '@/features/pipeline-reports/api/queries';
@@ -37,7 +38,9 @@ const hrefOf = (/** @type {string} */ id) => `/reports/tasks/${id}`;
 export function TaskReportsList() {
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const tab = TASK_REPORT_TABS.find((t) => t.value === params.tab) ?? TASK_REPORT_TABS[0];
-  const { page, from, to, site_id, vendor_id } = params;
+  const site = useSiteContext();
+  const { page, from, to, vendor_id } = params;
+  const site_id = site.siteIdFor(params.site_id);
   const query = useTaskReports({ page, limit, from, to, site_id, vendor_id, ...tab.params });
   const users = useOptionLabels('users');
   const panel = useDetailPanel(hrefOf);
@@ -111,7 +114,12 @@ export function TaskReportsList() {
         value={tab.value}
         onChange={(value) => setFilters({ tab: value })}
       />
-      <ReportFilters params={params} onChange={setFilters} dateRange />
+      <ReportFilters
+        params={{ ...params, site_id: site_id ?? '' }}
+        onChange={setFilters}
+        showSite={!site.scoped}
+        dateRange
+      />
 
       <ListWithPanel
         panelLabel="Pratinjau laporan"

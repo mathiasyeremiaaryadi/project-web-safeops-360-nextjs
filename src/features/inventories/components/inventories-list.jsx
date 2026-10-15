@@ -12,6 +12,7 @@ import { LookupFilter } from '@/components/shared/lookup-filter';
 import { QueryList } from '@/components/shared/query-list';
 import { StatusTabs } from '@/components/shared/status-tabs';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { formatDate } from '@/lib/date';
@@ -67,7 +68,8 @@ export function InventoriesList() {
   const router = useRouter();
   const { user } = useSession();
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
-  const query = useInventories({ ...params, limit });
+  const site = useSiteContext();
+  const query = useInventories({ ...params, site_id: site.siteIdFor(params.site_id), limit });
   const vendors = useOptionLabels('vendors');
   const [creating, setCreating] = useState(false);
   // Server `?q=` + the same search here, in case the backend ignores `q`.
@@ -111,15 +113,20 @@ export function InventoriesList() {
         searchPlaceholder="Cari item, jenis, atau vendor"
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
-        <LookupFilter
-          lookup="sites"
-          value={params.site_id}
-          onChange={(site_id) => setFilters({ site_id })}
-          placeholder="Semua site"
-          ariaLabel="Filter site"
-        />
+        {site.scoped ? null : (
+          <LookupFilter
+            lookup="sites"
+            value={params.site_id}
+            onChange={(site_id) => setFilters({ site_id })}
+            placeholder="Semua site"
+            ariaLabel="Filter site"
+          />
+        )}
         <LookupFilter
           lookup="vendors"
+          params={
+            site.siteIdFor(params.site_id) ? { site_id: site.siteIdFor(params.site_id) } : undefined
+          }
           value={params.vendor_id}
           onChange={(vendor_id) => setFilters({ vendor_id })}
           placeholder="Semua vendor"

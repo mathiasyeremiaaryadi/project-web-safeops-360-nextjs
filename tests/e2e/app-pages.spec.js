@@ -98,6 +98,7 @@ for (const width of [360, 1280]) {
       '/reports/inventory/ir1',
       '/inventories',
       '/audit-logs',
+      '/master?tab=vendors',
     ]) {
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toBeAttached();

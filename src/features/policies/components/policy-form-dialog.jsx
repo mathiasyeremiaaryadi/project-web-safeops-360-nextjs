@@ -8,6 +8,7 @@ import { ComboboxField } from '@/components/shared/combobox-field';
 import { FILE_RULES, FileField } from '@/components/shared/file-field';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { getErrorMessage } from '@/lib/api/errors';
 import { useSavePolicy } from '@/features/policies/api/mutations';
 import { policyFormSchema, toPolicyFields } from '@/features/policies/api/schemas';
@@ -22,6 +23,7 @@ import { policyFormSchema, toPolicyFields } from '@/features/policies/api/schema
  */
 export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
   const isNew = !policy;
+  const site = useSiteContext();
   const save = useSavePolicy();
   const form = useForm({
     resolver: zodResolver(policyFormSchema(isNew)),
@@ -59,7 +61,7 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
       title={isNew ? 'Upload SOP' : 'Edit SOP'}
       onSubmit={onSubmit}
       pending={save.isPending}
-      error={save.isError ? getErrorMessage(save.error) : null}
+      error={save.isError ? getErrorMessage(save.error, site.saveErrorOverrides) : null}
       submitLabel={isNew ? 'Upload SOP' : 'Simpan SOP'}
     >
       <ComboboxField
@@ -68,7 +70,7 @@ export function PolicyFormDialog({ open, policy, vendorName = '', onClose }) {
         id="policy-vendor"
         label="Vendor"
         lookup="vendors"
-        params={{ status: 'ACTIVE' }}
+        params={site.activeVendorParams}
         placeholder="Pilih vendor"
         disabled={!isNew}
       />

@@ -13,6 +13,7 @@ import { LookupFilter } from '@/components/shared/lookup-filter';
 import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { searchRows } from '@/lib/search';
@@ -36,7 +37,9 @@ export function PipelinesList() {
   const router = useRouter();
   const { user } = useSession();
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
-  const query = usePipelines({ ...params, limit });
+  const site = useSiteContext();
+  const siteId = site.siteIdFor();
+  const query = usePipelines({ ...params, site_id: siteId, limit });
   const vendors = useOptionLabels('vendors');
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
@@ -110,6 +113,7 @@ export function PipelinesList() {
       <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,320px)_200px]">
         <LookupFilter
           lookup="vendors"
+          params={siteId ? { site_id: siteId } : undefined}
           value={params.vendor_id}
           onChange={(vendor_id) => setFilters({ vendor_id })}
           placeholder="Semua vendor"

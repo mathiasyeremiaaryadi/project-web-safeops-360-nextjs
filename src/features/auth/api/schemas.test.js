@@ -111,4 +111,34 @@ describe('meResponseSchema (tolerant to the Go response)', () => {
   it('still rejects a body without username', () => {
     expect(meResponseSchema.safeParse({ id: 1 }).success).toBe(false);
   });
+
+  it.each([
+    ['site_ids only', { scopes: { site_ids: [7] } }, [{ id: '7' }]],
+    [
+      'site objects with names',
+      { sites: [{ id: 's3', name: 'PLTU Suralaya' }] },
+      [{ id: 's3', name: 'PLTU Suralaya' }],
+    ],
+    [
+      'scope rows',
+      {
+        scopes: [{ site_id: 's1', site_name: 'PLTU Paiton' }, { vendor_id: 'v9' }],
+      },
+      [{ id: 's1', name: 'PLTU Paiton' }],
+    ],
+  ])('reads the sites of an Admin from %s', (_shape, scope, sites) => {
+    const me = meResponseSchema.parse({ ...base, roles: ['ADMIN'], ...scope });
+    expect(me.sites).toEqual(sites);
+    expect(me.scopes.site_ids).toEqual(sites.map((site) => site.id));
+  });
+
+  it('reads vendor ids from scope rows', () => {
+    const me = meResponseSchema.parse({
+      ...base,
+      roles: ['WORKER'],
+      scopes: [{ vendor_id: 'v9' }],
+    });
+    expect(me.scopes.vendor_ids).toEqual(['v9']);
+    expect(me.sites).toEqual([]);
+  });
 });

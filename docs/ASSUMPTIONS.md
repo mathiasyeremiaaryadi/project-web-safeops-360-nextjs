@@ -236,7 +236,7 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
   `features/dashboard/lib/summary.js`. Jumlah per status boleh berupa map (`{ SUBMITTED: 3 }`)
   atau list (`[{ status, count }]`), di bawah `pipeline_reports` (revisi di `pipeline_revisions`).
 - **DB2.** Panel angka (permintaan user, 14 Okt 2026): **Total task** = `TOTAL`/`total` jika
-  ada, jika tidak jumlah semua status laporan task; **Dikerjakan** = `IN_PROGRESS`;
+  ada, jika tidak jumlah semua status laporan task; **Dikerjakan** = `IN_PROGRESS`; **Pending** = `PENDING` (belum dikerjakan);
   **Selesai** = `COMPLETED`.
 - **DB3.** `/reports/daily` berupa baris per vendor atau per vendor + pipeline (boleh bersarang di
   `pipelines`), dijumlahkan per vendor oleh `toVendorProgress`. Persentase = selesai ÷ task.
@@ -244,6 +244,25 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
 - **DB4.** "Laporan inventory terbaru" = 5 terbaru dari status Baru dan Diperiksa (dua request,
   karena filter `status` hanya satu nilai). Bagian "Catatan safety hari ini" di mockup tidak dibuat
   (G1). Filter vendor dikosongkan saat site diganti.
+
+## Role Admin (Admin Site)
+
+- **AD1.** Daftar site Admin diambil dari `GET /sites` (sudah difilter backend sesuai scope).
+  Admin dengan >1 site memilih site aktif (sidebar ≥1024, header 768–1023, top bar <768); daftar
+  dashboard, laporan task, laporan inventory, inventory, pipeline, SOP, vendor, dan master task
+  lalu mengirim
+  `site_id`. "Semua site saya" = tanpa `site_id`. Filter site di halaman disembunyikan untuk
+  Admin. **Perlu konfirmasi** bahwa `GET /pipelines` dan `GET /vendors` menerima `site_id`.
+- **AD4.** Nama site Admin diambil berurutan dari: `GET /sites` → site di `/auth/me` (bentuk
+  `scopes.site_ids`, `sites: [{ id, name }]`, atau `scopes: [{ site_id, site_name }]`) →
+  `GET /sites/{id}` per site yang belum punya nama (`hooks/use-my-sites.js`). Lookup menerima
+  `name`/`code` bernilai `null` agar satu baris tanpa nama tidak menggagalkan seluruh daftar.
+- **AD3.** Pilihan vendor di form pipeline, inventory, dan SOP memakai `GET /vendors?status=ACTIVE&site_id=…`
+  (site aktif). Jika simpan ditolak 403/404, Admin melihat "Vendor ini tidak termasuk site Anda.".
+- **AD2.** Hak Admin: baca + review laporan task; laporan inventory **baca saja** (keputusan
+  produk); vendor dan master task **baca saja** di halaman "Vendor" (menu `/master` tanpa tab
+  Site; master task mengirim `site_id` site aktif — **perlu konfirmasi** `GET /items` mendukungnya); CRUD pipeline, task pipeline, inventory, SOP;
+  tanpa manajemen user dan audit log (halaman 403).
 
 ## Gap backend (fitur tidak dibuat/dipalsukan)
 
@@ -257,3 +276,8 @@ image_url?, updated_at?`. List boleh `{ inventories: [] }` atau envelope lain; d
 - **G4.** Notifikasi dan pencarian global (⌘K) di mockup tidak dibuat karena belum ada API.
 - **TZ.** Site belum punya field zona waktu. Semua tanggal memakai `NEXT_PUBLIC_APP_TIMEZONE`
   (default `Asia/Jakarta`), dan `date` selalu dikirim eksplisit.
+- **G5. Admin mengelola vendor:** PRD mengizinkan, tetapi BRD hanya memberi Super Admin hak
+  membuat/mengubah vendor. UI tidak dibuat.
+- **G6. Akun Admin Worker oleh Admin:** BRD membatasi `/users` untuk Super Admin dan Admin
+  Worker, dan Postman tidak menunjukkan Admin bisa memanggilnya. Menu "Akun admin worker" tidak
+  ditampilkan untuk Admin.

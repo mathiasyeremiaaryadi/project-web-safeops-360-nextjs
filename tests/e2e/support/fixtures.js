@@ -12,11 +12,32 @@ export const SUPER_ADMIN = {
   must_change_password: false,
 };
 
+/** Admin (Admin Site) of one site: PLTU Paiton (`s1`). */
+export const ADMIN_PAITON = {
+  id: 'adm1',
+  username: 'budi.santoso',
+  full_name: 'Budi Santoso',
+  roles: ['ADMIN'],
+  scopes: { site_ids: ['s1'] },
+  must_change_password: false,
+};
+
+/** Admin of two sites: PLTU Paiton (`s1`) and PLTU Suralaya (`s3`). */
+export const ADMIN_TWO_SITES = {
+  id: 'adm2',
+  username: 'andi.wijaya',
+  full_name: 'Andi Wijaya',
+  roles: ['ADMIN'],
+  scopes: { site_ids: ['s1', 's3'] },
+  must_change_password: false,
+};
+
 export function createFixtures() {
   return {
     sites: [
       { id: 's1', code: 'PTN', name: 'PLTU Paiton', site_type: 'PLTU', is_active: true },
       { id: 's2', code: 'GRT', name: 'PLTGU Grati', site_type: 'PLTGU', is_active: true },
+      { id: 's3', code: 'SRL', name: 'PLTU Suralaya', site_type: 'PLTU', is_active: true },
     ],
     vendors: [
       { id: 'v1', code: 'BJ', name: 'PT Bersih Jaya', status: 'ACTIVE', site_ids: ['s1'] },
@@ -177,6 +198,15 @@ export function createFixtures() {
       data: {
         pipeline_reports: { PENDING: 6, IN_PROGRESS: 4, SUBMITTED: 9, COMPLETED: 29 },
         pipeline_revisions: { REQUESTED: 4 },
+      },
+    },
+    /** Dashboard of one site, when the request has `site_id` (else `dashboard`). */
+    dashboardBySite: {
+      s3: { data: { pipeline_reports: { IN_PROGRESS: 2, SUBMITTED: 3, COMPLETED: 7 } } },
+    },
+    dailyBySite: {
+      s3: {
+        data: [{ vendor_id: 'v2', vendor_name: 'PT Karya Aman', total_tasks: 12, completed: 7 }],
       },
     },
     daily: {

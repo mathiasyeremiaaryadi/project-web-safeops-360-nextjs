@@ -12,6 +12,7 @@ import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { can } from '@/lib/auth/permissions';
 import { formatDate } from '@/lib/date';
@@ -40,7 +41,9 @@ export function PoliciesList() {
   const { user } = useSession();
   const canEdit = can(user, 'INVENTORY_POLICY_WRITE');
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
-  const query = usePolicies({ ...params, limit });
+  const site = useSiteContext();
+  const siteId = site.siteIdFor();
+  const query = usePolicies({ ...params, site_id: siteId, limit });
   const vendors = useOptionLabels('vendors');
   const openFile = useOpenPolicyFile();
   const changeStatus = useChangePolicyStatus();
@@ -128,6 +131,7 @@ export function PoliciesList() {
       <LookupFilter
         className="mb-4 sm:max-w-80"
         lookup="vendors"
+        params={siteId ? { site_id: siteId } : undefined}
         value={params.vendor_id}
         onChange={(vendor_id) => setFilters({ vendor_id })}
         placeholder="Semua vendor"

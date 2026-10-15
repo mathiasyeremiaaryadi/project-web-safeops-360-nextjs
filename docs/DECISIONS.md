@@ -209,3 +209,22 @@ Rincian dan bukti uji di `docs/SECURITY.md`. Ringkas: body request dibatasi seca
 dicek setelah sesi; respons BFF diberi CSP `sandbox`; cookie sesi dengan nama lain ikut dihapus;
 `X-Forwarded-For` hanya entri terakhir; source map service worker dimatikan; env server ditandai
 `server-only`. Yang masih terbuka ada di infrastruktur: **HTTPS** dan reverse proxy.
+
+## D18. Role Admin memakai halaman yang sama
+
+- Tidak ada halaman/komponen duplikat untuk Admin. Perbedaannya hanya di menu
+  (`config/navigation.js`: item Admin, section "Data site", bottom nav), aksi (`can()` di
+  `lib/auth/permissions.js`), dan konteks site.
+- Permission baru `ALL_SITES_READ` (Super Admin) menggantikan pengecekan role langsung: dipakai
+  untuk label "Semua site" vs nama site, filter site di Beranda, deskripsi Site & vendor, dan
+  scope di profil.
+- `INVENTORY_REPORT_REVIEW` kini hanya Super Admin dan Admin Worker (keputusan produk). Admin
+  melihat teks "Status laporan diperbarui oleh Admin Worker vendor." di detail.
+- Site aktif (`activeSiteId`, `null` = "Semua site saya") disimpan di store sesi Zustand yang
+  sudah ada, hanya di memori (tidak di `localStorage`). Alasannya: link menu tidak perlu membawa
+  parameter, data tetap dibatasi backend, dan `clear()` saat logout/sesi habis/ganti password
+  otomatis meresetnya. Ganti akun juga mereset. `useSiteContext()` (`hooks/use-site-context.js`)
+  adalah satu-satunya tempat yang mengubahnya menjadi `site_id` untuk query (masuk ke query key).
+- Admin dengan satu site melihat nama site sebagai label tanpa dropdown.
+- Untuk Admin, `/master` bernama "Vendor" (`labelByRole` di `navigation.js`) dan hanya
+  menampilkan tab yang izinnya dimiliki (`read` per tab: tab Site butuh `ALL_SITES_READ`).

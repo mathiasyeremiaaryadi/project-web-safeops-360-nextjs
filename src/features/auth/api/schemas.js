@@ -43,6 +43,44 @@ const idList = z.preprocess(
 );
 
 /**
+ * The user's sites `{ id, name? }` from the shapes Go may send: `scopes.sites` / `sites` as
+ * objects or ids, `scopes.site_ids` / `site_ids`, or `scopes` as a list of `{ site_id, site_name }`
+ * rows. Names are kept when present, so the app can show them even if `GET /sites` fails.
+ * @param {any} user
+ * @returns {{ id: unknown, name?: unknown }[]}
+ */
+function toSiteScope(user) {
+  if (Array.isArray(user.scopes)) {
+    return user.scopes
+      .filter((row) => row?.site_id ?? row?.site?.id)
+      .map((row) => ({ id: row.site_id ?? row.site.id, name: row.site_name ?? row.site?.name }));
+  }
+  const list =
+    [user.scopes?.sites, user.sites, user.scopes?.site_ids, user.site_ids].find(Array.isArray) ??
+    [];
+  return list.map((entry) =>
+    entry && typeof entry === 'object'
+      ? { id: entry.id ?? entry.site_id, name: entry.name ?? entry.site_name }
+      : { id: entry },
+  );
+}
+
+/** Vendor ids from `scopes.vendor_ids`, `vendor_ids`, `vendors` or `scopes: [{ vendor_id }]`. */
+function toVendorIds(/** @type {any} */ user) {
+  if (Array.isArray(user.scopes)) {
+    return user.scopes.filter((row) => row?.vendor_id).map((row) => row.vendor_id);
+  }
+  return user.scopes?.vendor_ids ?? user.vendor_ids ?? user.vendors ?? [];
+}
+
+const siteScopeSchema = z.array(
+  z.object({
+    id: z.coerce.string(),
+    name: z.string().nullish().catch(null),
+  }),
+);
+
+/**
  * `GET /auth/me` → 200, as returned by the real Go backend. Tolerant on purpose: the exact shape
  * is not documented (docs/ASSUMPTIONS.md A4), so wrappers (`data`/`user`), role objects and
  * missing optional fields are normalised here instead of failing the login.
@@ -52,13 +90,12 @@ export const meResponseSchema = z.preprocess(
     const body = /** @type {any} */ (raw);
     const user = body?.data?.user ?? body?.data ?? body?.user ?? body;
     if (!user || typeof user !== 'object') return user;
+    const sites = toSiteScope(user).filter((site) => site.id !== undefined && site.id !== null);
     return {
       ...user,
       roles: toRoleCodes(user.roles ?? user.role),
-      scopes: {
-        site_ids: user.scopes?.site_ids ?? user.site_ids ?? user.sites ?? [],
-        vendor_ids: user.scopes?.vendor_ids ?? user.vendor_ids ?? user.vendors ?? [],
-      },
+      sites,
+      scopes: { site_ids: sites.map((site) => site.id), vendor_ids: toVendorIds(user) },
     };
   },
   z.object({
@@ -70,6 +107,8 @@ export const meResponseSchema = z.preprocess(
     roles: z.array(roleSchema),
     must_change_password: z.boolean().catch(false),
     scopes: z.object({ site_ids: idList, vendor_ids: idList }),
+    /** The user's sites, with their names when `/auth/me` sends them. */
+    sites: siteScopeSchema.catch([]),
   }),
 );
 

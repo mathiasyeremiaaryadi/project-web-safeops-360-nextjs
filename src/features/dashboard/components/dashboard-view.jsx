@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ReportFilters } from '@/components/shared/report-filters';
 import { useListParams } from '@/hooks/use-list-params';
 import { useOptionLabels } from '@/hooks/use-option-labels';
+import { useSiteContext } from '@/hooks/use-site-context';
 import { formatLongDate, todayInAppTimezone } from '@/lib/date';
 import { LatestInventoryReports } from '@/features/inventory-reports';
 import { useDashboardKpis, useVendorProgress } from '@/features/dashboard/api/queries';
@@ -20,26 +21,27 @@ const FILTERS = {
 
 /**
  * `/dashboard` — "Rekap harian". The date defaults to today in APP_TIMEZONE and is always sent
- * explicitly (the backend would otherwise use the UTC date).
+ * explicitly (the backend would otherwise use the UTC date). A user limited to their own sites
+ * (Admin) has no site filter: the site comes from the site switcher and is named in the subtitle.
  */
 export function DashboardView() {
   const { params, setFilters } = useListParams(FILTERS);
+  const site = useSiteContext();
   const sites = useOptionLabels('sites');
   const today = todayInAppTimezone();
-  const filters = {
-    date: params.date || today,
-    site_id: params.site_id,
-    vendor_id: params.vendor_id,
-  };
+  const siteId = site.siteIdFor(params.site_id);
+  const filters = { date: params.date || today, site_id: siteId, vendor_id: params.vendor_id };
   const kpis = useDashboardKpis(filters);
   const progress = useVendorProgress(filters);
-  const scope = params.site_id ? sites.labelOf(params.site_id) : 'Semua site';
+  const scope = !site.scoped && params.site_id ? sites.labelOf(params.site_id) : site.label;
 
   return (
     <>
       <PageHeader title="Rekap harian" description={`${scope} · ${formatLongDate(filters.date)}`} />
       <ReportFilters
-        params={params}
+        // The vendor filter only offers vendors of the chosen site.
+        params={{ ...params, site_id: siteId ?? '' }}
+        showSite={!site.scoped}
         // A new site may not be served by the selected vendor: clear it.
         onChange={(updates) =>
           setFilters('site_id' in updates ? { ...updates, vendor_id: '' } : updates)
@@ -60,7 +62,7 @@ export function DashboardView() {
           <div className="lg:col-span-2">
             <VendorProgress query={progress} />
           </div>
-          <LatestInventoryReports siteId={params.site_id} vendorId={params.vendor_id} />
+          <LatestInventoryReports siteId={siteId ?? ''} vendorId={params.vendor_id} />
         </div>
       </div>
     </>

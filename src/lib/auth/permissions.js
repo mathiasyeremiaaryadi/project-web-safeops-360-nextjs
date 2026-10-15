@@ -5,11 +5,13 @@ const ALL_ROLES = [SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER];
 const MANAGERS = [SUPER_ADMIN, ADMIN, ADMIN_WORKER];
 
 /**
- * Permission matrix from the backend BRD, section 7 ("Roles and access matrix").
+ * Permission matrix from the backend BRD, section 7 ("Roles and access matrix"), plus the product
+ * decisions of the Admin phase (Admin reviews task reports but only reads inventory reports).
  * Used only to show/hide UI actions — the backend enforces the real authorization.
  * `label` feeds the "Ringkasan akses" panel of the user form.
  */
 export const PERMISSIONS = Object.freeze({
+  ALL_SITES_READ: { label: 'Melihat data semua site', roles: [SUPER_ADMIN] },
   USER_MANAGE: { label: 'Mengelola akun user', roles: [SUPER_ADMIN, ADMIN_WORKER] },
   USER_ACCESS_ADMIN: {
     label: 'Mengatur role, scope, dan mencabut sesi user lain',
@@ -25,7 +27,10 @@ export const PERMISSIONS = Object.freeze({
   PIPELINE_REPORT_READ: { label: 'Melihat laporan task', roles: ALL_ROLES },
   PIPELINE_REPORT_REVIEW: { label: 'Mereview laporan task', roles: MANAGERS },
   INVENTORY_REPORT_CREATE: { label: 'Membuat laporan inventory', roles: ALL_ROLES },
-  INVENTORY_REPORT_REVIEW: { label: 'Mereview laporan inventory', roles: MANAGERS },
+  INVENTORY_REPORT_REVIEW: {
+    label: 'Mereview laporan inventory',
+    roles: [SUPER_ADMIN, ADMIN_WORKER],
+  },
   DASHBOARD_READ: { label: 'Melihat rekap harian', roles: ALL_ROLES },
   AUDIT_LOG_READ: { label: 'Melihat audit log', roles: [SUPER_ADMIN] },
 });

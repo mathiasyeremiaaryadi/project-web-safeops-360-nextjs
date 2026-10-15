@@ -1,21 +1,24 @@
 import { z } from 'zod';
 import { apiRequest } from '@/lib/api/client';
-import { listResponseSchema } from '@/lib/api/lists';
+import { entityResponseSchema, listResponseSchema } from '@/lib/api/lists';
 
 /*
  * Option lookups shared by several features (dropdowns and name labels). Only `id` and the
  * label fields are read, so each feature keeps its own full schemas.
  */
 
+// `null` labels are allowed: one row without a name must not fail the whole list.
 const lookupRowSchema = z.object({
   id: z.coerce.string(),
-  name: z.string().optional(),
-  code: z.string().optional(),
-  username: z.string().optional(),
+  name: z.string().nullish(),
+  code: z.string().nullish(),
+  username: z.string().nullish(),
   full_name: z.string().nullish(),
 });
 
 const lookupListSchema = listResponseSchema(lookupRowSchema);
+
+const siteDetailSchema = entityResponseSchema(lookupRowSchema, 'site');
 
 /** @typedef {{ value: string, label: string, hint?: string }} Option */
 
@@ -23,12 +26,12 @@ export const LOOKUPS = Object.freeze({
   sites: {
     path: 'v1/sites',
     label: (/** @type {any} */ r) => r.name ?? r.id,
-    hint: (/** @type {any} */ r) => r.code,
+    hint: (/** @type {any} */ r) => r.code ?? undefined,
   },
   vendors: {
     path: 'v1/vendors',
     label: (/** @type {any} */ r) => r.name ?? r.id,
-    hint: (/** @type {any} */ r) => r.code,
+    hint: (/** @type {any} */ r) => r.code ?? undefined,
   },
   items: {
     path: 'v1/items',
@@ -65,4 +68,18 @@ export async function fetchLookupOptions(kind, { q = '', limit = 20, params = {}
     label: lookup.label(row),
     hint: lookup.hint(row),
   }));
+}
+
+/**
+ * Name of one site (`GET /sites/{id}`), used when the site list cannot provide it.
+ * @param {string} id
+ * @returns {Promise<string | null>}
+ */
+export async function fetchSiteName(id) {
+  const site = await apiRequest({
+    method: 'get',
+    path: `v1/sites/${id}`,
+    schema: siteDetailSchema,
+  });
+  return site.name ?? null;
 }

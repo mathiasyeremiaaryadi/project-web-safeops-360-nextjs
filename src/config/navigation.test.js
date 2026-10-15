@@ -81,4 +81,31 @@ describe('navigation config', () => {
   it('sends Super Admin to /dashboard after login', () => {
     expect(getHomeRoute(SA)).toBe('/dashboard');
   });
+
+  it('gives Admin the site menu in mockup order, without users and audit log', () => {
+    const admin = [ROLES.ADMIN];
+    expect(getNavItems(admin).map((item) => [item.section ?? '', item.label])).toEqual([
+      ['', 'Beranda'],
+      ['', 'Review laporan'],
+      ['', 'Catatan safety'],
+      ['', 'Laporan inventory'],
+      ['Data site', 'Vendor'],
+      ['Data site', 'Pipeline & task'],
+      ['Data site', 'Inventory'],
+      ['Data site', 'SOP'],
+      ['Akun', 'Profil & sesi'],
+    ]);
+    expect(getBottomNavItems(admin).map((item) => item.shortLabel)).toEqual([
+      'Beranda',
+      'Review',
+      'Safety',
+      'Lap. inv.',
+      'Profil',
+    ]);
+    expect(canAccessPath('/audit-logs', admin)).toBe(false);
+    expect(canAccessPath('/users', admin)).toBe(false);
+    expect(canAccessPath('/master', admin)).toBe(true);
+    expect(canAccessPath('/reports/inventory/9', admin)).toBe(true);
+    expect(getHomeRoute(admin)).toBe('/dashboard');
+  });
 });
