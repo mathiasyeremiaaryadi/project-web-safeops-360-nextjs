@@ -13,7 +13,7 @@ import { useSession } from '@/features/auth';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { formatDateTime } from '@/lib/date';
 import { searchRows } from '@/lib/search';
-import { ROLE_LABELS } from '@/lib/constants';
+import { ROLE_LABELS, ROLES } from '@/lib/constants';
 import { useUsers } from '@/features/users/api/queries';
 import { RoleBadges, UserStatusBadge } from '@/features/users/components/user-badges';
 import { UserCard, UserIdentity } from '@/features/users/components/user-card';
@@ -25,6 +25,7 @@ import {
 import { describeScope } from '@/features/users/lib/describe-scope';
 import { filterUsers } from '@/features/users/lib/filter-users';
 import { getUserStatus } from '@/features/users/lib/get-user-status';
+import { managedRoleOf } from '@/features/users/lib/managed-role';
 
 const FILTERS = { role: parseAsString.withDefault(''), status: parseAsString.withDefault('') };
 
@@ -97,7 +98,8 @@ export function UsersList() {
       meta: { hideBelow: 'xl', sortValue: (/** @type {any} */ user) => user.last_login_at },
       cell: ({ row }) => formatDateTime(row.original.last_login_at),
     },
-  ].filter((column) => manageAccess || column.id !== 'scope');
+    // An Admin Worker's accounts are all in their own vendor: no scope column.
+  ].filter((column) => managedRoleOf(currentUser) !== ROLES.WORKER || column.id !== 'scope');
 
   return (
     <>

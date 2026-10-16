@@ -162,7 +162,7 @@ export const NAV_ITEMS = Object.freeze([
     section: 'Data master',
   },
   {
-    // Admin vendor: the pipelines of their vendor, where they manage the tasks (not the header).
+    // Admin vendor: the pipelines of their vendor and their tasks, read only.
     key: 'pipeline-items',
     label: 'Pipeline item',
     href: '/pipelines',
@@ -197,13 +197,13 @@ export const NAV_ITEMS = Object.freeze([
     section: 'Administrasi',
   },
   {
+    // Admin: Admin Worker accounts; Admin vendor: Worker accounts (see USER_MANAGE).
     key: 'users',
     label: 'Manajemen user',
-    labelByRole: { [ADMIN_WORKER]: 'Akun worker' },
     shortLabel: 'User',
     href: '/users',
     icon: Users,
-    roles: [SUPER_ADMIN, ADMIN_WORKER],
+    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
     section: 'Administrasi',
     bottomNavRoles: [SUPER_ADMIN],
   },

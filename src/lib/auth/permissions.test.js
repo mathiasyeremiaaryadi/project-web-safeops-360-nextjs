@@ -40,11 +40,11 @@ describe('permissions (BRD section 7)', () => {
     expect(can({ roles: [ROLES.ADMIN] }, 'AUDIT_LOG_READ')).toBe(false);
   });
 
-  it('lets Admin Worker manage users but not pipelines', () => {
+  it('lets Admin Worker manage users but only read pipelines and their tasks', () => {
     const aw = { roles: [ROLES.ADMIN_WORKER] };
     expect(can(aw, 'USER_MANAGE')).toBe(true);
     expect(can(aw, 'PIPELINE_WRITE')).toBe(false);
-    expect(can(aw, 'PIPELINE_ITEM_WRITE')).toBe(true);
+    expect(can(aw, 'PIPELINE_ITEM_WRITE')).toBe(false);
   });
 
   it('never lets a Worker review reports', () => {
@@ -82,7 +82,7 @@ describe('permissions of Admin (Admin Site)', () => {
     ['PIPELINE_ITEM_WRITE', true],
     ['INVENTORY_POLICY_READ', true],
     ['INVENTORY_POLICY_WRITE', true],
-    ['USER_MANAGE', false],
+    ['USER_MANAGE', true],
     ['USER_ACCESS_ADMIN', false],
     ['AUDIT_LOG_READ', false],
     ['ALL_SITES_READ', false],
@@ -107,10 +107,10 @@ describe('permissions of Admin vendor (ADMIN_WORKER) next to Admin site', () => 
     ['INVENTORY_REPORT_REVIEW', true, false],
     ['INVENTORY_POLICY_WRITE', true, true],
     ['PIPELINE_WRITE', false, true],
-    ['PIPELINE_ITEM_WRITE', true, true],
+    ['PIPELINE_ITEM_WRITE', false, true],
     ['ITEM_WRITE', false, false],
     ['SITE_VENDOR_WRITE', false, false],
-    ['USER_MANAGE', true, false],
+    ['USER_MANAGE', true, true],
     ['USER_ACCESS_ADMIN', false, false],
     ['AUDIT_LOG_READ', false, false],
     ['ALL_SITES_READ', false, false],

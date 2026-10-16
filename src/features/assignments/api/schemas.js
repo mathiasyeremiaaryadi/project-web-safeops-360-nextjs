@@ -23,6 +23,8 @@ export const assignmentSchema = z.preprocess(
         r.full_name,
         r.user?.full_name,
         r.user?.username,
+        // Last resort: the username when the worker has no full name.
+        r.username,
       ),
       pipeline_item_id: firstValue(r.pipeline_item_id, item.id),
       task_name: firstValue(r.item_name, r.task_name, item.item?.name, item.name),

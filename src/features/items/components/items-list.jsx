@@ -25,7 +25,14 @@ import { ItemFormDialog } from '@/features/items/components/item-form-dialog';
 export function ItemsList({ canEdit, createOpen, onCreateClose }) {
   const { params, limit, setFilters, setPage } = useListParams();
   const site = useSiteContext();
-  const query = useItems({ page: params.page, q: params.q, site_id: site.siteIdFor(), limit });
+  // status=ALL: an inactive master task stays listed, so it can be reactivated.
+  const query = useItems({
+    page: params.page,
+    q: params.q,
+    site_id: site.siteIdFor(),
+    limit,
+    status: 'ALL',
+  });
   // Server `?q=` + the same search here, in case the backend ignores `q`.
   const rows = query.data
     ? searchRows(query.data.data, params.q, (item) => [item.name, item.description])

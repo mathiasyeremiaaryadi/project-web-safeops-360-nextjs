@@ -21,7 +21,11 @@ export const usePipelines = (params) =>
 export const usePipeline = (id) =>
   useDetailQuery({ keys: pipelineKeys, path: 'v1/pipelines', id, schema: pipelineDetailSchema });
 
-/** `GET /pipelines/{id}/items` @param {string} id */
+/**
+ * `GET /pipelines/{id}/items?status=ALL` — active and inactive tasks, so a deactivated task stays
+ * listed and can be reactivated. Callers that only offer active tasks filter by `status`.
+ * @param {string} id
+ */
 export function usePipelineItems(id) {
   return useQuery({
     queryKey: pipelineKeys.items(id),
@@ -29,7 +33,7 @@ export function usePipelineItems(id) {
       apiRequest({
         method: 'get',
         path: `v1/pipelines/${id}/items`,
-        searchParams: { limit: 100 },
+        searchParams: { limit: 100, status: 'ALL' },
         schema: pipelineItemListSchema,
       }),
   });

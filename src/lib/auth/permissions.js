@@ -12,7 +12,8 @@ const MANAGERS = [SUPER_ADMIN, ADMIN, ADMIN_WORKER];
  */
 export const PERMISSIONS = Object.freeze({
   ALL_SITES_READ: { label: 'Melihat data semua site', roles: [SUPER_ADMIN] },
-  USER_MANAGE: { label: 'Mengelola akun user', roles: [SUPER_ADMIN, ADMIN_WORKER] },
+  // Admin: Admin Worker accounts of vendors at their sites; Admin Worker: Worker accounts.
+  USER_MANAGE: { label: 'Mengelola akun user', roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER] },
   USER_ACCESS_ADMIN: {
     label: 'Mengatur role, scope, dan mencabut sesi user lain',
     roles: [SUPER_ADMIN],
@@ -23,7 +24,8 @@ export const PERMISSIONS = Object.freeze({
   INVENTORY_POLICY_WRITE: { label: 'Mengelola inventory dan SOP', roles: MANAGERS },
   ITEM_WRITE: { label: 'Mengelola master task', roles: [SUPER_ADMIN] },
   PIPELINE_WRITE: { label: 'Membuat dan mengubah pipeline', roles: [SUPER_ADMIN, ADMIN] },
-  PIPELINE_ITEM_WRITE: { label: 'Mengatur task di dalam pipeline', roles: MANAGERS },
+  // Admin Worker only reads pipelines and their tasks.
+  PIPELINE_ITEM_WRITE: { label: 'Mengatur task di dalam pipeline', roles: [SUPER_ADMIN, ADMIN] },
   // Postman: only the Admin vendor creates/changes assignments, for their own vendor.
   ASSIGNMENT_WRITE: { label: 'Menugaskan worker ke task pipeline', roles: [ADMIN_WORKER] },
   PIPELINE_REPORT_READ: { label: 'Melihat laporan task', roles: ALL_ROLES },

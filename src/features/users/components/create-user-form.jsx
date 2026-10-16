@@ -13,14 +13,18 @@ import { useSiteContext } from '@/hooks/use-site-context';
 import { useVendorField } from '@/hooks/use-vendor-field';
 import { getErrorMessage } from '@/lib/api/errors';
 import { can } from '@/lib/auth/permissions';
-import { ROLES } from '@/lib/constants';
+import { ROLE_LABELS } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { useCreateUser } from '@/features/users/api/mutations';
 import { createUserFormSchema, toCreateUserPayload } from '@/features/users/api/schemas';
 import { AccessSummary } from '@/features/users/components/access-summary';
 import { ProfileFields } from '@/features/users/components/profile-fields';
-import { CreateUserAccess, WorkerAccessNote } from '@/features/users/components/create-user-access';
+import {
+  CreateUserAccess,
+  ManagedAccessFields,
+} from '@/features/users/components/create-user-access';
 import { TemporaryPasswordDialog } from '@/features/users/components/temporary-password-dialog';
+import { managedRoleOf } from '@/features/users/lib/managed-role';
 
 const DEFAULT_VALUES = {
   full_name: '',
@@ -32,18 +36,17 @@ const DEFAULT_VALUES = {
   vendor: null,
 };
 
-/** Save errors of an Admin vendor (the role is locked in the UI, so this should not happen). */
-const WORKER_ONLY_ERRORS = Object.freeze({ 403: 'Admin vendor hanya bisa membuat akun Worker.' });
-
 /**
- * "Tambah user" form (`/users/new`). Super Admin chooses roles and scope; an Admin vendor only
- * creates Worker accounts of their own vendor (role locked, vendor filled in).
+ * "Tambah user" form (`/users/new`). Super Admin chooses roles and scope; an Admin creates Admin
+ * Worker accounts for a vendor at their sites; an Admin vendor creates Worker accounts of their
+ * own vendor (role locked, vendor filled in).
  */
 export function CreateUserForm() {
   const router = useRouter();
   const createUser = useCreateUser();
   const { user: currentUser } = useSession();
   const manageAccess = can(currentUser, 'USER_ACCESS_ADMIN');
+  const managedRole = managedRoleOf(currentUser);
   const vendorField = useVendorField();
   const site = useSiteContext();
   const [created, setCreated] = useState(
@@ -53,7 +56,11 @@ export function CreateUserForm() {
     resolver: zodResolver(createUserFormSchema),
     defaultValues: manageAccess
       ? DEFAULT_VALUES
-      : { ...DEFAULT_VALUES, roles: [ROLES.WORKER], vendor: vendorField.defaultValue },
+      : {
+          ...DEFAULT_VALUES,
+          roles: managedRole ? [managedRole] : [],
+          vendor: vendorField.defaultValue,
+        },
   });
 
   const onSubmit = form.handleSubmit((values) => {
@@ -73,7 +80,14 @@ export function CreateUserForm() {
 
   const formError =
     createUser.isError && /** @type {any} */ (createUser.error).status !== 409
-      ? getErrorMessage(createUser.error, manageAccess ? {} : WORKER_ONLY_ERRORS)
+      ? getErrorMessage(
+          createUser.error,
+          manageAccess || !managedRole
+            ? {}
+            : {
+                403: `Anda hanya bisa membuat akun ${ROLE_LABELS[/** @type {keyof typeof ROLE_LABELS} */ (managedRole)]}.`,
+              },
+        )
       : null;
 
   return (
@@ -97,9 +111,13 @@ export function CreateUserForm() {
 
         {manageAccess ? (
           <CreateUserAccess control={form.control} />
-        ) : (
-          <WorkerAccessNote vendorName={site.shortLabel} />
-        )}
+        ) : managedRole ? (
+          <ManagedAccessFields
+            role={managedRole}
+            vendorName={site.shortLabel}
+            control={form.control}
+          />
+        ) : null}
 
         <FormCard title="Password sementara">
           <p className="text-sm text-muted-foreground">

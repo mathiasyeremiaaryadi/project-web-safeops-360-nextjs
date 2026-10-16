@@ -111,7 +111,7 @@ describe('navigation config', () => {
     expect(getHomeRoute(SA)).toBe('/dashboard');
   });
 
-  it('gives Admin the site menu in mockup order, without users and audit log', () => {
+  it('gives Admin the site menu in mockup order, with users but without audit log', () => {
     const admin = [ROLES.ADMIN];
     expect(getNavItems(admin).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
@@ -125,6 +125,7 @@ describe('navigation config', () => {
       ['Data site', 'Inventory'],
       ['Data site', 'SOP'],
       ['Data site', 'Pengaturan SLA'],
+      ['Administrasi', 'Manajemen user'],
       ['Akun', 'Profil & sesi'],
     ]);
     expect(getBottomNavItems(admin).map((item) => item.shortLabel)).toEqual([
@@ -135,7 +136,7 @@ describe('navigation config', () => {
       'Profil',
     ]);
     expect(canAccessPath('/audit-logs', admin)).toBe(false);
-    expect(canAccessPath('/users', admin)).toBe(false);
+    expect(canAccessPath('/users', admin)).toBe(true);
     expect(canAccessPath('/master', admin)).toBe(true);
     expect(canAccessPath('/reports/inventory/9', admin)).toBe(true);
     expect(getHomeRoute(admin)).toBe('/dashboard');
@@ -153,7 +154,7 @@ describe('navigation config', () => {
       ['Data vendor', 'SOP'],
       ['Data vendor', 'Pipeline item'],
       ['Data vendor', 'Penugasan worker'],
-      ['Akun', 'Akun worker'],
+      ['Akun', 'Manajemen user'],
       ['Akun', 'Profil & sesi'],
     ]);
     expect(getBottomNavItems(vendor).map((item) => item.shortLabel)).toEqual([
