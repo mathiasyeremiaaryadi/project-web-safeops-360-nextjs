@@ -99,8 +99,11 @@ describe('navigation config', () => {
     expect(findNavItem('/reports/tasks/42')?.key).toBe('reports-tasks');
   });
 
-  it('blocks a menu item that waits for backend support', () => {
-    expect(canAccessPath('/safety-notes', SA)).toBe(false);
+  it('opens "Catatan safety" to Super Admin and Admin only', () => {
+    expect(canAccessPath('/safety-notes', SA)).toBe(true);
+    expect(canAccessPath('/safety-notes', [ROLES.ADMIN])).toBe(true);
+    expect(canAccessPath('/safety-notes', [ROLES.ADMIN_WORKER])).toBe(false);
+    expect(canAccessPath('/safety-notes', [ROLES.WORKER])).toBe(false);
   });
 
   it('allows routes outside the menu to any signed-in user', () => {

@@ -1,5 +1,6 @@
 /* Public API of the task (pipeline) reports feature. */
 export { TaskReportsList } from '@/features/pipeline-reports/components/task-reports-list';
+export { SafetyNotesList } from '@/features/pipeline-reports/components/safety-notes-list';
 export { TaskReportPage } from '@/features/pipeline-reports/components/task-report-page';
 export { ReportBadges, shiftLabel } from '@/features/pipeline-reports/components/report-badges';
 export {

@@ -88,8 +88,7 @@ export const NAV_ITEMS = Object.freeze([
     icon: ShieldAlert,
     roles: [SUPER_ADMIN, ADMIN],
     bottomNavRoles: [SUPER_ADMIN, ADMIN],
-    // GET /pipeline-reports has no note-category filter yet (docs/ASSUMPTIONS.md G1).
-    disabledReason: 'Menunggu dukungan API',
+    // Reports with a safety finding: GET /pipeline-reports?note_category=.
   },
   {
     key: 'sla',
