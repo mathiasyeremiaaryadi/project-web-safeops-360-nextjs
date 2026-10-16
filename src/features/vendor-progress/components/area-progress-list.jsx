@@ -12,6 +12,7 @@ import { ProgressBar } from '@/features/vendor-progress/components/progress-bar'
 
 /** @typedef {import('@/features/vendor-progress/lib/progress').AreaProgress} AreaProgress */
 /** @typedef {import('@/features/vendor-progress/lib/progress').PointProgress} PointProgress */
+/** @typedef {import('@/features/vendor-progress/lib/progress').PointTask} PointTask */
 
 /** Shift codes of the reports (master data `/shifts`); an unknown code is shown as itself. */
 const SHIFT_LABELS = Object.freeze({ DAY: 'Pagi', EVENING: 'Sore', NIGHT: 'Malam' });
@@ -25,27 +26,156 @@ const categoryLabel = (category) =>
   NOTE_CATEGORY_LABELS[/** @type {keyof typeof NOTE_CATEGORY_LABELS} */ (category ?? '')] ??
   category;
 
-/** Rows of a point: its reports, then its assignments without a report. @param {PointProgress} point */
-const pointRows = (point) => [
-  ...point.tasks.map((task) => ({
-    key: task.key,
-    shift: shiftLabel(task.shift),
-    worker: task.workerName ?? '—',
-    status: task.status,
-    time: `${formatTime(task.openDate)} – ${task.closeDate ? formatTime(task.closeDate) : '…'}`,
-    notes: task.notes,
-    category: task.category,
-  })),
-  ...point.pending.map((pending) => ({
-    key: pending.key,
-    shift: '—',
-    worker: pending.workerName ?? '—',
-    status: REPORT_STATUS.PENDING,
-    time: '—',
-    notes: null,
-    category: null,
-  })),
-];
+/** Shift order of the point detail: the day's shifts, then any other code. */
+const SHIFT_ORDER = Object.freeze(['DAY', 'EVENING', 'NIGHT']);
+
+/** @param {string} shift */
+const shiftRank = (shift) => {
+  const index = SHIFT_ORDER.indexOf(shift);
+  return index === -1 ? SHIFT_ORDER.length : index;
+};
+
+/**
+ * A point's reports grouped per shift (Pagi, Sore, Malam, in that order).
+ * @param {PointProgress} point
+ * @returns {{ shift: string, tasks: PointTask[] }[]}
+ */
+const tasksByShift = (point) => {
+  /** @type {Map<string, PointTask[]>} */
+  const groups = new Map();
+  for (const task of point.tasks) groups.set(task.shift, [...(groups.get(task.shift) ?? []), task]);
+  return [...groups.entries()]
+    .map(([shift, tasks]) => ({ shift, tasks }))
+    .sort((a, b) => shiftRank(a.shift) - shiftRank(b.shift) || a.shift.localeCompare(b.shift));
+};
+
+/** @param {PointTask} task */
+const timeOf = (task) =>
+  `${formatTime(task.openDate)} – ${task.closeDate ? formatTime(task.closeDate) : '…'}`;
+
+/**
+ * One line of a point's detail: worker, status, time and notes.
+ * @param {{ worker: string, status: string, time: string, notes: string | null, category: string | null }} props
+ */
+function DetailRow({ worker, status, time, notes, category }) {
+  return (
+    <tr className="border-b align-top last:border-0">
+      <td className="py-2.5 pr-3 text-foreground">{worker}</td>
+      <td className="py-2.5 pr-3">
+        <StatusBadge status={REPORT_STATUS_BADGES[status]} fallback={status || '—'} />
+      </td>
+      <td className="py-2.5 pr-3 whitespace-nowrap tabular-nums">{time}</td>
+      <td className="py-2.5">
+        {category ? (
+          <Badge variant="danger" className="mb-1">
+            {categoryLabel(category)}
+          </Badge>
+        ) : null}
+        <span className="block text-muted-foreground">{notes ?? '—'}</span>
+      </td>
+    </tr>
+  );
+}
+
+/** @param {{ title: string, children: import('react').ReactNode }} props */
+function DetailTable({ title, children }) {
+  return (
+    <section className="flex flex-col gap-1">
+      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
+          <caption className="sr-only">{title}</caption>
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              {['Worker', 'Status', 'Waktu', 'Catatan'].map((label) => (
+                <th key={label} scope="col" className="py-2 pr-3 font-medium">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * One point of an area: a summary line that opens the reports per shift (Pagi, Sore, Malam) and
+ * the assignments without a report.
+ * @param {{ point: PointProgress, open: boolean }} props
+ */
+function PointDetails({ point, open }) {
+  const groups = tasksByShift(point);
+  const done = point.tasks.filter((t) => t.status === REPORT_STATUS.COMPLETED).length;
+  const working = point.tasks.filter((t) => t.status === REPORT_STATUS.IN_PROGRESS).length;
+  const findings = point.tasks.filter((t) => t.category).length;
+  return (
+    <details className="group/point border-b last:border-0" open={open}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className="font-medium text-foreground">{point.name}</span>
+          <span className="flex flex-wrap gap-1.5">
+            {groups.map(({ shift }) => (
+              <Badge key={shift} variant="neutral">
+                {shiftLabel(shift)}
+              </Badge>
+            ))}
+            {done ? <Badge variant="success">{done} selesai</Badge> : null}
+            {working ? <Badge variant="info">{working} dikerjakan</Badge> : null}
+            {point.pending.length ? (
+              <Badge variant="warning">{point.pending.length} belum dikerjakan</Badge>
+            ) : null}
+            {findings ? (
+              <Badge variant="danger">
+                <ShieldAlert aria-hidden="true" className="size-3.5" />
+                {findings} temuan
+              </Badge>
+            ) : null}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-open/point:rotate-180"
+        />
+      </summary>
+      <div className="flex flex-col gap-4 pb-4 pl-3 sm:pl-4">
+        {groups.map(({ shift, tasks }) => (
+          <DetailTable key={shift} title={`Shift ${shiftLabel(shift)}`}>
+            {tasks.map((task) => (
+              <DetailRow
+                key={task.key}
+                worker={task.workerName ?? '—'}
+                status={task.status}
+                time={timeOf(task)}
+                notes={task.notes}
+                category={task.category}
+              />
+            ))}
+          </DetailTable>
+        ))}
+        {point.pending.length ? (
+          <DetailTable title="Belum dikerjakan">
+            {point.pending.map((pending) => (
+              <DetailRow
+                key={pending.key}
+                worker={pending.workerName ?? '—'}
+                status={REPORT_STATUS.PENDING}
+                time="—"
+                notes={null}
+                category={null}
+              />
+            ))}
+          </DetailTable>
+        ) : null}
+        {groups.length === 0 && point.pending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada penugasan di titik ini.</p>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 /** Safety findings (reports with a note category) of an area. @param {AreaProgress} area */
 export const findingsOf = (area) =>
@@ -53,7 +183,8 @@ export const findingsOf = (area) =>
 
 /**
  * "Progres per area" of a vendor: one collapsible section per area (progress, points, workers,
- * shifts, safety findings) with its points — who worked when, the status and the notes.
+ * shifts, safety findings) listing its points; a point opens its reports per shift — who worked
+ * when, the status and the notes.
  * @param {{ areas: AreaProgress[] }} props
  */
 export function AreaProgressList({ areas }) {
@@ -137,53 +268,10 @@ export function AreaProgressList({ areas }) {
                 ) : null}
               </span>
             </summary>
-            <div className="overflow-x-auto border-t px-4 pb-4 sm:px-5">
-              <table className="w-full min-w-[640px] text-sm">
-                <caption className="sr-only">Titik di area {area.name}</caption>
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    {['Titik', 'Shift', 'Worker', 'Status', 'Waktu', 'Catatan'].map((label) => (
-                      <th key={label} scope="col" className="py-2.5 pr-3 font-medium">
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {area.pointList.flatMap((point) =>
-                    pointRows(point).map((row, index) => (
-                      <tr
-                        key={`${point.key}-${row.key}`}
-                        className="border-b align-top last:border-0"
-                      >
-                        <th
-                          scope="row"
-                          className="py-2.5 pr-3 text-left font-medium text-foreground"
-                        >
-                          {index === 0 ? point.name : <span className="sr-only">{point.name}</span>}
-                        </th>
-                        <td className="py-2.5 pr-3">{row.shift}</td>
-                        <td className="py-2.5 pr-3">{row.worker}</td>
-                        <td className="py-2.5 pr-3">
-                          <StatusBadge
-                            status={REPORT_STATUS_BADGES[row.status]}
-                            fallback={row.status || '—'}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3 whitespace-nowrap tabular-nums">{row.time}</td>
-                        <td className="py-2.5">
-                          {row.category ? (
-                            <Badge variant="danger" className="mb-1">
-                              {categoryLabel(row.category)}
-                            </Badge>
-                          ) : null}
-                          <span className="block text-muted-foreground">{row.notes ?? '—'}</span>
-                        </td>
-                      </tr>
-                    )),
-                  )}
-                </tbody>
-              </table>
+            <div className="border-t px-4 sm:px-5">
+              {area.pointList.map((point) => (
+                <PointDetails key={point.key} point={point} open={Boolean(needle)} />
+              ))}
             </div>
           </details>
         );
