@@ -4,19 +4,19 @@ import Link from 'next/link';
 import { parseAsString, useQueryStates } from 'nuqs';
 import { ChevronRight, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { PageHeader } from '@/components/layout/page-header';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { LoadMore } from '@/components/shared/load-more';
-import { StatusTabs } from '@/components/shared/status-tabs';
 import { formatDate, todayInAppTimezone } from '@/lib/date';
 import { filterRows } from '@/lib/search';
 import { ReportBadges } from '@/features/pipeline-reports';
 import { useMyReports } from '@/features/task-report/api/queries';
-import { HISTORY_TABS, resolveHistoryRange } from '@/features/task-report/lib/history';
+import { HISTORY_STATUS_FILTERS, resolveHistoryRange } from '@/features/task-report/lib/history';
 
 const FILTERS = {
-  tab: parseAsString.withDefault(''),
+  status: parseAsString.withDefault(''),
   from: parseAsString.withDefault(''),
   to: parseAsString.withDefault(''),
 };
@@ -26,25 +26,37 @@ export function MyReportsView() {
   const today = todayInAppTimezone();
   const [filters, setFilters] = useQueryStates(FILTERS);
   const range = resolveHistoryRange(filters.from, filters.to, today);
-  const tab = HISTORY_TABS.find((t) => t.value === filters.tab) ?? HISTORY_TABS[0];
+  const statusFilter =
+    HISTORY_STATUS_FILTERS.find((s) => s.value === filters.status) ?? HISTORY_STATUS_FILTERS[0];
   const query = useMyReports(
-    { from: range.from, to: range.to, ...tab.params },
+    { from: range.from, to: range.to, ...statusFilter.params },
     { enabled: !range.error },
   );
-  // Same status filter here (Postman has no `revision_status` filter).
-  const reports = filterRows(query.data?.pages.flatMap((page) => page.data) ?? [], tab.params);
+  // Same status filter here, in case the backend ignores it.
+  const reports = filterRows(
+    query.data?.pages.flatMap((page) => page.data) ?? [],
+    statusFilter.params,
+  );
 
   return (
     <>
       <PageHeader title="Riwayat laporan" description="Laporan task yang pernah Anda kerjakan." />
 
-      <StatusTabs
-        label="Filter status"
-        options={HISTORY_TABS}
-        value={tab.value}
-        onChange={(value) => setFilters({ tab: value || null })}
-      />
       <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:items-end">
+        <label className="col-span-2 flex flex-col gap-1 text-sm text-muted-foreground sm:col-span-1">
+          Status
+          <NativeSelect
+            className="w-full sm:w-44"
+            value={statusFilter.value}
+            onChange={(e) => setFilters({ status: e.target.value || null })}
+          >
+            {HISTORY_STATUS_FILTERS.map((option) => (
+              <NativeSelectOption key={option.value} value={option.value}>
+                {option.label}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
         <label className="flex flex-col gap-1 text-sm text-muted-foreground">
           Dari
           <Input
@@ -52,7 +64,7 @@ export function MyReportsView() {
             value={range.from}
             max={range.to}
             onChange={(e) => setFilters({ from: e.target.value || null })}
-            className="h-12 sm:w-44"
+            className="h-11 sm:w-44"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-muted-foreground">
@@ -63,7 +75,7 @@ export function MyReportsView() {
             min={range.from}
             max={today}
             onChange={(e) => setFilters({ to: e.target.value === today ? null : e.target.value })}
-            className="h-12 sm:w-44"
+            className="h-11 sm:w-44"
           />
         </label>
       </div>

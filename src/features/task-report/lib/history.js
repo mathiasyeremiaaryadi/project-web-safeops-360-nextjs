@@ -1,17 +1,14 @@
 import { addDays } from '@/lib/date';
-import { REPORT_STATUS, REVISION_STATUS } from '@/lib/task-reports';
+import { REPORT_STATUS } from '@/lib/task-reports';
 
-/** Status tabs of "Riwayat laporan": the URL value and the API filter of each. */
-export const HISTORY_TABS = Object.freeze([
-  { value: '', label: 'Semua', params: {} },
-  { value: 'review', label: 'Menunggu review', params: { status: REPORT_STATUS.SUBMITTED } },
-  {
-    value: 'revision',
-    label: 'Revisi diminta',
-    params: { revision_status: REVISION_STATUS.REQUESTED },
-  },
+/**
+ * Status filter of "Riwayat laporan": the URL value and the API filter of each. A report is only
+ * `IN_PROGRESS` or `COMPLETED`.
+ */
+export const HISTORY_STATUS_FILTERS = Object.freeze([
+  { value: '', label: 'Semua status', params: {} },
+  { value: 'in_progress', label: 'Dikerjakan', params: { status: REPORT_STATUS.IN_PROGRESS } },
   { value: 'done', label: 'Selesai', params: { status: REPORT_STATUS.COMPLETED } },
-  { value: 'rejected', label: 'Ditolak', params: { status: REPORT_STATUS.REJECTED } },
 ]);
 
 export const HISTORY_DEFAULT_DAYS = 7;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTORY_TABS, resolveHistoryRange } from '@/features/task-report/lib/history';
+import { HISTORY_STATUS_FILTERS, resolveHistoryRange } from '@/features/task-report/lib/history';
 
 const TODAY = '2026-10-15';
 
@@ -21,14 +21,12 @@ describe('resolveHistoryRange', () => {
   });
 });
 
-describe('HISTORY_TABS', () => {
-  it('filters "Revisi diminta" on the revision status, the others on the report status', () => {
-    expect(HISTORY_TABS.map((tab) => [tab.label, tab.params])).toEqual([
-      ['Semua', {}],
-      ['Menunggu review', { status: 'SUBMITTED' }],
-      ['Revisi diminta', { revision_status: 'REQUESTED' }],
+describe('HISTORY_STATUS_FILTERS', () => {
+  it('offers all, in progress and completed, filtered on the report status', () => {
+    expect(HISTORY_STATUS_FILTERS.map((option) => [option.label, option.params])).toEqual([
+      ['Semua status', {}],
+      ['Dikerjakan', { status: 'IN_PROGRESS' }],
       ['Selesai', { status: 'COMPLETED' }],
-      ['Ditolak', { status: 'REJECTED' }],
     ]);
   });
 });
