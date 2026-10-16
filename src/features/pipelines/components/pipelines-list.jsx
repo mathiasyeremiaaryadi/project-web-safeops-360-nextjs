@@ -23,14 +23,18 @@ import { usePipelines } from '@/features/pipelines/api/queries';
 import { PipelineFormDialog } from '@/features/pipelines/components/pipeline-form-dialog';
 import { formatTaskCount } from '@/features/pipelines/lib/task-count';
 
-const FILTERS = { vendor_id: parseAsString.withDefault(''), status: parseAsString.withDefault('') };
+const FILTERS = {
+  site_id: parseAsString.withDefault(''),
+  vendor_id: parseAsString.withDefault(''),
+  status: parseAsString.withDefault(''),
+};
 const STATUS_FILTERS = [
   { value: '', label: 'Semua status' },
   { value: 'ACTIVE', label: 'Aktif' },
   { value: 'INACTIVE', label: 'Nonaktif' },
 ];
 
-/** `/pipelines` — list with vendor/status filters and "Buat pipeline". */
+/** `/pipelines` — list with site/vendor/status filters and "Buat pipeline". */
 export function PipelinesList() {
   const router = useRouter();
   const { user } = useSession();
@@ -39,7 +43,8 @@ export function PipelinesList() {
   const site = useSiteContext();
   // Admin with a single site: always scope to it (no switcher, so no active choice is stored).
   const mySiteIds = site.scoped ? site.sites.map((s) => s.value) : [];
-  const siteId = site.siteIdFor() ?? (mySiteIds.length === 1 ? mySiteIds[0] : undefined);
+  const siteId =
+    site.siteIdFor(params.site_id) ?? (mySiteIds.length === 1 ? mySiteIds[0] : undefined);
   const query = usePipelines({ ...params, site_id: siteId, limit });
   const vendors = useOptionLabels('vendors');
   const sites = useOptionLabels('sites');
@@ -133,7 +138,17 @@ export function PipelinesList() {
         onSearchChange={(q) => setFilters({ q })}
         searchPlaceholder="Cari nama pipeline atau vendor"
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,320px)_200px]">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,280px)_minmax(0,280px)_200px]">
+        {site.showSiteFilter ? (
+          <LookupFilter
+            lookup="sites"
+            value={params.site_id}
+            // A new site may not be served by the selected vendor: clear it.
+            onChange={(site_id) => setFilters({ site_id, vendor_id: '' })}
+            placeholder="Semua site"
+            ariaLabel="Filter site"
+          />
+        ) : null}
         {site.showVendorFilter ? (
           <LookupFilter
             lookup="vendors"
