@@ -11,13 +11,19 @@ import { myTaskListSchema } from '@/features/my-tasks/api/schemas';
  */
 export const myTaskKeys = Object.freeze({
   all: /** @type {const} */ (['my-tasks']),
-  day: (/** @type {string} */ userId, /** @type {string} */ date) => ['my-tasks', userId, date],
+  /** `date` `''` = today at the Worker's site. */
+  day: (/** @type {string} */ userId, /** @type {string} */ date) => [
+    'my-tasks',
+    userId,
+    date || 'today',
+  ],
 });
 
 /**
  * `GET /me/tasks?date=YYYY-MM-DD` — the Worker's assignments and their report for the date.
- * The date is always sent explicitly (the backend would otherwise use the UTC date).
- * @param {string} date
+ * Without a date the server answers for today on the site's clock (WIB/WITA/WIT), and each
+ * task's `report_date` says which day that is.
+ * @param {string} date `YYYY-MM-DD`, or `''` for today at the site
  * @param {{ enabled?: boolean }} [options]
  */
 export function useMyTasks(date, { enabled = true } = {}) {
@@ -28,7 +34,7 @@ export function useMyTasks(date, { enabled = true } = {}) {
       apiRequest({
         method: 'get',
         path: 'v1/me/tasks',
-        searchParams: { date },
+        searchParams: date ? { date } : undefined,
         schema: myTaskListSchema,
       }),
     enabled: enabled && Boolean(user),

@@ -1,5 +1,5 @@
 import { StatusBadge } from '@/components/shared/status-badge';
-import { formatDate, formatDateTime } from '@/lib/date';
+import { formatDate, formatSiteTime } from '@/lib/date';
 import { EvidencePhotos } from '@/features/pipeline-reports/components/evidence-photos';
 import { shiftLabel } from '@/features/pipeline-reports/components/report-badges';
 import {
@@ -40,15 +40,17 @@ function Facts({ items }) {
 export function TaskReportContent({ report, workerName }) {
   const duration = formatDuration(report.opened_at, report.closed_at);
   const history = report.history ?? [];
+  const zone = report.site_timezone;
 
   return (
     <div className="flex flex-col gap-4">
       <Facts
         items={[
           ['Worker', workerName],
+          ['Site', report.site_name ?? '—'],
           ['Shift', shiftLabel(report.shift)],
           ['Tanggal laporan', formatDate(report.report_date)],
-          ['Dikirim', formatDateTime(report.submitted_at)],
+          ['Dikirim', formatSiteTime(report.submitted_at, zone)],
         ]}
       />
 
@@ -59,8 +61,8 @@ export function TaskReportContent({ report, workerName }) {
       <Section title="Waktu pengerjaan">
         <Facts
           items={[
-            ['Mulai', formatDateTime(report.opened_at)],
-            ['Selesai', formatDateTime(report.closed_at)],
+            ['Mulai', formatSiteTime(report.opened_at, zone)],
+            ['Selesai', formatSiteTime(report.closed_at, zone)],
             ['Durasi', duration ?? '—'],
           ]}
         />
@@ -100,7 +102,7 @@ export function TaskReportContent({ report, workerName }) {
                   {entry.revision_status && REVISION_BADGES[entry.revision_status] ? (
                     <StatusBadge status={REVISION_BADGES[entry.revision_status]} />
                   ) : null}
-                  <span className="text-muted-foreground">{formatDateTime(entry.at)}</span>
+                  <span className="text-muted-foreground">{formatSiteTime(entry.at, zone)}</span>
                 </span>
                 {entry.reason ? <span className="text-foreground">{entry.reason}</span> : null}
               </li>

@@ -13,7 +13,7 @@ import { useListParams } from '@/hooks/use-list-params';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { DATA_SCOPE } from '@/lib/auth/permissions';
-import { formatDateTime } from '@/lib/date';
+import { formatSiteTime } from '@/lib/date';
 import { filterRows } from '@/lib/search';
 import { useTaskReports } from '@/features/pipeline-reports/api/queries';
 import { ReportBadges, shiftLabel } from '@/features/pipeline-reports/components/report-badges';
@@ -91,7 +91,7 @@ export function TaskReportsList() {
       id: 'submitted',
       header: 'Dikirim',
       meta: { hideBelow: 'xl', sortValue: (r) => r.submitted_at },
-      cell: ({ row }) => formatDateTime(row.original.submitted_at),
+      cell: ({ row }) => formatSiteTime(row.original.submitted_at, row.original.site_timezone),
     },
     {
       id: 'status',

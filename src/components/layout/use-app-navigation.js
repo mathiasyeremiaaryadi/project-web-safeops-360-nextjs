@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation';
 import { findNavItem, getBottomNavItems, getNavItems } from '@/config/navigation';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { can, getPrimaryRole } from '@/lib/auth/permissions';
-import { todayInAppTimezone } from '@/lib/date';
 import { ROLE_LABELS } from '@/lib/constants';
 import { useSession } from '@/features/auth/hooks/use-session';
 import { shiftOf, useMyTasks } from '@/features/my-tasks';
@@ -22,7 +21,7 @@ export function useAppNavigation() {
   const site = useSiteContext();
   // A Worker's context is their vendor and today's shift (from their assignments).
   const worker = can(user, 'TASK_REPORT_WRITE');
-  const todayTasks = useMyTasks(todayInAppTimezone(), { enabled: worker });
+  const todayTasks = useMyTasks('', { enabled: worker });
   const shift = worker ? shiftOf(todayTasks.data?.data ?? [])?.name : null;
   const shiftLabel = shift ? `Shift ${shift}` : null;
 

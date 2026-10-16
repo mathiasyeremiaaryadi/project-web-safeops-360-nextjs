@@ -30,6 +30,8 @@ const normalise = (r) => ({
   task_name: firstValue(r.item_name, r.task_name, r.pipeline_item?.item?.name, r.item?.name),
   pipeline_name: firstValue(r.pipeline_name, r.pipeline?.name, r.pipeline_item?.pipeline?.name),
   worker_name: firstValue(r.user_full_name, r.worker_name, r.user?.full_name, r.user?.username),
+  site_name: firstValue(r.site_name, r.site?.name),
+  site_timezone: firstValue(r.site_timezone, r.site?.timezone),
   shift: firstValue(r.shift, r.shift_name),
   report_date: r.report_date,
   submitted_at: firstValue(r.submitted_at, r.updated_at, r.created_at),
@@ -75,6 +77,9 @@ export const taskReportSchema = z.preprocess(
     task_name: optionalText,
     pipeline_name: optionalText,
     worker_name: optionalText,
+    site_name: optionalText,
+    /** IANA zone of the site: shift hours, report date and work times are read in it. */
+    site_timezone: optionalText,
     shift: optionalText,
     report_date: optionalText,
     submitted_at: optionalText,

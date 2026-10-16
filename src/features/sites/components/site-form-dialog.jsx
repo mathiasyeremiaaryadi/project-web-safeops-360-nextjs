@@ -4,9 +4,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { FormDialog } from '@/components/shared/form-dialog';
 import { FormField, getFieldA11yProps } from '@/components/shared/form-field';
 import { getErrorMessage } from '@/lib/api/errors';
+import { SITE_TIMEZONES } from '@/lib/date';
 import { useSaveSite } from '@/features/sites/api/mutations';
 import { siteFormSchema, toSitePayload } from '@/features/sites/api/schemas';
 
@@ -21,7 +23,12 @@ export function SiteFormDialog({ open, site, onClose }) {
   const saveSite = useSaveSite();
   const form = useForm({
     resolver: zodResolver(siteFormSchema),
-    values: { code: site?.code ?? '', name: site?.name ?? '', site_type: site?.site_type ?? '' },
+    values: {
+      code: site?.code ?? '',
+      name: site?.name ?? '',
+      site_type: site?.site_type ?? '',
+      timezone: site?.timezone ?? 'Asia/Jakarta',
+    },
   });
   const { errors } = form.formState;
 
@@ -87,6 +94,19 @@ export function SiteFormDialog({ open, site, onClose }) {
           placeholder="PLTU"
           autoComplete="off"
         />
+      </FormField>
+      <FormField id="site-timezone" label="Zona waktu" error={errors.timezone?.message}>
+        <NativeSelect
+          className="w-full"
+          {...form.register('timezone')}
+          {...getFieldA11yProps('site-timezone', errors.timezone?.message)}
+        >
+          {SITE_TIMEZONES.map((zone) => (
+            <NativeSelectOption key={zone.value} value={zone.value}>
+              {zone.label}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
       </FormField>
     </FormDialog>
   );

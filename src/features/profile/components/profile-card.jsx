@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/layout/user-avatar';
 import { useSiteContext } from '@/hooks/use-site-context';
 import { useSession } from '@/features/auth';
-import { formatDateTime, todayInAppTimezone } from '@/lib/date';
+import { formatDateTime } from '@/lib/date';
 import { can, DATA_SCOPE } from '@/lib/auth/permissions';
 import { ROLE_LABELS } from '@/lib/constants';
 import { shiftOf, useMyTasks } from '@/features/my-tasks';
@@ -37,7 +37,7 @@ export function ProfileCard() {
   const site = useSiteContext();
   // A Worker's shift comes from today's assignments (none on a day off).
   const worker = can(user, 'TASK_REPORT_WRITE');
-  const todayTasks = useMyTasks(todayInAppTimezone(), { enabled: worker });
+  const todayTasks = useMyTasks('', { enabled: worker });
   const shift = worker ? shiftOf(todayTasks.data?.data ?? []) : null;
   if (!user) return null;
   const name = user.full_name ?? user.username;

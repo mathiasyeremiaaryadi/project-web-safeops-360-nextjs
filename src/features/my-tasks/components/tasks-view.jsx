@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
-import { addDays, formatLongDate, formatTime, todayInAppTimezone } from '@/lib/date';
+import { addDays, formatLongDate, formatTime, timezoneLabel, todayInAppTimezone } from '@/lib/date';
 import { useOnlineStatus } from '@/features/offline';
 import { useStartTask } from '@/features/my-tasks/api/mutations';
 import { useMyTasks } from '@/features/my-tasks/api/queries';
@@ -18,24 +18,40 @@ import { groupByPipeline, shiftOf } from '@/features/my-tasks/lib/tasks';
 
 /**
  * `/tasks` — "Tugas hari ini": the Worker's assigned tasks for a day, grouped per pipeline.
- * Only today and yesterday can be chosen (a night shift may run past midnight).
+ * "Today" is the site's date (WIB/WITA/WIT) as returned by the server; only today and yesterday
+ * can be chosen (yesterday: reports sent late for lack of signal).
  */
 export function TasksView() {
-  const today = todayInAppTimezone();
-  const yesterday = addDays(today, -1);
   const [dateParam, setDate] = useQueryState('date', parseAsString.withDefault(''));
-  const date = dateParam === yesterday ? yesterday : today;
   const online = useOnlineStatus();
-  const query = useMyTasks(date);
-  const start = useStartTask(date);
+  const todayQuery = useMyTasks('');
+  const todayTasks = todayQuery.data?.data ?? [];
+  const today = todayTasks[0]?.report_date ?? todayInAppTimezone();
+  const yesterday = addDays(today, -1);
+  const isYesterday = dateParam === yesterday;
+  const date = isYesterday ? yesterday : today;
+  const yesterdayQuery = useMyTasks(yesterday, { enabled: isYesterday });
+  const query = isYesterday ? yesterdayQuery : todayQuery;
   const tasks = query.data?.data ?? [];
   const shift = shiftOf(tasks);
+  // An earlier day needs the shift explicitly: the Worker's shift on that day, else today's.
+  const start = useStartTask(
+    isYesterday ? yesterday : '',
+    shift?.name ?? shiftOf(todayTasks)?.name,
+  );
+  const zone = tasks[0]?.site_timezone ?? todayTasks[0]?.site_timezone;
 
   return (
     <>
       <PageHeader
         title="Tugas hari ini"
-        description={`${formatLongDate(date)}${shift ? ` · ${shift.label}` : ''}`}
+        description={[
+          formatLongDate(date),
+          shift?.label,
+          zone ? `Waktu ${timezoneLabel(zone)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           <label className="flex flex-col gap-1 text-sm text-muted-foreground">
             Ganti tanggal

@@ -8,6 +8,7 @@ import { QueryList } from '@/components/shared/query-list';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatusChangeDialog } from '@/components/shared/status-change-dialog';
 import { useListParams } from '@/hooks/use-list-params';
+import { timezoneLabel } from '@/lib/date';
 import { searchRows } from '@/lib/search';
 import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useChangeSiteStatus } from '@/features/sites/api/mutations';
@@ -69,6 +70,12 @@ export function SitesList({ canEdit, createOpen, onCreateClose }) {
       cell: ({ row }) => row.original.site_type || '—',
     },
     {
+      id: 'timezone',
+      meta: { sortValue: (site) => site.timezone },
+      header: 'Zona waktu',
+      cell: ({ row }) => timezoneLabel(row.original.timezone),
+    },
+    {
       id: 'status',
       meta: { sortValue: (site) => site.status },
       header: 'Status',
@@ -110,7 +117,9 @@ export function SitesList({ canEdit, createOpen, onCreateClose }) {
               {badge(site)}
             </div>
             <p className="text-lg font-semibold text-foreground">{site.name}</p>
-            <p className="text-sm text-muted-foreground">{site.site_type || 'Tipe belum diisi'}</p>
+            <p className="text-sm text-muted-foreground">
+              {site.site_type || 'Tipe belum diisi'} · {timezoneLabel(site.timezone)}
+            </p>
             {actions(site)}
           </article>
         )}

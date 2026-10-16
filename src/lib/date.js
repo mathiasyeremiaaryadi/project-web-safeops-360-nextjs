@@ -4,17 +4,44 @@ import { id as localeId } from 'date-fns/locale/id';
 import { clientEnv } from '@/config/client-env';
 
 /*
- * Dates are computed and displayed in APP_TIMEZONE (default Asia/Jakarta). The backend uses
- * the UTC date when `date` is omitted, so the app always sends an explicit `YYYY-MM-DD`.
+ * Dates are computed and displayed in APP_TIMEZONE (default Asia/Jakarta). Work at a site
+ * (shift hours, report dates, open/close times) is shown in the site's own IANA time zone
+ * (`site_timezone`), so a site in WITA or WIT reads its local clock.
  */
 
 export const APP_TIMEZONE = clientEnv.NEXT_PUBLIC_APP_TIMEZONE;
 
-/** @param {string | Date | null | undefined} value */
-function toZoned(value) {
+/** Indonesian time zones a site can use (`sites.timezone`). */
+export const SITE_TIMEZONES = Object.freeze([
+  { value: 'Asia/Jakarta', label: 'WIB (UTC+7) · Sumatra, Jawa, Kalbar, Kalteng' },
+  { value: 'Asia/Makassar', label: 'WITA (UTC+8) · Bali, Nusa Tenggara, Kalsel, Kaltim, Sulawesi' },
+  { value: 'Asia/Jayapura', label: 'WIT (UTC+9) · Maluku, Papua' },
+]);
+
+const ZONE_ABBREVIATIONS = /** @type {Record<string, string>} */ ({
+  'Asia/Jakarta': 'WIB',
+  'Asia/Pontianak': 'WIB',
+  'Asia/Makassar': 'WITA',
+  'Asia/Jayapura': 'WIT',
+});
+
+/**
+ * "WITA" for `Asia/Makassar`; another zone is shown as its IANA name.
+ * @param {string | null | undefined} timeZone
+ */
+export function timezoneLabel(timeZone) {
+  if (!timeZone) return ZONE_ABBREVIATIONS[APP_TIMEZONE] ?? APP_TIMEZONE;
+  return ZONE_ABBREVIATIONS[timeZone] ?? timeZone;
+}
+
+/**
+ * @param {string | Date | null | undefined} value
+ * @param {string | null | undefined} [timeZone] defaults to APP_TIMEZONE
+ */
+function toZoned(value, timeZone) {
   if (!value) return null;
   const date = typeof value === 'string' ? parseISO(value) : value;
-  return isValid(date) ? new TZDate(date, APP_TIMEZONE) : null;
+  return isValid(date) ? new TZDate(date, timeZone || APP_TIMEZONE) : null;
 }
 
 /**
@@ -35,20 +62,36 @@ export function formatLongDate(isoDate) {
 }
 
 /**
- * "14 Okt 2026, 07.30" in APP_TIMEZONE.
+ * "14 Okt 2026, 07.30 WITA" — a time at a site, read on the site's clock and labelled with its
+ * zone, so WIB/WITA/WIT sites are never confused.
  * @param {string | null | undefined} value
+ * @param {string | null | undefined} timeZone the site's IANA zone (default APP_TIMEZONE)
+ * @param {{ dateless?: boolean }} [options] `dateless`: only "07.30 WITA"
  */
-export function formatDateTime(value) {
-  const date = toZoned(value);
+export function formatSiteTime(value, timeZone, { dateless = false } = {}) {
+  const date = toZoned(value, timeZone);
+  if (!date) return '—';
+  const text = format(date, dateless ? 'HH.mm' : 'd MMM yyyy, HH.mm', { locale: localeId });
+  return `${text} ${timezoneLabel(timeZone)}`;
+}
+
+/**
+ * "14 Okt 2026, 07.30" in `timeZone` (default APP_TIMEZONE).
+ * @param {string | null | undefined} value
+ * @param {string | null} [timeZone]
+ */
+export function formatDateTime(value, timeZone) {
+  const date = toZoned(value, timeZone);
   return date ? format(date, 'd MMM yyyy, HH.mm', { locale: localeId }) : '—';
 }
 
 /**
- * "14 Okt 2026" in APP_TIMEZONE.
+ * "14 Okt 2026" in `timeZone` (default APP_TIMEZONE).
  * @param {string | null | undefined} value
+ * @param {string | null} [timeZone]
  */
-export function formatDate(value) {
-  const date = toZoned(value);
+export function formatDate(value, timeZone) {
+  const date = toZoned(value, timeZone);
   return date ? format(date, 'd MMM yyyy', { locale: localeId }) : '—';
 }
 
@@ -79,10 +122,11 @@ export function addDays(isoDate, days) {
 }
 
 /**
- * "07.42" in APP_TIMEZONE.
+ * "07.42" in `timeZone` (default APP_TIMEZONE).
  * @param {string | null | undefined} value
+ * @param {string | null} [timeZone]
  */
-export function formatTime(value) {
-  const date = toZoned(value);
+export function formatTime(value, timeZone) {
+  const date = toZoned(value, timeZone);
   return date ? format(date, 'HH.mm', { locale: localeId }) : '—';
 }

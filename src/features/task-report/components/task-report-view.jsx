@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
 import { isNotFound, NotFoundState } from '@/components/shared/not-found-state';
-import { formatLongDate, formatTime } from '@/lib/date';
+import { formatLongDate, formatSiteTime } from '@/lib/date';
 import { REPORT_STATUS } from '@/lib/task-reports';
 import { cn } from '@/lib/utils';
 import { MAX_UPLOAD_ATTEMPTS, useOnlineStatus } from '@/features/offline';
@@ -116,6 +116,8 @@ function ReportForm({ report }) {
   };
 
   const times = { before: report.opened_at, after: report.closed_at };
+  // Times are read on the site's clock (WIB/WITA/WIT), the clock the Worker sees on site.
+  const zone = report.site_timezone;
   const meta = [
     report.pipeline_name,
     report.shift ? `Shift ${report.shift}` : null,
@@ -134,7 +136,8 @@ function ReportForm({ report }) {
             <ReportBadges report={report} />
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock aria-hidden="true" className="size-4" />
-              Mulai {formatTime(report.opened_at)} · Selesai {formatTime(report.closed_at)}
+              Mulai {formatSiteTime(report.opened_at, zone, { dateless: true })} · Selesai{' '}
+              {formatSiteTime(report.closed_at, zone, { dateless: true })}
             </p>
           </div>
 
@@ -168,7 +171,11 @@ function ReportForm({ report }) {
                   key={type}
                   type={type}
                   url={report[EVIDENCE_FIELD[type]]}
-                  time={report[EVIDENCE_FIELD[type]] ? formatTime(times[type]) : null}
+                  time={
+                    report[EVIDENCE_FIELD[type]]
+                      ? formatSiteTime(times[type], zone, { dateless: true })
+                      : null
+                  }
                   preview={uploading[type] ?? queued[type]?.blob ?? null}
                   state={localState(type)}
                   editable={editable}
@@ -195,7 +202,7 @@ function ReportForm({ report }) {
             </div>
           </section>
 
-          {history.data?.length ? <ReportHistory entries={history.data} /> : null}
+          {history.data?.length ? <ReportHistory entries={history.data} timeZone={zone} /> : null}
         </div>
 
         <aside className="flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-5">

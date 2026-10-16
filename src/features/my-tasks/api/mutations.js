@@ -14,12 +14,14 @@ import { myTaskKeys } from '@/features/my-tasks/api/queries';
 export const reportHref = (reportId) => `/tasks/report/${reportId}`;
 
 /**
- * "Mulai": `POST /pipeline-reports { pipeline_item_id, shift, report_date }` (→ IN_PROGRESS),
- * then opens the report. A duplicate (409: a report already exists for this task, shift and
- * date) reloads the tasks and opens the existing report instead.
- * @param {string} date `YYYY-MM-DD` of the task list.
+ * "Mulai": `POST /pipeline-reports` (→ IN_PROGRESS), then opens the report. Today only the task
+ * is sent: the server takes today's date and the shift running now on the site's clock
+ * (WIB/WITA/WIT). An earlier day (late upload) sends its date and the Worker's shift of that
+ * day. A duplicate (409: a report already exists) reloads the tasks and opens it instead.
+ * @param {string} date `YYYY-MM-DD` of the task list, or `''` for today at the site.
+ * @param {string | null} [shift] the Worker's shift on `date` (needed for an earlier day).
  */
-export function useStartTask(date) {
+export function useStartTask(date, shift = null) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useSession();
@@ -31,7 +33,13 @@ export function useStartTask(date) {
       apiRequest({
         method: 'post',
         path: 'v1/pipeline-reports',
-        json: { pipeline_item_id: task.pipeline_item_id, shift: task.shift, report_date: date },
+        json: date
+          ? {
+              pipeline_item_id: task.pipeline_item_id,
+              report_date: date,
+              shift: task.shift ?? shift ?? undefined,
+            }
+          : { pipeline_item_id: task.pipeline_item_id },
         schema: createdReportSchema,
       }),
     onSuccess: (reportId) => {
@@ -45,7 +53,7 @@ export function useStartTask(date) {
         queryClient.getQueryData(tasksKey)
       );
       const existing = tasks?.data.find(
-        (t) => t.pipeline_item_id === task.pipeline_item_id && t.shift === task.shift,
+        (t) => t.pipeline_item_id === task.pipeline_item_id && t.report_id,
       );
       if (existing?.report_id) router.push(reportHref(existing.report_id));
     },

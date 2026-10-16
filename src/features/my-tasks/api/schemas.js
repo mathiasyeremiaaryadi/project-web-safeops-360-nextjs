@@ -23,6 +23,9 @@ function normaliseTask(r) {
     pipeline_id: firstValue(r.pipeline_id, pipeline.id),
     pipeline_name: firstValue(r.pipeline_name, pipeline.name),
     vendor_name: firstValue(r.vendor_name, pipeline.vendor?.name, r.vendor?.name),
+    site_name: firstValue(r.site_name, r.site?.name),
+    site_timezone: firstValue(r.site_timezone, r.site?.timezone),
+    report_date: firstValue(r.report_date, r.date),
     shift: firstValue(shift.name, shift.code, shift.id),
     shift_start: firstValue(shift.start_time, shift.start, r.shift_start),
     shift_end: firstValue(shift.end_time, shift.end, r.shift_end),
@@ -44,6 +47,11 @@ export const myTaskSchema = z.preprocess(
     pipeline_id: optionalText,
     pipeline_name: optionalText,
     vendor_name: optionalText,
+    site_name: optionalText,
+    /** IANA zone of the site: shift hours and `report_date` are on its clock. */
+    site_timezone: optionalText,
+    /** The day of the task list (today at the site when no date was asked). */
+    report_date: optionalText,
     shift: optionalText,
     shift_start: optionalText,
     shift_end: optionalText,
