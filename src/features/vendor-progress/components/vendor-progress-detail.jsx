@@ -32,7 +32,11 @@ export function VendorProgressDetail({ vendorId }) {
   });
   const siteNameOf = useSiteNames(siteId);
   const backHref = `/vendor-progress${search ? `?${search}` : ''}`;
-  const rows = query.data?.data.filter((row) => row.vendorId === vendorId) ?? [];
+  // Rows are per vendor and site: keep the site of the URL (the list links with it).
+  const rows =
+    query.data?.data.filter(
+      (row) => row.vendorId === vendorId && (!siteId || !row.siteId || row.siteId === siteId),
+    ) ?? [];
   const vendor = rows[0];
 
   const header = (
@@ -102,7 +106,10 @@ export function VendorProgressDetail({ vendorId }) {
 
   return (
     <>
-      <PageHeader title={name} description={periodText(range)} />
+      <PageHeader
+        title={name}
+        description={[siteNameOf(vendor), periodText(range)].filter(Boolean).join(' · ')}
+      />
       {header}
 
       <section className="grid gap-5 rounded-2xl border bg-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

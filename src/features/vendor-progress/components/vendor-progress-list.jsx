@@ -41,8 +41,16 @@ export function VendorProgressList() {
   const rows = query.data
     ? searchRows(query.data.data, params.q, (row) => [nameOf(row), siteNameOf(row)])
     : [];
-  /** @param {VendorProgress} row */
-  const hrefOf = (row) => `/vendor-progress/${row.vendorId}${search ? `?${search}` : ''}`;
+  /**
+   * Detail of one row: rows are per vendor and site, so the row's site is carried over.
+   * @param {VendorProgress} row
+   */
+  const hrefOf = (row) => {
+    const query = new URLSearchParams(search);
+    if (row.siteId) query.set('site_id', row.siteId);
+    const text = query.toString();
+    return `/vendor-progress/${row.vendorId}${text ? `?${text}` : ''}`;
+  };
 
   const columns = [
     {
