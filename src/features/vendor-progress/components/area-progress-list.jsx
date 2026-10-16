@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/shared/empty-state';
 import { FilterBar } from '@/components/shared/filter-bar';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatTime } from '@/lib/date';
 import { NOTE_CATEGORY_LABELS, REPORT_STATUS, REPORT_STATUS_BADGES } from '@/lib/task-reports';
 import { ProgressBar } from '@/features/vendor-progress/components/progress-bar';
@@ -102,78 +103,134 @@ function DetailTable({ title, children }) {
 }
 
 /**
- * One point of an area: a summary line that opens the reports per shift (Pagi, Sore, Malam) and
- * the assignments without a report.
- * @param {{ point: PointProgress, open: boolean }} props
+ * One point of an area as a table row; clicking it opens the point's detail: a choice of shift
+ * (Pagi, Sore, Malam) showing that shift's reports, and the assignments not yet worked.
+ * @param {{ point: PointProgress }} props
  */
-function PointDetails({ point, open }) {
+function PointRow({ point }) {
+  const [open, setOpen] = useState(false);
   const groups = tasksByShift(point);
+  const shifts = [...new Set([...SHIFT_ORDER, ...groups.map((group) => group.shift)])];
+  const [shift, setShift] = useState(groups[0]?.shift ?? SHIFT_ORDER[0]);
   const done = point.tasks.filter((t) => t.status === REPORT_STATUS.COMPLETED).length;
   const working = point.tasks.filter((t) => t.status === REPORT_STATUS.IN_PROGRESS).length;
   const findings = point.tasks.filter((t) => t.category).length;
+  const workers = [
+    ...new Set(
+      [...point.tasks.map((t) => t.workerName), ...point.pending.map((p) => p.workerName)].filter(
+        Boolean,
+      ),
+    ),
+  ];
+  const detailId = `point-${point.key}-detail`;
+
   return (
-    <details className="group/point border-b last:border-0" open={open}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 flex-col gap-1.5">
-          <span className="font-medium text-foreground">{point.name}</span>
+    <>
+      <tr
+        className="cursor-pointer border-b align-top hover:bg-muted/40"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <th scope="row" className="py-2.5 pr-3 text-left font-medium text-foreground">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={detailId}
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen((value) => !value);
+            }}
+            className="inline-flex items-center gap-1.5 text-left outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronDown
+              aria-hidden="true"
+              className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+            />
+            {point.name}
+          </button>
+        </th>
+        <td className="py-2.5 pr-3">{workers.join(', ') || '—'}</td>
+        <td className="py-2.5 pr-3">
           <span className="flex flex-wrap gap-1.5">
-            {groups.map(({ shift }) => (
-              <Badge key={shift} variant="neutral">
-                {shiftLabel(shift)}
-              </Badge>
-            ))}
             {done ? <Badge variant="success">{done} selesai</Badge> : null}
             {working ? <Badge variant="info">{working} dikerjakan</Badge> : null}
             {point.pending.length ? (
               <Badge variant="warning">{point.pending.length} belum dikerjakan</Badge>
             ) : null}
-            {findings ? (
-              <Badge variant="danger">
-                <ShieldAlert aria-hidden="true" className="size-3.5" />
-                {findings} temuan
-              </Badge>
-            ) : null}
+            {!done && !working && !point.pending.length ? '—' : null}
           </span>
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-open/point:rotate-180"
-        />
-      </summary>
-      <div className="flex flex-col gap-4 pb-4 pl-3 sm:pl-4">
-        {groups.map(({ shift, tasks }) => (
-          <DetailTable key={shift} title={`Shift ${shiftLabel(shift)}`}>
-            {tasks.map((task) => (
-              <DetailRow
-                key={task.key}
-                worker={task.workerName ?? '—'}
-                status={task.status}
-                time={timeOf(task)}
-                notes={task.notes}
-                category={task.category}
-              />
-            ))}
-          </DetailTable>
-        ))}
-        {point.pending.length ? (
-          <DetailTable title="Belum dikerjakan">
-            {point.pending.map((pending) => (
-              <DetailRow
-                key={pending.key}
-                worker={pending.workerName ?? '—'}
-                status={REPORT_STATUS.PENDING}
-                time="—"
-                notes={null}
-                category={null}
-              />
-            ))}
-          </DetailTable>
-        ) : null}
-        {groups.length === 0 && point.pending.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Belum ada penugasan di titik ini.</p>
-        ) : null}
-      </div>
-    </details>
+        </td>
+        <td className="py-2.5">
+          {findings ? (
+            <Badge variant="danger">
+              <ShieldAlert aria-hidden="true" className="size-3.5" />
+              {findings} temuan
+            </Badge>
+          ) : (
+            '—'
+          )}
+        </td>
+      </tr>
+      {open ? (
+        <tr id={detailId} className="border-b bg-muted/30">
+          <td colSpan={4} className="px-3 py-4">
+            <div className="flex flex-col gap-4">
+              <Tabs value={shift} onValueChange={setShift}>
+                <TabsList aria-label={`Shift di titik ${point.name}`}>
+                  {shifts.map((code) => {
+                    const count = groups.find((group) => group.shift === code)?.tasks.length ?? 0;
+                    return (
+                      <TabsTrigger key={code} value={code} className="px-3">
+                        {shiftLabel(code)}
+                        {count ? <span className="tabular-nums">({count})</span> : null}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+                {shifts.map((code) => {
+                  const tasks = groups.find((group) => group.shift === code)?.tasks ?? [];
+                  return (
+                    <TabsContent key={code} value={code}>
+                      {tasks.length ? (
+                        <DetailTable title={`Shift ${shiftLabel(code)}`}>
+                          {tasks.map((task) => (
+                            <DetailRow
+                              key={task.key}
+                              worker={task.workerName ?? '—'}
+                              status={task.status}
+                              time={timeOf(task)}
+                              notes={task.notes}
+                              category={task.category}
+                            />
+                          ))}
+                        </DetailTable>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Belum ada laporan di shift {shiftLabel(code)}.
+                        </p>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+              {point.pending.length ? (
+                <DetailTable title="Belum dikerjakan">
+                  {point.pending.map((pending) => (
+                    <DetailRow
+                      key={pending.key}
+                      worker={pending.workerName ?? '—'}
+                      status={REPORT_STATUS.PENDING}
+                      time="—"
+                      notes={null}
+                      category={null}
+                    />
+                  ))}
+                </DetailTable>
+              ) : null}
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 
@@ -183,8 +240,8 @@ export const findingsOf = (area) =>
 
 /**
  * "Progres per area" of a vendor: one collapsible section per area (progress, points, workers,
- * shifts, safety findings) listing its points; a point opens its reports per shift — who worked
- * when, the status and the notes.
+ * shifts, safety findings) listing its points; clicking a point opens a choice of shift with
+ * that shift's reports — who worked when, the status and the notes.
  * @param {{ areas: AreaProgress[] }} props
  */
 export function AreaProgressList({ areas }) {
@@ -268,10 +325,24 @@ export function AreaProgressList({ areas }) {
                 ) : null}
               </span>
             </summary>
-            <div className="border-t px-4 sm:px-5">
-              {area.pointList.map((point) => (
-                <PointDetails key={point.key} point={point} open={Boolean(needle)} />
-              ))}
+            <div className="overflow-x-auto border-t px-4 pb-4 sm:px-5">
+              <table className="w-full min-w-[640px] text-sm">
+                <caption className="sr-only">Titik di area {area.name}</caption>
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    {['Titik', 'Worker', 'Status', 'Temuan'].map((label) => (
+                      <th key={label} scope="col" className="py-2.5 pr-3 font-medium">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {area.pointList.map((point) => (
+                    <PointRow key={point.key} point={point} />
+                  ))}
+                </tbody>
+              </table>
             </div>
           </details>
         );
