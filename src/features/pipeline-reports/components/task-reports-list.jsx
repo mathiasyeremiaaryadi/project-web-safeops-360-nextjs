@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { parseAsString } from 'nuqs';
 import { ClipboardCheck } from 'lucide-react';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { PageHeader } from '@/components/layout/page-header';
 import { ListWithPanel } from '@/components/shared/list-with-panel';
 import { QueryList } from '@/components/shared/query-list';
 import { ReportFilters } from '@/components/shared/report-filters';
-import { StatusTabs } from '@/components/shared/status-tabs';
 import { neighbourId, useDetailPanel } from '@/hooks/use-detail-panel';
 import { useListParams } from '@/hooks/use-list-params';
 import { useSiteContext } from '@/hooks/use-site-context';
@@ -18,15 +18,12 @@ import { filterRows } from '@/lib/search';
 import { useTaskReports } from '@/features/pipeline-reports/api/queries';
 import { ReportBadges, shiftLabel } from '@/features/pipeline-reports/components/report-badges';
 import { TaskReportDetail } from '@/features/pipeline-reports/components/task-report-detail';
-import {
-  DEFAULT_TASK_REPORT_TAB,
-  TASK_REPORT_TABS,
-} from '@/features/pipeline-reports/lib/constants';
+import { TASK_REPORT_STATUS_FILTERS } from '@/features/pipeline-reports/lib/constants';
 
 /** @typedef {import('@/features/pipeline-reports/api/schemas').TaskReport} TaskReport */
 
 const FILTERS = {
-  tab: parseAsString.withDefault(DEFAULT_TASK_REPORT_TAB),
+  status: parseAsString.withDefault(''),
   from: parseAsString.withDefault(''),
   to: parseAsString.withDefault(''),
   site_id: parseAsString.withDefault(''),
@@ -35,18 +32,28 @@ const FILTERS = {
 
 const hrefOf = (/** @type {string} */ id) => `/reports/tasks/${id}`;
 
-/** `/reports/tasks` — "Review laporan": status tabs, filters, list + 2XL preview panel. */
+/** `/reports/tasks` — "Review laporan": status, date, site and vendor filters, list + 2XL preview panel. */
 export function TaskReportsList() {
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
-  const tab = TASK_REPORT_TABS.find((t) => t.value === params.tab) ?? TASK_REPORT_TABS[0];
+  const statusFilter =
+    TASK_REPORT_STATUS_FILTERS.find((s) => s.value === params.status) ??
+    TASK_REPORT_STATUS_FILTERS[0];
   const site = useSiteContext();
   const { page, from, to, vendor_id } = params;
   const site_id = site.siteIdFor(params.site_id);
-  const query = useTaskReports({ page, limit, from, to, site_id, vendor_id, ...tab.params });
+  const query = useTaskReports({
+    page,
+    limit,
+    from,
+    to,
+    site_id,
+    vendor_id,
+    ...statusFilter.params,
+  });
   const users = useOptionLabels('users');
   const panel = useDetailPanel(hrefOf);
   // Same filters here (Postman has no `revision_status` filter), in case the backend ignores them.
-  const rows = filterRows(query.data?.data ?? [], { ...tab.params, vendor_id });
+  const rows = filterRows(query.data?.data ?? [], { ...statusFilter.params, vendor_id });
   const workerOf = (/** @type {TaskReport} */ r) => r.worker_name ?? users.labelOf(r.user_id);
 
   /** @param {TaskReport} r */
@@ -111,19 +118,27 @@ export function TaskReportsList() {
             : 'Laporan task dari worker yang perlu diperiksa.'
         }
       />
-      <StatusTabs
-        label="Filter status laporan"
-        options={TASK_REPORT_TABS}
-        value={tab.value}
-        onChange={(value) => setFilters({ tab: value })}
-      />
       <ReportFilters
         params={{ ...params, site_id: site_id ?? '' }}
         onChange={setFilters}
         showSite={site.showSiteFilter}
         showVendor={site.showVendorFilter}
         dateRange
-      />
+        className={site.showSiteFilter && site.showVendorFilter ? 'xl:grid-cols-5' : undefined}
+      >
+        <NativeSelect
+          aria-label="Filter status laporan"
+          className="w-full"
+          value={statusFilter.value}
+          onChange={(e) => setFilters({ status: e.target.value })}
+        >
+          {TASK_REPORT_STATUS_FILTERS.map((option) => (
+            <NativeSelectOption key={option.value} value={option.value}>
+              {option.label}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </ReportFilters>
 
       <ListWithPanel
         panelLabel="Pratinjau laporan"

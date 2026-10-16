@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { LookupFilter } from '@/components/shared/lookup-filter';
+import { cn } from '@/lib/utils';
 
 /**
  * Site + vendor filters of the report lists, plus an optional date range (`from`/`to` as
@@ -13,6 +14,7 @@ import { LookupFilter } from '@/components/shared/lookup-filter';
  * @param {boolean} [props.showSite] Hidden for users whose data is limited to their own sites.
  * @param {boolean} [props.showVendor] Hidden for a vendor's own users.
  * @param {import('react').ReactNode} [props.children] Extra filter controls, shown first.
+ * @param {string} [props.className] Grid columns override, e.g. `xl:grid-cols-5` for 5 controls.
  */
 export function ReportFilters({
   params,
@@ -21,9 +23,10 @@ export function ReportFilters({
   showSite = true,
   showVendor = true,
   children,
+  className,
 }) {
   return (
-    <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={cn('mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4', className)}>
       {children}
       {dateRange ? (
         <>

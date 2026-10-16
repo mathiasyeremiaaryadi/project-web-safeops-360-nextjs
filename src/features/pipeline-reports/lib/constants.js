@@ -1,4 +1,4 @@
-import { REPORT_STATUS, REVISION_STATUS } from '@/lib/task-reports';
+import { REPORT_STATUS } from '@/lib/task-reports';
 
 export {
   NOTE_CATEGORY_LABELS,
@@ -9,19 +9,15 @@ export {
 } from '@/lib/task-reports';
 
 /**
- * Status tabs of /reports/tasks and the API filter of each. "Revisi diminta" is a revision
- * status, not a report status (docs/ASSUMPTIONS.md R3).
+ * Status filter of /reports/tasks and the API filter of each. A Worker's report is only
+ * `IN_PROGRESS` or `COMPLETED`; there is no manager review.
  */
-export const TASK_REPORT_TABS = Object.freeze([
-  { value: 'SUBMITTED', label: 'Menunggu review', params: { status: REPORT_STATUS.SUBMITTED } },
+export const TASK_REPORT_STATUS_FILTERS = Object.freeze([
+  { value: '', label: 'Semua status', params: {} },
   {
-    value: 'REVISION',
-    label: 'Revisi diminta',
-    params: { revision_status: REVISION_STATUS.REQUESTED },
+    value: REPORT_STATUS.IN_PROGRESS,
+    label: 'Dikerjakan',
+    params: { status: REPORT_STATUS.IN_PROGRESS },
   },
-  { value: 'COMPLETED', label: 'Selesai', params: { status: REPORT_STATUS.COMPLETED } },
-  { value: 'REJECTED', label: 'Ditolak', params: { status: REPORT_STATUS.REJECTED } },
-  { value: 'ALL', label: 'Semua', params: {} },
+  { value: REPORT_STATUS.COMPLETED, label: 'Selesai', params: { status: REPORT_STATUS.COMPLETED } },
 ]);
-
-export const DEFAULT_TASK_REPORT_TAB = 'SUBMITTED';
