@@ -9,6 +9,7 @@ import { myTaskKeys } from '@/features/my-tasks';
 import { enqueueUpload } from '@/features/offline';
 import { taskReportKeys } from '@/features/pipeline-reports';
 import {
+  reviseReport,
   saveReportNotes,
   submitReport,
   uploadEvidence,
@@ -124,5 +125,43 @@ export function useSubmitReport(reportId) {
       refresh();
     },
     onError: (error) => showError(error, SUBMIT_ERRORS, refresh),
+  });
+}
+
+/** Messages of "Ajukan revisi". */
+const REVISION_ERRORS = {
+  409: 'Waktu revisi laporan ini sudah ditutup.',
+  422: 'Foto sebelum dan sesudah yang baru wajib ada.',
+};
+
+/**
+ * "Ajukan revisi": compresses both new photos (EXIF removed), then sends them in one request.
+ * Needs signal: a revision is not queued offline.
+ * @param {string} reportId
+ */
+export function useReviseReport(reportId) {
+  const refresh = useRefreshReport();
+  return useMutation({
+    /**
+     * @param {{ before: { file: File, takenAt: string }, after: { file: File, takenAt: string }, reason: string }} input
+     */
+    mutationFn: async ({ before, after, reason }) => {
+      const [beforePhoto, afterPhoto] = await Promise.all([
+        compressPhoto(before.file, 'before'),
+        compressPhoto(after.file, 'after'),
+      ]);
+      await reviseReport({
+        reportId,
+        before: { file: beforePhoto, takenAt: before.takenAt },
+        after: { file: afterPhoto, takenAt: after.takenAt },
+        reason,
+      });
+    },
+    networkMode: 'always',
+    onSuccess: async () => {
+      await refresh();
+      toast.success('Revisi laporan terkirim.');
+    },
+    onError: (error) => showError(error, REVISION_ERRORS, refresh),
   });
 }

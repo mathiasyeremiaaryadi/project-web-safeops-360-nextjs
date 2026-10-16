@@ -1,6 +1,7 @@
 import { StatusBadge } from '@/components/shared/status-badge';
 import { formatDate, formatSiteTime } from '@/lib/date';
 import { EvidencePhotos } from '@/features/pipeline-reports/components/evidence-photos';
+import { RevisionHistory } from '@/features/pipeline-reports/components/revision-history';
 import { shiftLabel } from '@/features/pipeline-reports/components/report-badges';
 import {
   NOTE_CATEGORY_LABELS,
@@ -50,6 +51,7 @@ export function TaskReportContent({ report, workerName }) {
           ['Site', report.site_name ?? '—'],
           ['Shift', shiftLabel(report.shift)],
           ['Tanggal laporan', formatDate(report.report_date)],
+          ['Revisi', report.revision_count ? `${report.revision_count} kali` : 'Tidak ada'],
           ['Dikirim', formatSiteTime(report.submitted_at, zone)],
         ]}
       />
@@ -57,6 +59,13 @@ export function TaskReportContent({ report, workerName }) {
       <Section title="Foto evidence">
         <EvidencePhotos beforeUrl={report.before_url} afterUrl={report.after_url} />
       </Section>
+
+      <RevisionHistory
+        reportId={report.id}
+        revisionCount={report.revision_count}
+        timeZone={zone}
+        className="flex flex-col border-t pt-4"
+      />
 
       <Section title="Waktu pengerjaan">
         <Facts

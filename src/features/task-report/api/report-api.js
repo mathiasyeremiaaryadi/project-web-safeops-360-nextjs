@@ -63,6 +63,30 @@ export function submitReport({ reportId, closedAt }) {
 }
 
 /**
+ * "Ajukan revisi": `POST /pipeline-reports/{id}/revisions` multipart with new `evidence_before`
+ * and `evidence_after` photos and their capture times, plus an optional `reason`. The server
+ * keeps the previous version.
+ * @param {{ reportId: string, before: { file: Blob, takenAt: string }, after: { file: Blob, takenAt: string }, reason?: string }} input
+ */
+export function reviseReport({ reportId, before, after, reason }) {
+  /** @param {Blob} file @param {string} name */
+  const asFile = (file, name) =>
+    file instanceof File ? file : new File([file], `${name}.jpg`, { type: file.type });
+  return apiRequest({
+    method: 'post',
+    path: `${PATH}/${reportId}/revisions`,
+    body: toFormData({
+      evidence_before: asFile(before.file, 'before'),
+      open_date: before.takenAt,
+      evidence_after: asFile(after.file, 'after'),
+      closed_date: after.takenAt,
+      reason: reason?.trim() || undefined,
+    }),
+    timeout: UPLOAD_TIMEOUT_MS,
+  });
+}
+
+/**
  * ⚠ W5 — `GET /pipeline-reports/{id}/history`. `null` when the server does not have the
  * endpoint (404/405): the history is then hidden.
  * @param {string} reportId

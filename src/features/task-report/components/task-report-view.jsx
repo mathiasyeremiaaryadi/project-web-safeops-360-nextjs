@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, RotateCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { ErrorState, ListSkeleton } from '@/components/shared/list-states';
@@ -10,7 +11,7 @@ import { formatLongDate, formatSiteTime } from '@/lib/date';
 import { REPORT_STATUS } from '@/lib/task-reports';
 import { cn } from '@/lib/utils';
 import { MAX_UPLOAD_ATTEMPTS, useOnlineStatus } from '@/features/offline';
-import { ReportBadges } from '@/features/pipeline-reports';
+import { ReportBadges, RevisionHistory } from '@/features/pipeline-reports';
 import {
   useSaveReportNotes,
   useSubmitReport,
@@ -20,6 +21,7 @@ import { useReportHistory, useWorkerReport } from '@/features/task-report/api/qu
 import { useUploadQueue } from '@/features/task-report/api/upload-queue';
 import { EvidenceSlot } from '@/features/task-report/components/evidence-slot';
 import { ReportHistory } from '@/features/task-report/components/report-history';
+import { RevisionDialog } from '@/features/task-report/components/revision-dialog';
 import { SafetyNotes } from '@/features/task-report/components/safety-notes';
 import {
   EVIDENCE_FIELD,
@@ -69,6 +71,7 @@ function ReportForm({ report }) {
   const [draft, setDraft] = useState(
     /** @type {{ notes: string, category: string } | null} */ (null),
   );
+  const [revising, setRevising] = useState(false);
 
   const editable = isReportEditable(report);
   const saved = { notes: report.note ?? '', category: report.note_category ?? '' };
@@ -133,7 +136,12 @@ function ReportForm({ report }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[minmax(0,1fr)_380px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <ReportBadges report={report} />
+            <span className="flex flex-wrap items-center gap-1.5">
+              <ReportBadges report={report} />
+              {report.revision_count > 0 ? (
+                <Badge variant="info">Revisi ke-{report.revision_count}</Badge>
+              ) : null}
+            </span>
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock aria-hidden="true" className="size-4" />
               Mulai {formatSiteTime(report.opened_at, zone, { dateless: true })} · Selesai{' '}
@@ -202,6 +210,12 @@ function ReportForm({ report }) {
             </div>
           </section>
 
+          <RevisionHistory
+            reportId={report.id}
+            revisionCount={report.revision_count}
+            timeZone={zone}
+          />
+
           {history.data?.length ? <ReportHistory entries={history.data} timeZone={zone} /> : null}
         </div>
 
@@ -243,19 +257,43 @@ function ReportForm({ report }) {
                 ) : null}
               </>
             ) : (
-              <p
-                role="status"
-                className="flex items-center justify-center gap-2 py-2 text-sm font-medium text-foreground lg:justify-start"
-              >
-                <CheckCircle2 aria-hidden="true" className="size-4 text-success" />
-                {report.status === REPORT_STATUS.COMPLETED
-                  ? 'Laporan selesai dan sudah terkirim.'
-                  : 'Menunggu review admin vendor.'}
-              </p>
+              <>
+                <p
+                  role="status"
+                  className="flex items-center justify-center gap-2 py-2 text-sm font-medium text-foreground lg:justify-start"
+                >
+                  <CheckCircle2 aria-hidden="true" className="size-4 text-success" />
+                  {report.status === REPORT_STATUS.COMPLETED
+                    ? 'Laporan selesai dan sudah terkirim.'
+                    : 'Menunggu review admin vendor.'}
+                </p>
+                {report.status === REPORT_STATUS.COMPLETED ? (
+                  <>
+                    {/* A revision replaces both photos; it may be sent as often as needed. */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-12 bg-card text-base"
+                      disabled={!online}
+                      onClick={() => setRevising(true)}
+                    >
+                      <RotateCcw aria-hidden="true" className="size-4" />
+                      Ajukan revisi
+                    </Button>
+                    {!online ? (
+                      <p className="text-center text-xs text-muted-foreground lg:text-left">
+                        Butuh sinyal untuk mengajukan revisi.
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
             )}
           </div>
         </aside>
       </div>
+
+      <RevisionDialog reportId={report.id} open={revising} onClose={() => setRevising(false)} />
     </div>
   );
 }
