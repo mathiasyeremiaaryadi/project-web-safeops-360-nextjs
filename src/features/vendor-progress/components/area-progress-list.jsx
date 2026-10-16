@@ -114,14 +114,6 @@ function PointRow({ point }) {
   const [shift, setShift] = useState(groups[0]?.shift ?? SHIFT_ORDER[0]);
   const done = point.tasks.filter((t) => t.status === REPORT_STATUS.COMPLETED).length;
   const working = point.tasks.filter((t) => t.status === REPORT_STATUS.IN_PROGRESS).length;
-  const findings = point.tasks.filter((t) => t.category).length;
-  const workers = [
-    ...new Set(
-      [...point.tasks.map((t) => t.workerName), ...point.pending.map((p) => p.workerName)].filter(
-        Boolean,
-      ),
-    ),
-  ];
   const detailId = `point-${point.key}-detail`;
 
   return (
@@ -148,8 +140,7 @@ function PointRow({ point }) {
             {point.name}
           </button>
         </th>
-        <td className="py-2.5 pr-3">{workers.join(', ') || '—'}</td>
-        <td className="py-2.5 pr-3">
+        <td className="py-2.5">
           <span className="flex flex-wrap gap-1.5">
             {done ? <Badge variant="success">{done} selesai</Badge> : null}
             {working ? <Badge variant="info">{working} dikerjakan</Badge> : null}
@@ -159,20 +150,10 @@ function PointRow({ point }) {
             {!done && !working && !point.pending.length ? '—' : null}
           </span>
         </td>
-        <td className="py-2.5">
-          {findings ? (
-            <Badge variant="danger">
-              <ShieldAlert aria-hidden="true" className="size-3.5" />
-              {findings} temuan
-            </Badge>
-          ) : (
-            '—'
-          )}
-        </td>
       </tr>
       {open ? (
         <tr id={detailId} className="border-b bg-muted/30">
-          <td colSpan={4} className="px-3 py-4">
+          <td colSpan={2} className="px-3 py-4">
             <div className="flex flex-col gap-4">
               <Tabs value={shift} onValueChange={setShift}>
                 <TabsList aria-label={`Shift di titik ${point.name}`}>
@@ -326,11 +307,11 @@ export function AreaProgressList({ areas }) {
               </span>
             </summary>
             <div className="overflow-x-auto border-t px-4 pb-4 sm:px-5">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[480px] text-sm">
                 <caption className="sr-only">Titik di area {area.name}</caption>
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    {['Titik', 'Worker', 'Status', 'Temuan'].map((label) => (
+                    {['Titik', 'Status'].map((label) => (
                       <th key={label} scope="col" className="py-2.5 pr-3 font-medium">
                         {label}
                       </th>

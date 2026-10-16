@@ -49,13 +49,13 @@ const area = {
 };
 
 describe('AreaProgressList', () => {
-  it('lists points without a shift column, and a point opens its reports per chosen shift', async () => {
+  it('lists points with their status only, and a point opens its reports per chosen shift', async () => {
     const user = userEvent.setup();
     render(<AreaProgressList areas={[area]} />);
     await user.click(screen.getByText('Ash Handling System'));
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['Titik', 'Worker', 'Status', 'Temuan']);
+    expect(headers).toEqual(['Titik', 'Status']);
     expect(screen.queryByRole('tab')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Ash Conveyor' }));
