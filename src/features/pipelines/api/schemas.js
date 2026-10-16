@@ -21,8 +21,10 @@ export const pipelineSchema = z.preprocess(
     name: z.string(),
     description: z.string().nullish(),
     status: masterStatusSchema,
-    /** Number of tasks, if the list sends it. */
+    /** Number of active tasks, if the API sends it. */
     item_count: z.number().nullish(),
+    /** Number of deactivated tasks, if the API sends it. */
+    inactive_item_count: z.number().nullish(),
   }),
 );
 

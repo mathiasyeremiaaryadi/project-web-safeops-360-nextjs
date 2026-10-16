@@ -21,6 +21,7 @@ import { MASTER_STATUS_BADGES } from '@/lib/constants';
 import { useSession } from '@/features/auth';
 import { usePipelines } from '@/features/pipelines/api/queries';
 import { PipelineFormDialog } from '@/features/pipelines/components/pipeline-form-dialog';
+import { formatTaskCount } from '@/features/pipelines/lib/task-count';
 
 const FILTERS = { vendor_id: parseAsString.withDefault(''), status: parseAsString.withDefault('') };
 const STATUS_FILTERS = [
@@ -28,9 +29,6 @@ const STATUS_FILTERS = [
   { value: 'ACTIVE', label: 'Aktif' },
   { value: 'INACTIVE', label: 'Nonaktif' },
 ];
-
-/** @param {number | null | undefined} count */
-const taskCount = (count) => (typeof count === 'number' ? `${count} task` : '—');
 
 /** `/pipelines` — list with vendor/status filters and "Buat pipeline". */
 export function PipelinesList() {
@@ -85,7 +83,7 @@ export function PipelinesList() {
       id: 'count',
       header: 'Jumlah task',
       meta: { sortValue: (/** @type {any} */ p) => p.item_count },
-      cell: ({ row }) => taskCount(row.original.item_count),
+      cell: ({ row }) => formatTaskCount(row.original),
     },
     {
       id: 'status',
@@ -176,7 +174,7 @@ export function PipelinesList() {
             </span>
             <span className="text-sm text-muted-foreground">
               {vendors.labelOf(pipeline.vendor_id)} · {siteOf(pipeline)} ·{' '}
-              {taskCount(pipeline.item_count)}
+              {formatTaskCount(pipeline)}
             </span>
           </Link>
         )}
