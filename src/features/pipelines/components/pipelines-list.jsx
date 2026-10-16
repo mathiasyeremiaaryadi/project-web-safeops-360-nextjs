@@ -37,16 +37,26 @@ export function PipelinesList() {
   const canWritePipelines = can(user, 'PIPELINE_WRITE');
   const { params, limit, setFilters, setPage } = useListParams(FILTERS);
   const site = useSiteContext();
-  const siteId = site.siteIdFor();
+  // Admin with a single site: always scope to it (no switcher, so no active choice is stored).
+  const mySiteIds = site.scoped ? site.sites.map((s) => s.value) : [];
+  const siteId = site.siteIdFor() ?? (mySiteIds.length === 1 ? mySiteIds[0] : undefined);
   const query = usePipelines({ ...params, site_id: siteId, limit });
   const vendors = useOptionLabels('vendors');
   const sites = useOptionLabels('sites');
   /** @param {{ site_id?: string | null }} p */
   const siteOf = (p) => (p.site_id ? sites.labelOf(p.site_id) : '—');
   // Server `?q=` / filters + the same here, in case the backend ignores them.
+  // Admin: only pipelines of their own site(s); the backend may also return site-less ones.
+  const inScope = (/** @type {{ site_id?: string | null }} */ p) =>
+    !site.scoped || mySiteIds.length === 0
+      ? true
+      : !!p.site_id && (siteId ? p.site_id === siteId : mySiteIds.includes(p.site_id));
   const rows = query.data
     ? searchRows(
-        filterRows(query.data.data, { vendor_id: params.vendor_id, status: params.status }),
+        filterRows(query.data.data.filter(inScope), {
+          vendor_id: params.vendor_id,
+          status: params.status,
+        }),
         params.q,
         (p) => [p.name, p.description, vendors.labelOf(p.vendor_id), siteOf(p)],
       )
