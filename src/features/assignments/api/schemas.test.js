@@ -39,19 +39,22 @@ describe('assignmentListSchema', () => {
 });
 
 describe('assignment form', () => {
-  it('requires pipeline, task and worker, and sends the Postman body', () => {
+  it('requires site, pipeline, task and worker, and sends the Postman body', () => {
     const empty = assignmentFormSchema.safeParse({
+      site: null,
       pipeline: null,
       pipeline_item_id: '',
       worker: null,
     });
     expect(empty.error?.issues.map((i) => i.path[0])).toEqual([
+      'site',
       'pipeline',
       'pipeline_item_id',
       'worker',
     ]);
     expect(
       toAssignmentPayload({
+        site: { value: 's1', label: 'PLTU Paiton' },
         pipeline: { value: 'p1', label: 'P' },
         pipeline_item_id: 'pi1',
         worker: { value: 'w1', label: 'Agus' },

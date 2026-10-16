@@ -15,7 +15,7 @@ import { usePipelineItems } from '@/features/pipelines';
 import { useCreateAssignment } from '@/features/assignments/api/queries';
 import { assignmentFormSchema, toAssignmentPayload } from '@/features/assignments/api/schemas';
 
-const EMPTY = { pipeline: null, pipeline_item_id: '', worker: null };
+const EMPTY = { site: null, pipeline: null, pipeline_item_id: '', worker: null };
 
 const ERRORS = {
   409: 'Worker ini sudah ditugaskan ke task tersebut.',
@@ -23,14 +23,15 @@ const ERRORS = {
 };
 
 /**
- * "Tambah penugasan": choose a pipeline, one of its active tasks, then a worker of the vendor.
- * No shift here: the worker chooses it per report (Postman).
+ * "Tambah penugasan": choose a site of the vendor, a pipeline at that site, one of its active
+ * tasks, then a worker of the vendor. No shift here: the worker chooses it per report (Postman).
  * @param {{ open: boolean, onClose: () => void }} props
  */
 export function AssignmentFormDialog({ open, onClose }) {
   const create = useCreateAssignment();
   const items = useOptionLabels('items');
   const form = useForm({ resolver: zodResolver(assignmentFormSchema), defaultValues: EMPTY });
+  const siteId = useWatch({ control: form.control, name: 'site' })?.value ?? '';
   const pipelineId = useWatch({ control: form.control, name: 'pipeline' })?.value ?? '';
   const pipelineItems = usePipelineItems(pipelineId);
   const tasks = pipelineId
@@ -38,6 +39,11 @@ export function AssignmentFormDialog({ open, onClose }) {
         .filter((task) => task.status === MASTER_STATUS.ACTIVE)
         .sort((a, b) => a.sort_order - b.sort_order)
     : [];
+
+  // Another site: its pipelines are different.
+  useEffect(() => {
+    form.setValue('pipeline', null);
+  }, [form, siteId]);
 
   // Another pipeline: its tasks are different.
   useEffect(() => {
@@ -72,12 +78,22 @@ export function AssignmentFormDialog({ open, onClose }) {
     >
       <ComboboxField
         control={form.control}
+        name="site"
+        id="assignment-site"
+        label="Site"
+        lookup="sites"
+        params={{ status: MASTER_STATUS.ACTIVE }}
+        placeholder="Pilih site"
+      />
+      <ComboboxField
+        control={form.control}
         name="pipeline"
         id="assignment-pipeline"
         label="Pipeline"
         lookup="pipelines"
-        params={{ status: MASTER_STATUS.ACTIVE }}
-        placeholder="Pilih pipeline"
+        params={{ status: MASTER_STATUS.ACTIVE, site_id: siteId || undefined }}
+        disabled={!siteId}
+        placeholder={siteId ? 'Pilih pipeline' : 'Pilih site dulu'}
       />
       <Controller
         control={form.control}

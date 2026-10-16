@@ -57,6 +57,7 @@ const optionSchema = z.object({ value: z.string(), label: z.string() });
 
 /** "Tambah penugasan": pipeline → one of its tasks → a worker of the vendor. */
 export const assignmentFormSchema = z.object({
+  site: optionSchema.nullable().refine(Boolean, 'Site wajib dipilih.'),
   pipeline: optionSchema.nullable().refine(Boolean, 'Pipeline wajib dipilih.'),
   pipeline_item_id: z.string().min(1, 'Task wajib dipilih.'),
   worker: optionSchema.nullable().refine(Boolean, 'Worker wajib dipilih.'),
