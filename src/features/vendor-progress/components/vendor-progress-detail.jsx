@@ -11,7 +11,7 @@ import {
   findingsOf,
 } from '@/features/vendor-progress/components/area-progress-list';
 import { ProgressBar } from '@/features/vendor-progress/components/progress-bar';
-import { ProgressPeriodFilter } from '@/features/vendor-progress/components/progress-period-filter';
+import { ProgressDateFilter } from '@/features/vendor-progress/components/progress-date-filter';
 import { periodText } from '@/features/vendor-progress/components/vendor-progress-list';
 import {
   useProgressFilters,
@@ -44,7 +44,12 @@ export function VendorProgressDetail({ vendorId }) {
         <ArrowLeft aria-hidden="true" className="size-4" />
         Kembali ke progress vendor
       </Link>
-      <ProgressPeriodFilter range={range} today={today} onChange={setParams} />
+      <ProgressDateFilter
+        date={range.from}
+        today={today}
+        onChange={setParams}
+        className="sm:w-48"
+      />
     </div>
   );
 

@@ -8,21 +8,22 @@ import { useVendors } from '@/features/vendors';
 import { resolveProgressRange } from '@/features/vendor-progress/lib/progress';
 
 const PARSERS = {
-  from: parseAsString.withDefault(''),
-  to: parseAsString.withDefault(''),
+  date: parseAsString.withDefault(''),
   site_id: parseAsString.withDefault(''),
+  vendor_id: parseAsString.withDefault(''),
   q: parseAsString.withDefault(''),
 };
 
 /**
- * Period (today by default, max. 31 days), site and search of the vendor progress pages, kept in
- * the URL so the detail page opens with the same period.
+ * Date (today by default), site, vendor and search of the progress pages — the same filters as
+ * "Rekap harian" — kept in the URL so the detail page opens with the same day. `range` is that
+ * one day (`dates` has one entry).
  */
 export function useProgressFilters() {
   const today = todayInAppTimezone();
   const [params, setParams] = useQueryStates(PARSERS, { history: 'replace', clearOnDefault: true });
   const site = useSiteContext();
-  const range = resolveProgressRange(params.from, params.to, today);
+  const range = resolveProgressRange(params.date, params.date, today);
   return {
     params,
     setParams,
@@ -30,11 +31,13 @@ export function useProgressFilters() {
     range,
     site,
     siteId: site.siteIdFor(params.site_id),
-    /** `?from=&to=&site_id=` to carry over to the detail page. */
+    /** `?date=&site_id=&vendor_id=` to carry over between the list and the detail page. */
     search: new URLSearchParams(
-      Object.entries({ from: params.from, to: params.to, site_id: params.site_id }).filter(
-        ([, value]) => value,
-      ),
+      Object.entries({
+        date: params.date,
+        site_id: params.site_id,
+        vendor_id: params.vendor_id,
+      }).filter(([, value]) => value),
     ).toString(),
   };
 }

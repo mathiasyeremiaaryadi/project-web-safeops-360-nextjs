@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { LookupFilter } from '@/components/shared/lookup-filter';
 import { QueryList } from '@/components/shared/query-list';
+import { ReportFilters } from '@/components/shared/report-filters';
 import { formatLongDate } from '@/lib/date';
 import { searchRows } from '@/lib/search';
 import { useVendorProgress } from '@/features/vendor-progress/api/queries';
 import { ProgressBar } from '@/features/vendor-progress/components/progress-bar';
-import { ProgressPeriodFilter } from '@/features/vendor-progress/components/progress-period-filter';
+import { ProgressDateFilter } from '@/features/vendor-progress/components/progress-date-filter';
 import {
   useProgressFilters,
   useSiteNames,
@@ -26,11 +26,15 @@ export const periodText = ({ from, to }) =>
 /** @param {number} value */
 const count = (value) => <span className="tabular-nums">{value}</span>;
 
-/** `/vendor-progress` — task progress per vendor for a period (today by default). */
+/** `/vendor-progress` — task progress per vendor for one day (today by default). */
 export function VendorProgressList() {
   const router = useRouter();
   const { params, setParams, today, range, site, siteId, search } = useProgressFilters();
-  const query = useVendorProgress({ dates: range.dates, site_id: siteId });
+  const query = useVendorProgress({
+    dates: range.dates,
+    site_id: siteId,
+    vendor_id: params.vendor_id || undefined,
+  });
   const siteNameOf = useSiteNames(siteId);
   /** @param {VendorProgress} row */
   const nameOf = (row) => row.vendorName ?? '—';
@@ -100,20 +104,22 @@ export function VendorProgressList() {
         onSearchChange={(q) => setParams({ q: q || null })}
         searchPlaceholder="Cari vendor atau site"
       />
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end">
-        <ProgressPeriodFilter range={range} today={today} onChange={setParams} />
-        {site.showSiteFilter ? (
-          <div className="lg:w-64">
-            <LookupFilter
-              lookup="sites"
-              value={params.site_id}
-              onChange={(site_id) => setParams({ site_id: site_id || null })}
-              placeholder="Semua site"
-              ariaLabel="Filter site"
-            />
-          </div>
-        ) : null}
-      </div>
+      <ReportFilters
+        // The vendor filter only offers vendors of the chosen site.
+        params={{ ...params, site_id: siteId ?? '' }}
+        showSite={site.showSiteFilter}
+        showVendor={site.showVendorFilter}
+        // A new site may not be served by the selected vendor: clear it.
+        onChange={(updates) =>
+          setParams(
+            'site_id' in updates
+              ? { site_id: updates.site_id || null, vendor_id: null }
+              : { vendor_id: updates.vendor_id || null },
+          )
+        }
+      >
+        <ProgressDateFilter date={range.from} today={today} onChange={setParams} />
+      </ReportFilters>
 
       {range.error ? null : (
         <QueryList

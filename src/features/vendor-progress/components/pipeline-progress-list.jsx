@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { FilterBar } from '@/components/shared/filter-bar';
-import { LookupFilter } from '@/components/shared/lookup-filter';
+import { ReportFilters } from '@/components/shared/report-filters';
 import { QueryList } from '@/components/shared/query-list';
 import { useOptionLabels } from '@/hooks/use-option-labels';
 import { searchRows } from '@/lib/search';
 import { usePipelines } from '@/features/pipelines';
 import { usePipelineProgress } from '@/features/vendor-progress/api/queries';
 import { ProgressBar } from '@/features/vendor-progress/components/progress-bar';
-import { ProgressPeriodFilter } from '@/features/vendor-progress/components/progress-period-filter';
+import { ProgressDateFilter } from '@/features/vendor-progress/components/progress-date-filter';
 import { periodText } from '@/features/vendor-progress/components/vendor-progress-list';
 import { useProgressFilters } from '@/features/vendor-progress/hooks/use-progress-filters';
 
@@ -120,20 +120,15 @@ export function PipelineProgressList() {
         onSearchChange={(q) => setParams({ q: q || null })}
         searchPlaceholder="Cari pipeline atau site"
       />
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end">
-        <ProgressPeriodFilter range={range} today={today} onChange={setParams} />
-        {site.showSiteFilter ? (
-          <div className="lg:w-64">
-            <LookupFilter
-              lookup="sites"
-              value={params.site_id}
-              onChange={(site_id) => setParams({ site_id: site_id || null })}
-              placeholder="Semua site"
-              ariaLabel="Filter site"
-            />
-          </div>
-        ) : null}
-      </div>
+      {/* An Admin vendor's pipelines are all their own vendor's: no vendor filter. */}
+      <ReportFilters
+        params={{ ...params, site_id: siteId ?? '' }}
+        showSite={site.showSiteFilter}
+        showVendor={false}
+        onChange={(updates) => setParams({ site_id: updates.site_id || null })}
+      >
+        <ProgressDateFilter date={range.from} today={today} onChange={setParams} />
+      </ReportFilters>
 
       {range.error ? null : (
         <QueryList
