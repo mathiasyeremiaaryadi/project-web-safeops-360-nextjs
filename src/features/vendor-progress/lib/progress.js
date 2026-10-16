@@ -79,7 +79,7 @@ const toCategory = (value) => {
  * @property {number} inProgress
  * @property {number} notStarted
  * @property {number} percent
- * @property {{ areas: number, points: number, workers: number, assignments: number }} totals
+ * @property {{ areas: number, points: number, workers: number, assignments: number, reports: number }} totals
  * @property {AreaProgress[]} areas
  */
 
@@ -96,12 +96,14 @@ const toTask = (shift, t, index) => ({
 });
 
 /**
- * Reports of a point: every key whose value has a `task_detail` list is a shift (`DAY`, …).
+ * Reports of a point per shift: `shift_detail: { DAY: { task_detail: [...] }, … }`, or (older
+ * API) every key of the point whose value has a `task_detail` list is a shift.
  * @param {any} raw
  * @returns {PointTask[]}
  */
 function toTasks(raw) {
-  return Object.entries(raw).flatMap(([shift, value]) => {
+  const shifts = isRecord(raw.shift_detail) ? raw.shift_detail : raw;
+  return Object.entries(shifts).flatMap(([shift, value]) => {
     const list = isRecord(value) ? /** @type {any} */ (value).task_detail : null;
     return Array.isArray(list)
       ? list.filter(isRecord).map((t, index) => toTask(shift, t, index))
@@ -113,12 +115,16 @@ function toTasks(raw) {
 function toPoint(raw, index) {
   const name = firstValue(raw.nama_point, raw.point_name, raw.name);
   const pending = Array.isArray(raw.pending_detail) ? raw.pending_detail.filter(isRecord) : [];
+  const tasks = toTasks(raw);
   return {
     key: String(firstValue(raw.pipeline_item_id, raw.point_id, raw.id) ?? `point-${index}`),
     name: name ? String(name) : `Titik ${index + 1}`,
     workers: toCount(raw.total_worker),
-    assignments: toCount(raw.total_assignment),
-    tasks: toTasks(raw),
+    // Without `total_assignment`: the assignments with a report plus those without one.
+    assignments: toCount(
+      raw.total_assignment ?? new Set(tasks.map((t) => t.key.split('|')[0])).size + pending.length,
+    ),
+    tasks,
     pending: pending.map((/** @type {any} */ p, i) => ({
       key: String(firstValue(p.assignment_id, p.id) ?? `pending-${i}`),
       workerName: firstValue(p.worker_name) ?? null,
@@ -193,7 +199,11 @@ function toVendor(raw) {
       areas: toCount(firstValue(detail.total_area, detail.total_areas) ?? areas.length),
       points: toCount(firstValue(detail.total_point, detail.total_points)),
       workers: toCount(firstValue(detail.total_worker, detail.total_workers)),
-      assignments: toCount(firstValue(detail.total_assignment, detail.total_assignments)),
+      // One task is one assignment on the day: `total_task` when the detail has no count.
+      assignments: toCount(
+        firstValue(detail.total_assignment, detail.total_assignments, raw.total_task),
+      ),
+      reports: toCount(firstValue(detail.total_report, detail.total_reports)),
     },
     areas: areas.filter(isRecord).map(toArea),
   };
@@ -264,6 +274,8 @@ export function mergeVendorProgress(days) {
     for (const field of /** @type {const} */ (['areas', 'points', 'workers', 'assignments'])) {
       current.totals[field] = Math.max(current.totals[field], row.totals[field]);
     }
+    // Reports happen per day: they add up.
+    current.totals.reports += row.totals.reports;
     for (const area of row.areas) {
       const same = current.areas.find((a) => a.key === area.key);
       if (!same) {

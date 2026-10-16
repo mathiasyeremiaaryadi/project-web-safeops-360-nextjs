@@ -69,7 +69,13 @@ describe('mergeVendorProgress', () => {
     expect(merged[0]).toMatchObject({ total: 20, completed: 15, inProgress: 3, notStarted: 2 });
     expect(merged[0].percent).toBe(75);
     // The set-up is not added up.
-    expect(merged[0].totals).toEqual({ areas: 2, points: 55, workers: 10, assignments: 59 });
+    expect(merged[0].totals).toEqual({
+      areas: 2,
+      points: 55,
+      workers: 10,
+      assignments: 59,
+      reports: 0,
+    });
     expect(merged[0].areas[0]).toMatchObject({ total: 20, completed: 16, percent: 80 });
   });
 });
@@ -211,6 +217,86 @@ describe('toVendorProgress — detail endpoint (Postman example)', () => {
       category: 'UNSAFE_CONDITION',
     });
     expect(area.pointList[1].tasks[0].category).toBeNull();
+  });
+
+  it('reads per-site rows with shifts under shift_detail (current API)', () => {
+    const [vendor] = toVendorProgress({
+      data: {
+        type: 'vendor_progress',
+        data: {
+          vendor_progress: [
+            {
+              site_id: 's1',
+              site_name: 'PLTU Adipala',
+              vendor_id: 'v5',
+              vendor_name: 'PT Cahaya Energi Nusantara',
+              total_task: 3,
+              completed: 1,
+              in_progress: 1,
+              pending: 1,
+              vendor_progress_detail: {
+                total_area: 1,
+                total_point: 2,
+                total_worker: 2,
+                total_report: 2,
+                area_detail: [
+                  {
+                    area_id: 'a1',
+                    nama_area: 'Boiler Area',
+                    total_point_per_area: 2,
+                    total_worker_per_area: 2,
+                    total_report_per_area: 2,
+                    point_detail: [
+                      {
+                        pipeline_item_id: 'pi1',
+                        nama_point: 'Tangga Boiler',
+                        total_worker: 1,
+                        total_report: 2,
+                        pending_detail: [],
+                        shift_detail: {
+                          DAY: {
+                            task_detail: [
+                              { assignment_id: 'as1', status: 'COMPLETED', category_note: '-' },
+                            ],
+                          },
+                          NIGHT: {
+                            task_detail: [
+                              { assignment_id: 'as2', status: 'IN_PROGRESS', category_note: '-' },
+                            ],
+                          },
+                        },
+                      },
+                      {
+                        pipeline_item_id: 'pi2',
+                        nama_point: 'Area Pulverizer',
+                        total_worker: 1,
+                        total_report: 0,
+                        pending_detail: [{ assignment_id: 'as3', status: 'PENDING' }],
+                        shift_detail: {},
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+    expect(vendor).toMatchObject({ siteId: 's1', siteName: 'PLTU Adipala' });
+    expect(vendor.totals).toMatchObject({ assignments: 3, reports: 2 });
+    const [area] = vendor.areas;
+    expect(area).toMatchObject({
+      total: 3,
+      completed: 1,
+      inProgress: 1,
+      notStarted: 1,
+      shifts: ['DAY', 'NIGHT'],
+    });
+    expect(area.pointList.map((p) => [p.tasks.length, p.pending.length, p.assignments])).toEqual([
+      [2, 0, 2],
+      [0, 1, 1],
+    ]);
   });
 
   it('keeps the reports of every day when merging', () => {

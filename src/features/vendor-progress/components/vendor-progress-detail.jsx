@@ -101,6 +101,7 @@ export function VendorProgressDetail({ vendorId }) {
     ['Total point', vendor.totals.points],
     ['Total worker', vendor.totals.workers],
     ['Total penugasan', vendor.totals.assignments],
+    ['Total laporan', vendor.totals.reports],
     ['Temuan safety', vendor.areas.reduce((sum, area) => sum + findingsOf(area), 0)],
   ];
 
@@ -130,7 +131,7 @@ export function VendorProgressDetail({ vendorId }) {
             <div key={label} className="flex flex-col gap-1">
               <dt className="text-sm text-muted-foreground">{label}</dt>
               <dd className="font-medium break-words text-foreground tabular-nums">
-                {value || '—'}
+                {value === '' || value == null ? '—' : value}
               </dd>
             </div>
           ))}
