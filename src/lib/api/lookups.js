@@ -14,6 +14,8 @@ const lookupRowSchema = z.object({
   code: z.string().nullish(),
   username: z.string().nullish(),
   full_name: z.string().nullish(),
+  /** Vendors: the sites they work at. */
+  site_ids: z.array(z.coerce.string()).nullish().catch(null),
 });
 
 const lookupListSchema = listResponseSchema(lookupRowSchema);
@@ -68,7 +70,13 @@ export async function fetchLookupOptions(kind, { q = '', limit = 20, params = {}
     searchParams: { page: 1, q, limit, ...params },
     schema: lookupListSchema,
   });
-  return result.data.map((row) => ({
+  // A backend that ignores `site_id` on `/vendors` returns every vendor: keep those working at
+  // the site (each vendor lists its `site_ids`).
+  const siteId = kind === 'vendors' ? params.site_id : undefined;
+  const rows = siteId
+    ? result.data.filter((row) => !row.site_ids || row.site_ids.includes(siteId))
+    : result.data;
+  return rows.map((row) => ({
     value: row.id,
     label: lookup.label(row),
     hint: lookup.hint(row),
