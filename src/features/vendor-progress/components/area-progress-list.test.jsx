@@ -49,30 +49,63 @@ const area = {
 };
 
 describe('AreaProgressList', () => {
-  it('lists points with their status only, and a point opens its reports per chosen shift', async () => {
+  it('lists points with their status and opens reports per selected shift', async () => {
     const user = userEvent.setup();
+
     render(<AreaProgressList areas={[area]} />);
+
+    // Buka detail area.
     await user.click(screen.getByText('Ash Handling System'));
 
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['Titik', 'Status']);
-    expect(screen.queryByRole('tab')).toBeNull();
+    // Header mengikuti tabel yang digunakan komponen saat ini.
+    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
 
+    expect(headers).toEqual(['Point', 'Total task', 'Status laporan']);
+
+    // Tab utama tetap tersedia sebelum detail point dibuka.
+    expect(screen.getByRole('tab', { name: /Task/ })).toBeTruthy();
+
+    expect(screen.getByRole('tab', { name: /Insiden/ })).toBeTruthy();
+
+    expect(screen.getByRole('tab', { name: /Unassignment/ })).toBeTruthy();
+
+    // Tab shift belum muncul sebelum point dibuka.
+    expect(screen.queryByRole('tab', { name: /Pagi/ })).toBeNull();
+
+    // Buka detail point.
     await user.click(screen.getByRole('button', { name: 'Ash Conveyor' }));
-    const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Pagi(1)', 'Sore', 'Malam(1)']);
-    // The first shift with reports is chosen.
-    const panel = screen.getByRole('tabpanel');
-    expect(within(panel).getByText('Area bersih')).toBeTruthy();
-    expect(within(panel).queryByText('Masih dikerjakan')).toBeNull();
 
-    await user.click(screen.getByRole('tab', { name: /Malam/ }));
-    expect(within(screen.getByRole('tabpanel')).getByText('Masih dikerjakan')).toBeTruthy();
+    const shiftTabList = screen.getByRole('tablist', {
+      name: 'Shift di point Ash Conveyor',
+    });
 
-    await user.click(screen.getByRole('tab', { name: 'Sore' }));
+    const shiftTabs = within(shiftTabList)
+      .getAllByRole('tab')
+      .map((tab) => tab.textContent);
+
+    expect(shiftTabs).toEqual(['Pagi(1)', 'Sore', 'Malam(1)']);
+
+    // Shift pertama yang memiliki laporan dipilih secara otomatis.
+    expect(screen.getByText('Area bersih')).toBeTruthy();
+    expect(screen.queryByText('Masih dikerjakan')).toBeNull();
+
+    // Memilih shift malam menampilkan laporan malam.
+    await user.click(within(shiftTabList).getByRole('tab', { name: /Malam/ }));
+
+    expect(screen.getByText('Masih dikerjakan')).toBeTruthy();
+
+    // Shift sore tidak memiliki laporan.
+    await user.click(within(shiftTabList).getByRole('tab', { name: 'Sore' }));
+
     expect(screen.getByText('Belum ada laporan di shift Sore.')).toBeTruthy();
 
-    // Assignments not yet worked stay visible under the shifts.
-    expect(screen.getByRole('heading', { name: 'Belum dikerjakan' })).toBeTruthy();
+    // Penugasan yang belum dikerjakan tetap ditampilkan.
+    expect(
+      screen.getByRole('heading', {
+        name: 'Penugasan belum dikerjakan',
+      }),
+    ).toBeTruthy();
+
+    expect(screen.getByText('Galih Saputra')).toBeTruthy();
   });
 });

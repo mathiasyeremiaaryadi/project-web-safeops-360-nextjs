@@ -22,8 +22,7 @@ const toCount = (value) => {
 };
 
 /** @param {number} completed @param {number} total */
-const percentOf = (completed, total) =>
-  total > 0 ? Math.round((completed / total) * 10000) / 100 : 0;
+const percentOf = (completed, total) => (total > 0 ? Math.round((completed / total) * 100) : 0);
 
 const STATUS = Object.freeze({
   COMPLETED: 'COMPLETED',
@@ -49,6 +48,7 @@ const toCategory = (value) => {
   const text = String(value ?? '')
     .trim()
     .toUpperCase();
+
   return text && text !== '-' ? text : null;
 };
 
@@ -61,8 +61,13 @@ const toCheckPointStatus = (value) => {
     .trim()
     .toUpperCase();
 
-  if (status === CHECK_POINT_STATUS.COMPLETE) return CHECK_POINT_STATUS.COMPLETE;
-  if (status === CHECK_POINT_STATUS.INCOMPLETE) return CHECK_POINT_STATUS.INCOMPLETE;
+  if (status === CHECK_POINT_STATUS.COMPLETE) {
+    return CHECK_POINT_STATUS.COMPLETE;
+  }
+
+  if (status === CHECK_POINT_STATUS.INCOMPLETE) {
+    return CHECK_POINT_STATUS.INCOMPLETE;
+  }
 
   return null;
 };
@@ -239,8 +244,8 @@ function toPoint(raw, index) {
       .map(String),
   );
 
-  // Detail point saat ini tidak mengirim total_task per point.
-  // Hitung assignment unik dari report dan pending assignment yang tersedia.
+  // Total assignment dihitung unik dari report dan pending assignment.
+  // Beberapa report dari assignment yang sama tidak menggandakan assignment.
   const assignmentCount = firstDefined(raw.total_task);
 
   const assignments =
@@ -260,7 +265,7 @@ function toPoint(raw, index) {
 
     assignments,
 
-    // Jumlah report adalah jumlah report row, bukan assignment.
+    // Jumlah report adalah jumlah report row, bukan jumlah assignment.
     totalReports: toCount(firstDefined(raw.total_report, raw.total_reports, tasks.length)),
 
     tasks,
@@ -289,6 +294,9 @@ function toPoint(raw, index) {
 /**
  * Statistik report dan assignment pending.
  *
+ * Setiap report row dihitung sebagai satu task pada statistik detail.
+ * Assignment tanpa report dihitung sebagai pending/not started.
+ *
  * @param {PointProgress[]} points
  */
 function countPoints(points) {
@@ -308,21 +316,11 @@ function countPoints(points) {
 }
 
 /**
- * Satu point dianggap selesai apabila memiliki report dan
- * seluruh report-nya berstatus COMPLETED.
- *
- * @param {PointProgress[]} points
- * @returns {number}
- */
-function countCompletedPoints(points) {
-  return points.filter(
-    (point) =>
-      point.tasks.length > 0 && point.tasks.every((task) => task.status === STATUS.COMPLETED),
-  ).length;
-}
-
-/**
  * Parse satu area dan daftar point-nya.
+ *
+ * Progress area menggunakan completed task / total task.
+ * Pending assignment termasuk total task.
+ * Point yang belum di-assign tidak termasuk denominator.
  *
  * @param {any} raw
  * @param {number} index
@@ -339,8 +337,16 @@ function toArea(raw, index) {
 
   const name = firstDefined(raw.nama_area, raw.area_name, raw.name, raw.area, raw.pipeline_name);
 
+  // Total task mencakup report row dan pending assignment.
+  // Prioritaskan total task eksplisit dari backend.
+  // Jangan memakai total_report_per_area sebagai total task jika
+  // point detail menyediakan hitungan report dan pending assignment.
   const total = toCount(
     firstDefined(
+      raw.total_task,
+      raw.total_assignment_per_area,
+      raw.total_assignment,
+      pointList.length > 0 ? counted.total : undefined,
       raw.total_report_per_area,
       raw.total_report,
       raw.total_reports,
@@ -363,8 +369,6 @@ function toArea(raw, index) {
     firstDefined(raw.total_point_per_area, raw.total_point, raw.total_points, pointList.length),
   );
 
-  const completedPoints = countCompletedPoints(pointList);
-
   return {
     key: String(firstDefined(raw.area_id, raw.pipeline_id, raw.id, name) ?? `area-${index}`),
 
@@ -379,8 +383,8 @@ function toArea(raw, index) {
     inProgress,
     notStarted,
 
-    // Progres area dihitung dari point selesai, bukan jumlah report.
-    percent: percentOf(completedPoints, totalPoints),
+    // Persentase area berdasarkan task, bukan jumlah point atau report saja.
+    percent: percentOf(completed, total),
 
     shifts: [...new Set(pointList.flatMap((point) => point.tasks.map((task) => task.shift)))],
 
@@ -390,6 +394,9 @@ function toArea(raw, index) {
 
 /**
  * Parse checkpoint dari vendor_progress_detail.check_point.
+ *
+ * Point yang belum di-assign hanya menjadi informasi checkpoint;
+ * point tersebut tidak ditambahkan ke total task progress.
  *
  * @param {any} raw
  * @returns {CheckPointDetail | null}
@@ -467,7 +474,7 @@ function toVendor(raw) {
   const inProgress = toCount(raw.in_progress);
   const notStarted = toCount(firstDefined(raw.not_started, raw.pending));
 
-  // Progress vendor menggunakan total_task, bukan total point atau total report.
+  // Progress vendor menggunakan total_task, bukan total point atau report.
   const total = toCount(firstDefined(raw.total_task, completed + inProgress + notStarted));
 
   return {
@@ -517,10 +524,11 @@ function toVendor(raw) {
         ),
       ),
 
-      // Properti internal `assignments` dipertahankan agar komponen FE yang
-      // sudah menggunakannya tidak rusak; sumber nilainya sekarang total_task.
+      // Nama properti internal dipertahankan untuk kompatibilitas.
+      // Nilainya berasal dari total_task backend.
       assignments: toCount(firstDefined(detail.total_task, raw.total_task)),
 
+      // Total report tetap terpisah dari total task/assignment.
       reports: toCount(
         firstDefined(
           detail.total_report,

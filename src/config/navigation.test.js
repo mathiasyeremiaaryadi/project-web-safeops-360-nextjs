@@ -32,6 +32,7 @@ describe('navigation config', () => {
 
   it('groups Super Admin items into the documented sections', () => {
     const sections = getNavItems(SA).map((item) => item.section ?? null);
+
     expect(sections).toEqual([
       null,
       null,
@@ -69,13 +70,12 @@ describe('navigation config', () => {
     expect(getNavItems([ROLES.WORKER, ROLES.SUPER_ADMIN])).toHaveLength(14);
   });
 
-  it('opens "Progress vendor" to Super Admin / Admin, "Progress pipeline" to Admin vendor', () => {
+  it('allows Progress vendor for Super Admin, Admin, and Admin vendor', () => {
     for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN]) {
       expect(canAccessPath('/vendor-progress/v1', [role])).toBe(true);
-      expect(canAccessPath('/pipeline-progress', [role])).toBe(false);
     }
-    expect(canAccessPath('/vendor-progress', [ROLES.ADMIN_WORKER])).toBe(false);
-    expect(canAccessPath('/pipeline-progress', [ROLES.ADMIN_WORKER])).toBe(true);
+
+    expect(canAccessPath('/vendor-progress', [ROLES.ADMIN_WORKER])).toBe(true);
     expect(canAccessPath('/assignments', [ROLES.ADMIN_WORKER])).toBe(true);
     expect(canAccessPath('/assignments', [ROLES.ADMIN])).toBe(false);
     expect(canAccessPath('/vendor-progress', [ROLES.WORKER])).toBe(false);
@@ -85,9 +85,11 @@ describe('navigation config', () => {
     for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ADMIN_WORKER]) {
       expect(canAccessPath('/sla/detail', [role])).toBe(true);
     }
+
     for (const role of [ROLES.SUPER_ADMIN, ROLES.ADMIN]) {
       expect(canAccessPath('/sla/rules/new', [role])).toBe(true);
     }
+
     expect(canAccessPath('/sla/rules', [ROLES.ADMIN_WORKER])).toBe(false);
     expect(canAccessPath('/sla', [ROLES.WORKER])).toBe(false);
   });
@@ -116,6 +118,7 @@ describe('navigation config', () => {
 
   it('gives Admin the site menu in mockup order, with users but without audit log', () => {
     const admin = [ROLES.ADMIN];
+
     expect(getNavItems(admin).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
       ['', 'Progress vendor'],
@@ -131,6 +134,7 @@ describe('navigation config', () => {
       ['Administrasi', 'Manajemen user'],
       ['Akun', 'Profil & sesi'],
     ]);
+
     expect(getBottomNavItems(admin).map((item) => item.shortLabel)).toEqual([
       'Beranda',
       'Review',
@@ -138,6 +142,7 @@ describe('navigation config', () => {
       'Lap. inv.',
       'Profil',
     ]);
+
     expect(canAccessPath('/audit-logs', admin)).toBe(false);
     expect(canAccessPath('/users', admin)).toBe(true);
     expect(canAccessPath('/master', admin)).toBe(true);
@@ -147,9 +152,10 @@ describe('navigation config', () => {
 
   it('gives Admin vendor the 11 vendor menu items, without master, safety notes and audit log', () => {
     const vendor = [ROLES.ADMIN_WORKER];
+
     expect(getNavItems(vendor).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Beranda'],
-      ['', 'Progress pipeline'],
+      ['', 'Progress vendor'],
       ['', 'Review laporan'],
       ['', 'Laporan inventory'],
       ['', 'SLA & maturity'],
@@ -160,6 +166,7 @@ describe('navigation config', () => {
       ['Akun', 'Manajemen user'],
       ['Akun', 'Profil & sesi'],
     ]);
+
     expect(getBottomNavItems(vendor).map((item) => item.shortLabel)).toEqual([
       'Beranda',
       'Review',
@@ -167,9 +174,11 @@ describe('navigation config', () => {
       'Inventory',
       'Profil',
     ]);
+
     for (const path of ['/master', '/safety-notes', '/audit-logs']) {
       expect(canAccessPath(path, vendor)).toBe(false);
     }
+
     expect(canAccessPath('/pipelines/p1', vendor)).toBe(true);
     expect(canAccessPath('/users/new', vendor)).toBe(true);
     expect(getHomeRoute(vendor)).toBe('/dashboard');
@@ -177,6 +186,7 @@ describe('navigation config', () => {
 
   it('gives Worker the 5 work items, the bottom nav and /tasks as home', () => {
     const worker = [ROLES.WORKER];
+
     expect(getNavItems(worker).map((item) => [item.section ?? '', item.label])).toEqual([
       ['', 'Tugas hari ini'],
       ['', 'Riwayat laporan'],
@@ -184,6 +194,7 @@ describe('navigation config', () => {
       ['', 'SOP'],
       ['Akun', 'Profil & sesi'],
     ]);
+
     expect(getBottomNavItems(worker).map((item) => item.shortLabel)).toEqual([
       'Tugas',
       'Riwayat',
@@ -191,7 +202,9 @@ describe('navigation config', () => {
       'SOP',
       'Profil',
     ]);
+
     expect(getHomeRoute(worker)).toBe('/tasks');
+
     for (const path of [
       '/dashboard',
       '/reports/tasks',
@@ -203,6 +216,7 @@ describe('navigation config', () => {
     ]) {
       expect(canAccessPath(path, worker), path).toBe(false);
     }
+
     for (const path of [
       '/tasks',
       '/tasks/report/r1',
