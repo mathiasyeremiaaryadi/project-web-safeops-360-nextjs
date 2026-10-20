@@ -1,3 +1,5 @@
+import { getPrimaryRole } from '@/lib/auth/permissions';
+import { ROLES, ROUTES } from '@/lib/constants';
 import {
   ClipboardList,
   Database,
@@ -18,8 +20,6 @@ import {
   Users,
   Workflow,
 } from 'lucide-react';
-import { ROLES, ROUTES } from '@/lib/constants';
-import { getPrimaryRole } from '@/lib/auth/permissions';
 
 const { SUPER_ADMIN, ADMIN, ADMIN_WORKER, WORKER } = ROLES;
 
@@ -60,16 +60,7 @@ export const NAV_ITEMS = Object.freeze([
     shortLabel: 'Progress',
     href: '/vendor-progress',
     icon: TrendingUp,
-    roles: [SUPER_ADMIN, ADMIN],
-  },
-  {
-    // Admin vendor: their own vendor only, so the progress is shown per pipeline.
-    key: 'pipeline-progress',
-    label: 'Progress pipeline',
-    shortLabel: 'Progress',
-    href: '/pipeline-progress',
-    icon: TrendingUp,
-    roles: [ADMIN_WORKER],
+    roles: [SUPER_ADMIN, ADMIN, ADMIN_WORKER],
   },
   {
     key: 'reports-tasks',

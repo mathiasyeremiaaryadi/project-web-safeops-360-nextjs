@@ -3,10 +3,15 @@
 import { Input } from '@/components/ui/input';
 
 /**
- * One date (today by default, not in the future), like the "Rekap harian" filter. Choosing today
- * clears the URL param.
+ * Filter satu tanggal untuk halaman Vendor Progress.
+ *
+ * - Format tanggal: YYYY-MM-DD.
+ * - Default tanggal: hari ini.
+ * - Tidak mengizinkan tanggal di masa depan.
+ * - Memilih hari ini akan menghapus parameter date dari URL.
+ *
  * @param {object} props
- * @param {string} props.date `YYYY-MM-DD`
+ * @param {string} props.date
  * @param {string} props.today
  * @param {(updates: { date: string | null }) => void} props.onChange
  * @param {string} [props.className]
@@ -16,12 +21,16 @@ export function ProgressDateFilter({ date, today, onChange, className }) {
     <Input
       type="date"
       aria-label="Tanggal"
-      value={date}
+      value={date || today}
       max={today}
       className={className}
-      onChange={(e) =>
-        onChange({ date: !e.target.value || e.target.value === today ? null : e.target.value })
-      }
+      onChange={(event) => {
+        const selectedDate = event.target.value;
+
+        onChange({
+          date: !selectedDate || selectedDate === today ? null : selectedDate,
+        });
+      }}
     />
   );
 }
